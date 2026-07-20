@@ -1,11 +1,10 @@
 import {
-  SEQUENCE_THEME_DEFAULTS,
   SequenceViewer,
   applySequenceOperations,
   parseSequenceProgram,
   serializeSequenceProgram,
   type SequenceDocument,
-  type SequenceStyle,
+  type SequenceStylePatch,
 } from "@codecaine-ai/sequence";
 import {
   useCallback,
@@ -22,17 +21,11 @@ import {
   type StudioDraft,
 } from "./draft-store";
 import { cloneSequenceDocument } from "./fixtures";
+import { StyleRail } from "./StyleRail";
 
 type ProgramError = { line: number; message: string };
 
 const STYLE_OPEN_KEY = "sequence-studio.showStyle";
-
-const DEFAULT_STYLE: Required<SequenceStyle> = {
-  accent: SEQUENCE_THEME_DEFAULTS.accent,
-  fragmentAccent: SEQUENCE_THEME_DEFAULTS.fragmentAccent,
-  participantFill: SEQUENCE_THEME_DEFAULTS.participantFill,
-  scale: 1,
-};
 
 function errorLine(message: string): number {
   const match = message.match(/(?:line\s+|^)(\d+)/i);
@@ -41,10 +34,6 @@ function errorLine(message: string): number {
 
 function errorsFromOperation(messages: string[]): ProgramError[] {
   return messages.map((message) => ({ line: errorLine(message), message }));
-}
-
-function validColor(value: string | undefined, fallback: string): string {
-  return value && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
 }
 
 function readStyleOpenPreference(): boolean {
@@ -199,7 +188,9 @@ function DraftEditor({
   };
 
   // Style ops go through setStyle only — they never rewrite the program text.
-  const updateStyle = (style: Partial<SequenceStyle>) => {
+  // setStyle deep-merges one level, so rail rows patch single fields and
+  // section resets send explicit nulls to clear them.
+  const updateStyle = (style: SequenceStylePatch) => {
     const applied = applySequenceOperations(docRef.current, [
       { type: "setStyle", style },
     ]);
@@ -234,17 +225,6 @@ function DraftEditor({
       event.currentTarget.blur();
     }
   };
-
-  const accent = validColor(doc.style.accent, DEFAULT_STYLE.accent);
-  const fragmentAccent = validColor(
-    doc.style.fragmentAccent,
-    DEFAULT_STYLE.fragmentAccent,
-  );
-  const participantFill = validColor(
-    doc.style.participantFill,
-    DEFAULT_STYLE.participantFill,
-  );
-  const scale = doc.style.scale ?? DEFAULT_STYLE.scale;
 
   return (
     <div className="editor">
@@ -345,61 +325,11 @@ function DraftEditor({
         </section>
 
         {styleOpen ? (
-          <aside className="style-sidebar" aria-label="Style">
-            <div className="style-head">
-              <span className="micro-label">Document style</span>
-              <h2>Style</h2>
-              <p>Style never changes the program text.</p>
-            </div>
-            <label className="color-control">
-              <span>Accent</span>
-              <span className="color-value">{accent}</span>
-              <input
-                type="color"
-                value={accent}
-                onChange={(event) =>
-                  updateStyle({ accent: event.currentTarget.value })
-                }
-              />
-            </label>
-            <label className="color-control">
-              <span>Fragment accent</span>
-              <span className="color-value">{fragmentAccent}</span>
-              <input
-                type="color"
-                value={fragmentAccent}
-                onChange={(event) =>
-                  updateStyle({ fragmentAccent: event.currentTarget.value })
-                }
-              />
-            </label>
-            <label className="color-control">
-              <span>Participant fill</span>
-              <span className="color-value">{participantFill}</span>
-              <input
-                type="color"
-                value={participantFill}
-                onChange={(event) =>
-                  updateStyle({ participantFill: event.currentTarget.value })
-                }
-              />
-            </label>
-            <label className="scale-control">
-              <span className="scale-label">
-                Scale <strong>{scale.toFixed(2)}×</strong>
-              </span>
-              <input
-                type="range"
-                min="0.6"
-                max="1.8"
-                step="0.05"
-                value={scale}
-                onChange={(event) =>
-                  updateStyle({ scale: Number(event.currentTarget.value) })
-                }
-              />
-            </label>
-          </aside>
+          <StyleRail
+            style={doc.style}
+            onPatch={updateStyle}
+            onHide={() => setStyleOpen(false)}
+          />
         ) : null}
       </div>
     </div>

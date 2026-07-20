@@ -13,6 +13,38 @@ describe("SequenceDocument schema", () => {
     }
   });
 
+  test("accepts per-element style groups", () => {
+    const styled = {
+      ...minimal,
+      style: {
+        accent: "#C77D2E",
+        scale: 1.2,
+        surface: { background: "#FFFFFF", margin: 32, columnGap: 160, rowGap: 40 },
+        participant: { fill: "#FFF8F0", stroke: "#C77D2E", text: "#252525", padding: 20, cornerRadius: 6, opacity: 1 },
+        lifeline: { stroke: "#C77D2E", dash: 4, opacity: 0.8 },
+        message: { stroke: "#C77D2E", text: "#252525", labelGap: 8, opacity: 1 },
+        activation: { fill: "#9AA0A6", stroke: "#9AA0A6", width: 16, opacity: 0.9 },
+        fragment: { stroke: "#5B7FBD", labelFill: "#FFFFFF", labelText: "#5B7FBD", bodyOpacity: 0.1, padding: 16 },
+        note: { fill: "#FFF8F0", stroke: "#C77D2E", text: "#252525", padding: 10, opacity: 1 },
+      },
+    };
+    expect(validateSequenceDocument(styled)).toEqual({ ok: true, errors: [] });
+  });
+
+  test("rejects unknown fields inside style groups", () => {
+    const malformed = {
+      ...minimal,
+      style: {
+        participant: { fill: "#FFF8F0", shadow: "#000" },
+        lifeline: { dash: "dotted" },
+      },
+    };
+    const result = validateSequenceDocument(malformed);
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((error) => error.includes("/style/participant"))).toBe(true);
+    expect(result.errors.some((error) => error.includes("/style/lifeline/dash"))).toBe(true);
+  });
+
   test("rejects malformed documents", () => {
     const malformed = {
       ...minimal,

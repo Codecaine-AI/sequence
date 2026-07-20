@@ -53,14 +53,76 @@ describe("sequence agent operations", () => {
     expect(result.document.title).toBe("New title");
   });
 
+  test("setStyle deep-merges element groups one level", () => {
+    const first = applySequenceOperations(minimal, [
+      { type: "setStyle", style: { accent: "#111111", participant: { fill: "#222222", padding: 24 } } },
+    ]);
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    const second = applySequenceOperations(first.document, [
+      { type: "setStyle", style: { participant: { stroke: "#333333" }, lifeline: { dash: 0 } } },
+    ]);
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.document.style).toEqual({
+      accent: "#111111",
+      participant: { fill: "#222222", padding: 24, stroke: "#333333" },
+      lifeline: { dash: 0 },
+    });
+  });
+
+  test("explicit null clears a field, and a group emptied by clears is dropped", () => {
+    const base = applySequenceOperations(minimal, [
+      { type: "setStyle", style: { accent: "#111111", note: { fill: "#222222", opacity: 0.5 } } },
+    ]);
+    if (!base.ok) throw new Error("setup failed");
+    const cleared = applySequenceOperations(base.document, [
+      { type: "setStyle", style: { accent: null, note: { fill: null } } },
+    ]);
+    expect(cleared.ok).toBe(true);
+    if (!cleared.ok) return;
+    expect(cleared.document.style).toEqual({ note: { opacity: 0.5 } });
+
+    const dropped = applySequenceOperations(cleared.document, [
+      { type: "setStyle", style: { note: { opacity: null } } },
+    ]);
+    expect(dropped.ok && dropped.document.style).toEqual({});
+  });
+
+  test("explicit null clears a whole element group", () => {
+    const base = applySequenceOperations(minimal, [
+      { type: "setStyle", style: { scale: 1.4, fragment: { stroke: "#123456", padding: 20 } } },
+    ]);
+    if (!base.ok) throw new Error("setup failed");
+    const cleared = applySequenceOperations(base.document, [
+      { type: "setStyle", style: { fragment: null } },
+    ]);
+    expect(cleared.ok && cleared.document.style).toEqual({ scale: 1.4 });
+  });
+
   test("agent params accept representative payloads", () => {
     const examples: Record<string, unknown> = {
       setProgram: { program: serializeSequenceProgram(minimal) },
-      setStyle: { style: { accent: "#C77D2E", scale: 1 } },
+      setStyle: {
+        style: {
+          accent: "#C77D2E",
+          scale: 1,
+          fragmentAccent: null,
+          participant: { fill: "#FFF8F0", opacity: 0.9, stroke: null },
+          surface: { margin: 32 },
+          note: null,
+        },
+      },
       setTitle: { title: "Checkout" },
     };
     for (const operation of SEQUENCE_AGENT_PATCH_OPERATIONS) {
       expect(Value.Check(operation.params, examples[operation.type])).toBe(true);
     }
+  });
+
+  test("setStyle params reject unknown fields inside element groups", () => {
+    const setStyle = SEQUENCE_AGENT_PATCH_OPERATIONS.find(({ type }) => type === "setStyle")!;
+    expect(Value.Check(setStyle.params, { style: { participant: { glow: "#fff" } } })).toBe(false);
+    expect(Value.Check(setStyle.params, { style: { banner: "#fff" } })).toBe(false);
   });
 });

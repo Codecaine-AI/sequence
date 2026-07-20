@@ -48,11 +48,81 @@ export interface SequenceNote {
 
 export type SequenceItem = SequenceMessage | SequenceFragment | SequenceNote;
 
+/** Whole-diagram surface. Numeric fields are px (at scale = 1). */
+export interface SequenceSurfaceStyle {
+  background?: string;
+  margin?: number;
+  columnGap?: number;
+  rowGap?: number;
+}
+
+/** Participant header boxes. Numeric fields are px; opacity is 0..1. */
+export interface SequenceParticipantStyle {
+  fill?: string;
+  stroke?: string;
+  text?: string;
+  padding?: number;
+  cornerRadius?: number;
+  opacity?: number;
+}
+
+/** Lifelines. `dash` is the px dash-pattern length (0 = solid). */
+export interface SequenceLifelineStyle {
+  stroke?: string;
+  dash?: number;
+  opacity?: number;
+}
+
+/** Message arrows and their labels. `labelGap` is px; opacity is 0..1. */
+export interface SequenceMessageStyle {
+  stroke?: string;
+  text?: string;
+  labelGap?: number;
+  opacity?: number;
+}
+
+/** Activation bars. `width` is px; opacity is 0..1. */
+export interface SequenceActivationStyle {
+  fill?: string;
+  stroke?: string;
+  width?: number;
+  opacity?: number;
+}
+
+/** Combined fragments. `padding` is px; bodyOpacity is a 0..1 tint. */
+export interface SequenceFragmentStyle {
+  stroke?: string;
+  labelFill?: string;
+  labelText?: string;
+  bodyOpacity?: number;
+  padding?: number;
+}
+
+/** Notes. `padding` is px; opacity is 0..1. */
+export interface SequenceNoteStyle {
+  fill?: string;
+  stroke?: string;
+  text?: string;
+  padding?: number;
+  opacity?: number;
+}
+
+/**
+ * Document style. The four shortcut fields are the coarse knobs and apply
+ * first; per-element groups override them field by field.
+ */
 export interface SequenceStyle {
   accent?: string;
   fragmentAccent?: string;
   participantFill?: string;
   scale?: number;
+  surface?: SequenceSurfaceStyle;
+  participant?: SequenceParticipantStyle;
+  lifeline?: SequenceLifelineStyle;
+  message?: SequenceMessageStyle;
+  activation?: SequenceActivationStyle;
+  fragment?: SequenceFragmentStyle;
+  note?: SequenceNoteStyle;
 }
 
 export interface SequenceDocument {
@@ -138,12 +208,74 @@ export const SequenceFragmentSchema = Type.Object({
   operands: Type.Array(SequenceOperandSchema, { minItems: 1 }),
 }, { additionalProperties: false });
 
+export const SequenceSurfaceStyleSchema = Type.Object({
+  background: Type.Optional(Type.String()),
+  margin: Type.Optional(Type.Number()),
+  columnGap: Type.Optional(Type.Number()),
+  rowGap: Type.Optional(Type.Number()),
+}, { additionalProperties: false });
+
+export const SequenceParticipantStyleSchema = Type.Object({
+  fill: Type.Optional(Type.String()),
+  stroke: Type.Optional(Type.String()),
+  text: Type.Optional(Type.String()),
+  padding: Type.Optional(Type.Number()),
+  cornerRadius: Type.Optional(Type.Number()),
+  opacity: Type.Optional(Type.Number()),
+}, { additionalProperties: false });
+
+export const SequenceLifelineStyleSchema = Type.Object({
+  stroke: Type.Optional(Type.String()),
+  dash: Type.Optional(Type.Number()),
+  opacity: Type.Optional(Type.Number()),
+}, { additionalProperties: false });
+
+export const SequenceMessageStyleSchema = Type.Object({
+  stroke: Type.Optional(Type.String()),
+  text: Type.Optional(Type.String()),
+  labelGap: Type.Optional(Type.Number()),
+  opacity: Type.Optional(Type.Number()),
+}, { additionalProperties: false });
+
+export const SequenceActivationStyleSchema = Type.Object({
+  fill: Type.Optional(Type.String()),
+  stroke: Type.Optional(Type.String()),
+  width: Type.Optional(Type.Number()),
+  opacity: Type.Optional(Type.Number()),
+}, { additionalProperties: false });
+
+export const SequenceFragmentStyleSchema = Type.Object({
+  stroke: Type.Optional(Type.String()),
+  labelFill: Type.Optional(Type.String()),
+  labelText: Type.Optional(Type.String()),
+  bodyOpacity: Type.Optional(Type.Number()),
+  padding: Type.Optional(Type.Number()),
+}, { additionalProperties: false });
+
+export const SequenceNoteStyleSchema = Type.Object({
+  fill: Type.Optional(Type.String()),
+  stroke: Type.Optional(Type.String()),
+  text: Type.Optional(Type.String()),
+  padding: Type.Optional(Type.Number()),
+  opacity: Type.Optional(Type.Number()),
+}, { additionalProperties: false });
+
 export const SequenceStyleSchema = Type.Object({
   accent: Type.Optional(Type.String()),
   fragmentAccent: Type.Optional(Type.String()),
   participantFill: Type.Optional(Type.String()),
   scale: Type.Optional(Type.Number()),
+  surface: Type.Optional(SequenceSurfaceStyleSchema),
+  participant: Type.Optional(SequenceParticipantStyleSchema),
+  lifeline: Type.Optional(SequenceLifelineStyleSchema),
+  message: Type.Optional(SequenceMessageStyleSchema),
+  activation: Type.Optional(SequenceActivationStyleSchema),
+  fragment: Type.Optional(SequenceFragmentStyleSchema),
+  note: Type.Optional(SequenceNoteStyleSchema),
 }, { additionalProperties: false });
+
+const _styleTypesMatch: MutuallyAssignable<Static<typeof SequenceStyleSchema>, SequenceStyle> = true;
+void _styleTypesMatch;
 
 export const SequenceDocumentSchema = Type.Object({
   version: Type.Literal(1),

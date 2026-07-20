@@ -432,6 +432,108 @@ describe("layoutSequence", () => {
     );
   });
 
+  test("surface margin, column gap, and row gap overrides flow into geometry", () => {
+    const items: SequenceItem[] = [
+      { kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "one" },
+      { kind: "message", id: "m2", from: "p2", to: "p3", line: "async", text: "two" },
+    ];
+    const base = layoutSequence(documentWith(items));
+    const wide = layoutSequence(documentWith(items, {
+      surface: { margin: 48, columnGap: 280, rowGap: 72 },
+    }));
+
+    const baseSeparation = base.participants[1]!.centerX - base.participants[0]!.centerX;
+    const wideSeparation = wide.participants[1]!.centerX - wide.participants[0]!.centerX;
+    expect(baseSeparation).toBe(SEQUENCE_LAYOUT.COLUMN_GAP);
+    expect(wideSeparation).toBe(280);
+
+    const baseRowGap = base.rows[1]!.y - base.rows[0]!.y;
+    const wideRowGap = wide.rows[1]!.y - wide.rows[0]!.y;
+    expect(baseRowGap).toBe(SEQUENCE_LAYOUT.ROW_H);
+    expect(wideRowGap).toBe(72);
+
+    // Margin grows the top inset and the trailing edge below the content.
+    expect(wide.participants[0]!.header.y).toBe(48);
+    expect(base.participants[0]!.header.y).toBe(SEQUENCE_LAYOUT.MARGIN);
+  });
+
+  test("participant padding widens headers and activation width sizes bars", () => {
+    const items: SequenceItem[] = [
+      { kind: "message", id: "m1", from: "p1", to: "p2", line: "sync", text: "call" },
+      { kind: "message", id: "m2", from: "p2", to: "p1", line: "return", text: "done" },
+    ];
+    const measure = (text: string): number => text.length * 20;
+    const base = layoutSequence(documentWith(items), measure);
+    const styled = layoutSequence(documentWith(items, {
+      participant: { padding: 40 },
+      activation: { width: 24 },
+    }), measure);
+
+    const baseHeader = base.participants[1]!.header.width;
+    const styledHeader = styled.participants[1]!.header.width;
+    expect(baseHeader).toBe(measure("service") + SEQUENCE_LAYOUT.HEADER_PAD_X * 2);
+    expect(styledHeader).toBe(measure("service") + 80);
+    expect(base.activations[0]!.rect.width).toBe(SEQUENCE_LAYOUT.ACTIVATION_W);
+    expect(styled.activations[0]!.rect.width).toBe(24);
+  });
+
+  test("fragment padding, note padding, and message label gap are consumed", () => {
+    const items: SequenceItem[] = [
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "opt",
+        operands: [{
+          guard: "ready",
+          items: [
+            { kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "go" },
+          ],
+        }],
+      },
+      { kind: "note", id: "n1", anchor: "p2", side: "right", text: "hint" },
+    ];
+    const base = layoutSequence(documentWith(items));
+    const styled = layoutSequence(documentWith(items, {
+      fragment: { padding: 32 },
+      note: { padding: 20 },
+      message: { labelGap: 14 },
+    }));
+
+    const baseFragment = base.fragments[0]!;
+    const styledFragment = styled.fragments[0]!;
+    const baseMessage = base.messages[0]!;
+    const styledMessage = styled.messages[0]!;
+    expect(Math.min(baseMessage.x1, baseMessage.x2) - baseFragment.outer.x)
+      .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_PAD);
+    expect(Math.min(styledMessage.x1, styledMessage.x2) - styledFragment.outer.x)
+      .toBeGreaterThanOrEqual(32);
+
+    // Note padding grows the box around its text; the label insets with it.
+    // Height floor is 24 + 2 * padding (40 at the default padding of 8).
+    expect(base.notes[0]!.box.height).toBe(40);
+    expect(styled.notes[0]!.box.height).toBe(24 + 40);
+    expect(base.notes[0]!.label.x - base.notes[0]!.box.x).toBe(10);
+    expect(styled.notes[0]!.label.x - styled.notes[0]!.box.x).toBe(22);
+
+    expect(baseMessage.y - baseMessage.label.y).toBe(6);
+    expect(styledMessage.y - styledMessage.label.y).toBe(14);
+  });
+
+  test("geometry overrides multiply with the global scale", () => {
+    const items: SequenceItem[] = [
+      { kind: "message", id: "m1", from: "p1", to: "p2", line: "sync", text: "call" },
+      { kind: "message", id: "m2", from: "p1", to: "p2", line: "async", text: "again" },
+    ];
+    const layout = layoutSequence(documentWith(items, {
+      scale: 2,
+      surface: { rowGap: 48 },
+      activation: { width: 20 },
+    }));
+
+    expect(layout.rows[1]!.y - layout.rows[0]!.y).toBe(96);
+    expect(layout.activations[0]!.rect.width).toBe(40);
+  });
+
   test("ends unmatched calls at their operand boundary and keeps all numbers finite", () => {
     const layout = layoutSequence(documentWith([
       {

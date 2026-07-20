@@ -200,6 +200,18 @@ export function layoutSequence(
     ? rawScale
     : 1;
   const unit = (value: number): number => value * scale;
+  // Per-element geometry overrides (base px, multiplied by scale via unit()).
+  // Invalid values fall back to the pinned layout constants.
+  const styleLength = (value: number | undefined, fallback: number): number =>
+    typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
+  const margin = styleLength(doc.style.surface?.margin, SEQUENCE_LAYOUT.MARGIN);
+  const columnGap = styleLength(doc.style.surface?.columnGap, SEQUENCE_LAYOUT.COLUMN_GAP);
+  const rowGap = styleLength(doc.style.surface?.rowGap, SEQUENCE_LAYOUT.ROW_H);
+  const headerPadX = styleLength(doc.style.participant?.padding, SEQUENCE_LAYOUT.HEADER_PAD_X);
+  const activationW = styleLength(doc.style.activation?.width, SEQUENCE_LAYOUT.ACTIVATION_W);
+  const fragPad = styleLength(doc.style.fragment?.padding, SEQUENCE_LAYOUT.FRAG_PAD);
+  const notePad = styleLength(doc.style.note?.padding, 8);
+  const labelGap = styleLength(doc.style.message?.labelGap, 6);
   const normalFont: SeqFont = { size: unit(13), family: FONT_FAMILY, weight: "normal" };
   const smallFont: SeqFont = { size: unit(11), family: FONT_FAMILY, weight: "normal" };
   const boldFont: SeqFont = { size: unit(12), family: FONT_FAMILY, weight: "bold" };
@@ -213,15 +225,14 @@ export function layoutSequence(
     return Number.isFinite(measured) && measured >= 0 ? measured : defaultMeasure(text, font);
   };
 
-  const headerY = unit(SEQUENCE_LAYOUT.MARGIN)
-    + (doc.title ? unit(SEQUENCE_LAYOUT.ROW_H) : 0);
+  const headerY = unit(margin) + (doc.title ? unit(rowGap) : 0);
   const headerWidths = doc.participants.map((participant) => {
     const display = participant.label ?? participant.name;
     const textWidth = Math.max(
       safeMeasure(display, normalFont),
       participant.stereotype ? safeMeasure(`«${participant.stereotype}»`, smallFont) : 0,
     );
-    return Math.max(unit(64), textWidth + unit(SEQUENCE_LAYOUT.HEADER_PAD_X * 2));
+    return Math.max(unit(64), textWidth + unit(headerPadX * 2));
   });
 
   const maxFragmentDepth = (items: SequenceItem[], depth = 0): number => items.reduce(
@@ -239,20 +250,20 @@ export function layoutSequence(
   // by one pad, so include nesting depth to keep even deeply nested notes in
   // the positive viewBox without a later coordinate translation.
   const sideGutter = unit(
-    SEQUENCE_LAYOUT.MARGIN
+    margin
       + SEQUENCE_LAYOUT.NOTE_W
-      + SEQUENCE_LAYOUT.FRAG_PAD * (maxFragmentDepth(doc.items) + 1),
+      + fragPad * (maxFragmentDepth(doc.items) + 1),
   );
   const centers: number[] = [];
   for (let index = 0; index < doc.participants.length; index += 1) {
     if (index === 0) {
-      centers.push(Math.max(sideGutter, unit(SEQUENCE_LAYOUT.MARGIN) + headerWidths[index]! / 2));
+      centers.push(Math.max(sideGutter, unit(margin) + headerWidths[index]! / 2));
       continue;
     }
     const previousWidth = headerWidths[index - 1]!;
     const width = headerWidths[index]!;
     const separation = Math.max(
-      unit(SEQUENCE_LAYOUT.COLUMN_GAP),
+      unit(columnGap),
       previousWidth / 2 + width / 2 + unit(SEQUENCE_LAYOUT.GRID * 2),
     );
     centers.push(centers[index - 1]! + separation);
@@ -296,15 +307,15 @@ export function layoutSequence(
   const fragments: SequenceFragmentLayout[] = [];
   const notes: SequenceNoteLayout[] = [];
   const fragmentChildren = new Map<SequenceFragmentLayout, SequenceLayoutRow[]>();
-  const rowHeight = unit(SEQUENCE_LAYOUT.ROW_H);
-  const fragmentPad = unit(SEQUENCE_LAYOUT.FRAG_PAD);
+  const rowHeight = unit(rowGap);
+  const fragmentPad = unit(fragPad);
   const fragmentTabHeight = unit(SEQUENCE_LAYOUT.FRAG_TAB_H);
 
   const participantX = (id: string): number => participantById.get(id)?.centerX ?? sideGutter;
 
   const noteHeight = (note: SequenceNote): number => Math.max(
-    unit(40),
-    note.text.split("\n").length * unit(15) + unit(16),
+    unit(24 + notePad * 2),
+    note.text.split("\n").length * unit(15) + unit(notePad * 2),
   );
 
   const horizontalTextBounds = (
@@ -326,7 +337,7 @@ export function layoutSequence(
     font: SeqFont,
   ): void => {
     const bounds = horizontalTextBounds(anchor, safeMeasure(text, font));
-    const minimumLeft = unit(SEQUENCE_LAYOUT.MARGIN);
+    const minimumLeft = unit(margin);
     if (bounds.left < minimumLeft) anchor.x += minimumLeft - bounds.left;
   };
 
@@ -357,7 +368,7 @@ export function layoutSequence(
       text: note.text,
       y,
       box,
-      label: { x: x + unit(10), y: box.y + unit(20), anchor: "start" },
+      label: { x: x + unit(notePad + 2), y: box.y + unit(notePad + 12), anchor: "start" },
       foldPath: [
         { x: box.x + box.width - fold, y: box.y },
         { x: box.x + box.width - fold, y: box.y + fold },
@@ -390,8 +401,8 @@ export function layoutSequence(
       x2,
       y2: y,
       label: {
-        x: self ? x1 + unit(SEQUENCE_LAYOUT.SELF_LOOP_W + 6) : (x1 + x2) / 2,
-        y: y - unit(6),
+        x: self ? x1 + unit(SEQUENCE_LAYOUT.SELF_LOOP_W + labelGap) : (x1 + x2) / 2,
+        y: y - unit(labelGap),
         anchor: self ? "start" : "middle",
       },
       depth,
@@ -586,7 +597,7 @@ export function layoutSequence(
   const contentEnd = documentScope.endY;
 
   const activations: MutableActivation[] = [];
-  const activationWidth = unit(SEQUENCE_LAYOUT.ACTIVATION_W);
+  const activationWidth = unit(activationW);
   const activationOffset = activationWidth / 3;
 
   const activeFor = (
@@ -642,7 +653,7 @@ export function layoutSequence(
         { x: right, y: row.y2 },
         { x: targetEdge, y: row.y2 },
       ];
-      row.label = { x: right + unit(6), y: row.y + unit(14), anchor: "start" };
+      row.label = { x: right + unit(labelGap), y: row.y + unit(14), anchor: "start" };
       return;
     }
     row.x1 = dockX(row.from, toCenter, inherited, local, closedHere);
@@ -650,7 +661,7 @@ export function layoutSequence(
     row.x2 = dockX(row.to, fromCenter, inherited, local, closedHere);
     row.y2 = row.y;
     row.selfLoop = undefined;
-    row.label = { x: (row.x1 + row.x2) / 2, y: row.y - unit(6), anchor: "middle" };
+    row.label = { x: (row.x1 + row.x2) / 2, y: row.y - unit(labelGap), anchor: "middle" };
   };
 
   const closeActivation = (
@@ -852,9 +863,9 @@ export function layoutSequence(
     rightEdge = Math.max(rightEdge, activation.rect.x + activation.rect.width);
   }
   const width = rightEdge + sideGutter;
-  const height = contentEnd + unit(SEQUENCE_LAYOUT.MARGIN);
+  const height = contentEnd + unit(margin);
   const lifelineY1 = headerY + unit(SEQUENCE_LAYOUT.HEADER_H);
-  const lifelineY2 = height - unit(SEQUENCE_LAYOUT.MARGIN);
+  const lifelineY2 = height - unit(margin);
   const lifelines: SequenceLifelineSegment[] = participants.map((participant) => ({
     participantId: participant.id,
     x: participant.centerX,
@@ -870,8 +881,8 @@ export function layoutSequence(
       ? {
           text: doc.title,
           anchor: {
-            x: unit(SEQUENCE_LAYOUT.MARGIN),
-            y: unit(SEQUENCE_LAYOUT.MARGIN + 18),
+            x: unit(margin),
+            y: unit(margin + 18),
             anchor: "start",
           },
         }

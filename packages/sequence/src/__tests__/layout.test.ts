@@ -75,10 +75,16 @@ describe("layoutSequence", () => {
       COLUMN_GAP: 140,
       HEADER_H: 40,
       HEADER_PAD_X: 16,
-      ROW_H: 36,
+      ROW_H: 40,
       ACTIVATION_W: 12,
       FRAG_PAD: 12,
       FRAG_TAB_H: 20,
+      FRAG_MARGIN_Y: 24,
+      FRAG_INNER_TOP: 14,
+      FRAG_INNER_BOTTOM: 16,
+      FRAG_DIVIDER_GAP: 10,
+      FRAG_GUARD_H: 18,
+      NOTE_MARGIN_Y: 8,
       NOTE_W: 160,
       MARGIN: 24,
       SELF_LOOP_W: 40,
@@ -351,7 +357,10 @@ describe("layoutSequence", () => {
     const siblingReturn = layout.messages.find(({ id }) => id === "sibling-return")!;
 
     expect(activation.endMessageId).toBeUndefined();
-    expect(activation.rect.y + activation.rect.height).toBe(fragment.dividerYs[0]);
+    // The bar ends at its operand's content boundary, clear of the divider.
+    expect(activation.rect.y + activation.rect.height).toBe(
+      fragment.dividerYs[0]! - SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP,
+    );
     expect(activation.rect.y + activation.rect.height).toBeLessThan(siblingReturn.y);
   });
 
@@ -566,5 +575,140 @@ describe("layoutSequence", () => {
       else if (value && typeof value === "object") Object.values(value).forEach(visit);
     };
     visit(layout);
+  });
+
+  test("frames keep vertical clearance from neighboring rows and sibling frames", () => {
+    const optOperand = (id: string) => ({
+      guard: "ready",
+      items: [
+        { kind: "message", id, from: "p1", to: "p2", line: "async", text: "go" } as SequenceItem,
+      ],
+    });
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "before", from: "p1", to: "p2", line: "async", text: "before" },
+      { kind: "fragment", id: "f1", op: "opt", operands: [optOperand("m1")] },
+      { kind: "fragment", id: "f2", op: "opt", operands: [optOperand("m2")] },
+      { kind: "message", id: "after", from: "p2", to: "p1", line: "async", text: "after" },
+    ]));
+    const before = layout.messages.find(({ id }) => id === "before")!;
+    const after = layout.messages.find(({ id }) => id === "after")!;
+    const f1 = layout.fragments.find(({ id }) => id === "f1")!;
+    const f2 = layout.fragments.find(({ id }) => id === "f2")!;
+
+    expect(f1.outer.y - before.y2).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
+    expect(f2.outer.y - (f1.outer.y + f1.outer.height))
+      .toBeGreaterThanOrEqual(2 * SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
+    expect(after.y - (f2.outer.y + f2.outer.height))
+      .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
+  });
+
+  test("fragment interiors keep air below the tab and above the bottom edge", () => {
+    const layout = layoutSequence(documentWith([
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "opt",
+        operands: [{
+          guard: "ready",
+          items: [
+            { kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "one" },
+            { kind: "message", id: "m2", from: "p2", to: "p1", line: "async", text: "two" },
+          ],
+        }],
+      },
+    ]));
+    const fragment = layout.fragments[0]!;
+    const first = layout.messages.find(({ id }) => id === "m1")!;
+    const last = layout.messages.find(({ id }) => id === "m2")!;
+    const tabBottom = fragment.outer.y + SEQUENCE_LAYOUT.FRAG_TAB_H;
+
+    expect(first.y1 - tabBottom).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_INNER_TOP);
+    expect(fragment.outer.y + fragment.outer.height - last.y2)
+      .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+  });
+
+  test("nested frames step inward with visible top and bottom insets", () => {
+    const layout = layoutSequence(documentWith([
+      {
+        kind: "fragment",
+        id: "outer",
+        op: "loop",
+        operands: [{
+          guard: "each",
+          items: [
+            {
+              kind: "fragment",
+              id: "inner",
+              op: "opt",
+              operands: [{
+                guard: "ready",
+                items: [
+                  { kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "go" },
+                ],
+              }],
+            },
+          ],
+        }],
+      },
+    ]));
+    const outer = layout.fragments.find(({ id }) => id === "outer")!;
+    const inner = layout.fragments.find(({ id }) => id === "inner")!;
+
+    expect(inner.outer.y - (outer.outer.y + SEQUENCE_LAYOUT.FRAG_TAB_H))
+      .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_INNER_TOP + SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
+    expect((outer.outer.y + outer.outer.height) - (inner.outer.y + inner.outer.height))
+      .toBeGreaterThanOrEqual(
+        SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM + SEQUENCE_LAYOUT.FRAG_MARGIN_Y,
+      );
+  });
+
+  test("operand dividers keep clearance from surrounding operand contents", () => {
+    const layout = layoutSequence(documentWith([
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "alt",
+        operands: [
+          {
+            guard: "yes",
+            items: [
+              { kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "one" },
+            ],
+          },
+          {
+            items: [
+              { kind: "message", id: "m2", from: "p2", to: "p1", line: "async", text: "two" },
+            ],
+          },
+        ],
+      },
+    ]));
+    const fragment = layout.fragments[0]!;
+    const dividerY = fragment.dividerYs[0]!;
+    const above = layout.messages.find(({ id }) => id === "m1")!;
+    const below = layout.messages.find(({ id }) => id === "m2")!;
+    const elseGuard = fragment.guardLabels[1]!;
+
+    expect(dividerY - above.y2).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP);
+    // The [else] guard sits in its own band between the divider and the items.
+    expect(elseGuard.anchor.y).toBeGreaterThan(dividerY);
+    expect(below.y1 - dividerY).toBeGreaterThanOrEqual(
+      SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP + SEQUENCE_LAYOUT.FRAG_GUARD_H,
+    );
+  });
+
+  test("notes keep vertical clearance from neighboring messages", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "before", from: "p1", to: "p2", line: "async", text: "before" },
+      { kind: "note", id: "n1", anchor: "p2", side: "right", text: "a note" },
+      { kind: "message", id: "after", from: "p2", to: "p1", line: "async", text: "after" },
+    ]));
+    const note = layout.notes[0]!;
+    const before = layout.messages.find(({ id }) => id === "before")!;
+    const after = layout.messages.find(({ id }) => id === "after")!;
+
+    expect(note.box.y - before.y2).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.NOTE_MARGIN_Y);
+    expect(after.y1 - (note.box.y + note.box.height))
+      .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.NOTE_MARGIN_Y);
   });
 });

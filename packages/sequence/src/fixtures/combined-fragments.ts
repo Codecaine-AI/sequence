@@ -39,7 +39,6 @@ export const combinedFragments: SequenceDocument = {
                   ],
                 },
                 {
-                  guard: "else",
                   items: [
                     {
                       kind: "message",

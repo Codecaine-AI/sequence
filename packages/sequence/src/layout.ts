@@ -16,10 +16,22 @@ export const SEQUENCE_LAYOUT = {
   COLUMN_GAP: 140,
   HEADER_H: 40,
   HEADER_PAD_X: 16,
-  ROW_H: 36,
+  ROW_H: 40,
   ACTIVATION_W: 12,
   FRAG_PAD: 12,
   FRAG_TAB_H: 20,
+  /** Vertical clearance before and after every fragment frame. */
+  FRAG_MARGIN_Y: 24,
+  /** Air between the tab/guard row and a fragment's first item. */
+  FRAG_INNER_TOP: 14,
+  /** Air between a fragment's last item and its bottom edge. */
+  FRAG_INNER_BOTTOM: 16,
+  /** Clearance above and below each dashed operand divider. */
+  FRAG_DIVIDER_GAP: 10,
+  /** Reserved row for an operand guard label rendered below a divider. */
+  FRAG_GUARD_H: 18,
+  /** Extra clearance above and below note boxes. */
+  NOTE_MARGIN_Y: 8,
   NOTE_W: 160,
   MARGIN: 24,
   SELF_LOOP_W: 40,
@@ -310,6 +322,12 @@ export function layoutSequence(
   const rowHeight = unit(rowGap);
   const fragmentPad = unit(fragPad);
   const fragmentTabHeight = unit(SEQUENCE_LAYOUT.FRAG_TAB_H);
+  const fragmentMarginY = unit(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
+  const fragmentInnerTop = unit(SEQUENCE_LAYOUT.FRAG_INNER_TOP);
+  const fragmentInnerBottom = unit(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+  const fragmentDividerGap = unit(SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP);
+  const fragmentGuardHeight = unit(SEQUENCE_LAYOUT.FRAG_GUARD_H);
+  const noteMarginY = unit(SEQUENCE_LAYOUT.NOTE_MARGIN_Y);
 
   const participantX = (id: string): number => participantById.get(id)?.centerX ?? sideGutter;
 
@@ -346,7 +364,9 @@ export function layoutSequence(
     endY: number;
   } => {
     const height = noteHeight(note);
-    const bandHeight = Math.max(rowHeight, height + unit(SEQUENCE_LAYOUT.GRID));
+    // Center the box inside a band that reserves NOTE_MARGIN_Y of clearance on
+    // both sides so notes never collide with adjacent frames or messages.
+    const bandHeight = Math.max(rowHeight, height + noteMarginY * 2);
     const y = top + bandHeight / 2;
     const width = unit(SEQUENCE_LAYOUT.NOTE_W);
     const anchorX = participantX(note.anchor);
@@ -493,7 +513,9 @@ export function layoutSequence(
         continue;
       }
 
-      const frameTop = cursor;
+      // Frames get vertical clearance on both sides so they never touch the
+      // preceding/following row's geometry or a sibling frame.
+      const frameTop = cursor + fragmentMarginY;
       const participantIds = collectParticipantIds(item);
       const fragmentRow: SequenceFragmentLayout = {
         kind: "fragment",
@@ -511,19 +533,31 @@ export function layoutSequence(
       rows.push(fragmentRow);
       fragments.push(fragmentRow);
       const firstChildRow = rows.length;
-      cursor = frameTop + fragmentTabHeight;
+      cursor = frameTop + fragmentTabHeight + fragmentInnerTop;
       const operandScopes: LayoutScope[] = [];
       const operandStarts: number[] = [];
+      const hasGuardRow = (operandIndex: number): boolean => {
+        const operand = item.operands[operandIndex]!;
+        return Boolean(operand.guard) || (item.op === "alt" && operandIndex > 0);
+      };
       for (let operandIndex = 0; operandIndex < item.operands.length; operandIndex += 1) {
-        if (operandIndex > 0) fragmentRow.dividerYs.push(cursor);
+        if (operandIndex > 0) {
+          // Dashed dividers get breathing room on both sides so operand
+          // contents never crowd them.
+          cursor += fragmentDividerGap;
+          fragmentRow.dividerYs.push(cursor);
+          cursor += fragmentDividerGap;
+        }
         operandStarts.push(cursor);
+        // Guard labels below a divider occupy their own band before items.
+        if (operandIndex > 0 && hasGuardRow(operandIndex)) cursor += fragmentGuardHeight;
         const operand = item.operands[operandIndex]!;
         const operandScope = layoutItems(operand.items, cursor, depth + 1);
         if (operandScope.endY === cursor) operandScope.endY += rowHeight;
         operandScopes.push(operandScope);
         cursor = operandScope.endY;
       }
-      cursor += fragmentPad;
+      cursor += fragmentInnerBottom;
       const childRows = rows.slice(firstChildRow);
       fragmentChildren.set(fragmentRow, childRows);
       const childBounds = xBoundsForRows(childRows);
@@ -585,6 +619,8 @@ export function layoutSequence(
         outerRight = Math.max(outerRight, guardBounds.right + fragmentPad);
       }
       fragmentRow.outer.width = outerRight - outerLeft;
+      // Trailing clearance below the frame before the next row begins.
+      cursor += fragmentMarginY;
       scope.events.push({ type: "fragment", operands: operandScopes });
     }
     scope.endY = cursor;

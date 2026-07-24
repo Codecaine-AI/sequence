@@ -167,7 +167,7 @@ button {
   width: 40px;
   height: 40px;
   place-items: center;
-  border-radius: 10px;
+  border-radius: calc(var(--radius) + 2px);
   background: var(--primary);
   color: var(--primary-foreground);
   box-shadow: 0 6px 16px rgb(17 17 17 / 18%);
@@ -289,7 +289,7 @@ button {
 .card-action {
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: calc(var(--radius) - 2px);
   background: rgb(255 254 250 / 92%);
   color: var(--muted-foreground);
   font-size: 11px;
@@ -352,7 +352,7 @@ button {
   height: 32px;
   padding: 0 8px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(var(--radius) - 2px);
   background: transparent;
   font-size: 14px;
   font-weight: 600;
@@ -498,7 +498,7 @@ button {
 }
 
 .diagram-card {
-  border-radius: 6px;
+  border-radius: calc(var(--radius) - 2px);
   background: var(--seq-bg, #fff);
   box-shadow: 0 8px 30px rgb(0 0 0 / 8%);
 }
@@ -554,7 +554,7 @@ button {
   height: 26px;
   place-items: center;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(var(--radius) - 2px);
   background: transparent;
   color: var(--muted-foreground);
 }
@@ -576,7 +576,7 @@ button {
   flex: 1;
   padding: 5px 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(var(--radius) - 2px);
   background: transparent;
   color: var(--muted-foreground);
   font-size: 11px;
@@ -709,7 +709,7 @@ button {
   height: 26px;
   padding: 2px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: calc(var(--radius) - 2px);
   background: var(--card);
   cursor: pointer;
 }

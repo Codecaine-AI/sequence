@@ -2,7 +2,7 @@
 
 # Run the Vite studio development server on port 3998.
 studio:
-	bun install
+	cd .. && bun install
 	bun run dev:studio
 
 test:

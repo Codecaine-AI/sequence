@@ -142,3 +142,22 @@ describe("sequence SVG rendering", () => {
     expect(diagram.textContent).toContain("Login page");
   });
 });
+
+
+test("renders matching top and bottom participants, including actors", () => {
+  const { container } = render(<SequenceViewer document={loginFlow} />);
+  const top = container.querySelectorAll(".seq-participants > .seq-participant");
+  const bottom = container.querySelectorAll(".seq-participant-footers > .seq-participant");
+  expect(bottom.length).toBe(top.length);
+  for (let index = 0; index < top.length; index += 1) {
+    expect(bottom[index]!.getAttribute("data-participant-id")).toBe(top[index]!.getAttribute("data-participant-id"));
+    expect(bottom[index]!.textContent).toBe(top[index]!.textContent);
+    expect(bottom[index]!.classList.contains("seq-participant--actor")).toBe(top[index]!.classList.contains("seq-participant--actor"));
+  }
+});
+
+test("paints branch labels above activation bars with a background halo", () => {
+  const svg = renderSequenceSvgString(combinedFragments);
+  expect(svg.indexOf('class="seq-fragment-labels"')).toBeGreaterThan(svg.indexOf('class="seq-activations"'));
+  expect(svg).toMatch(/class="seq-fragment-guard"[^>]*paint-order="stroke"/);
+});

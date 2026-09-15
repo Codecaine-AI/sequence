@@ -74,6 +74,7 @@ describe("layoutSequence", () => {
       GRID: 8,
       COLUMN_GAP: 140,
       HEADER_H: 40,
+      FOOTER_GAP: 24,
       HEADER_PAD_X: 16,
       ROW_H: 40,
       ACTIVATION_W: 12,
@@ -710,5 +711,44 @@ describe("layoutSequence", () => {
     expect(note.box.y - before.y2).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.NOTE_MARGIN_Y);
     expect(after.y1 - (note.box.y + note.box.height))
       .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.NOTE_MARGIN_Y);
+  });
+});
+
+
+describe("standard participant layout", () => {
+  test("mirrors participants below all events and connects lifelines to the footer", () => {
+    for (const scale of [0.5, 1, 2]) {
+      const doc = documentWith([
+        { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "request" },
+        { kind: "message", id: "reply", from: "p2", to: "p1", line: "return", text: "response" },
+      ], { scale });
+      doc.participants = doc.participants.map(p => ({ ...p, stereotype: "system" }));
+      const layout = layoutSequence(doc);
+      expect(layout.participantFooters.map(p => p.id)).toEqual(doc.participants.map(p => p.id));
+      for (const [index, footer] of layout.participantFooters.entries()) {
+        const header = layout.participants[index]!;
+        expect(footer.centerX).toBe(header.centerX);
+        expect(footer.header.width).toBe(header.header.width);
+        expect(footer.actor).toBe(header.actor);
+        expect(footer.header.y).toBeGreaterThan(Math.max(...layout.messages.map(m => m.y2)));
+        expect(footer.header.y).toBeGreaterThan(Math.max(...layout.activations.map(a => a.rect.y + a.rect.height)));
+        expect(footer.header.y + footer.header.height).toBeLessThan(layout.height);
+        expect(footer.stereotypeAnchor!.y - footer.header.y).toBeCloseTo(header.stereotypeAnchor!.y - header.header.y);
+        expect(layout.lifelines[index]!.y2).toBe(footer.header.y);
+      }
+    }
+  });
+
+  test("reserves enough horizontal space for long nested message labels", () => {
+    const text = "publish reconciled source and knowledge";
+    const layout = layoutSequence(documentWith([{
+      kind: "fragment", id: "branch", op: "alt", operands: [{ guard: "success", items: [
+        { kind: "message", id: "long", from: "p1", to: "p2", line: "sync", text },
+      ] }],
+    }]), (value) => value.length * 10);
+    const message = layout.messages[0]!;
+    expect(Math.abs(message.x2 - message.x1)).toBeGreaterThan(text.length * 10);
+    expect(message.label.x - text.length * 5).toBeGreaterThan(message.x1);
+    expect(message.label.x + text.length * 5).toBeLessThan(message.x2);
   });
 });

@@ -11,6 +11,17 @@ structure while preserving its separately managed style. Deterministic layout
 then expands that structure into geometry for SVG rendering; the language
 contains no coordinates, styling, internal ids, or activation commands.
 
+## Default Diagram Appearance
+
+Participants appear in matching rows at the top and bottom, in document order.
+Dashed lifelines connect the two rows; activation bars stay within the event
+area. Message spans expand to fit their labels. Combined fragments retain UML
+operator tabs, bracketed guards, and dashed operand dividers; guard and message
+text renders over lifelines and activation bars for readability.
+
+These defaults apply to both the React viewer and exported SVGs. Existing
+sequence documents need no migration.
+
 ## Layout
 
 | Path | Purpose |

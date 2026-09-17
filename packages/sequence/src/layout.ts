@@ -15,6 +15,7 @@ export const SEQUENCE_LAYOUT = {
   GRID: 8,
   COLUMN_GAP: 140,
   HEADER_H: 40,
+  FOOTER_GAP: 24,
   HEADER_PAD_X: 16,
   ROW_H: 40,
   ACTIVATION_W: 12,
@@ -149,6 +150,7 @@ export interface SequenceLayout {
   scale: number;
   title?: { text: string; anchor: SeqTextAnchor };
   participants: SequenceParticipantLayout[];
+  participantFooters: SequenceParticipantLayout[];
   lifelines: SequenceLifelineSegment[];
   rows: SequenceLayoutRow[];
   messages: SequenceMessageLayout[];
@@ -280,6 +282,30 @@ export function layoutSequence(
     );
     centers.push(centers[index - 1]! + separation);
   }
+
+  // Widen message spans before placing participants. Labels need room between
+  // the activation bars, including inside nested combined fragments.
+  const reserveMessageWidths = (items: SequenceItem[]): void => {
+    for (const item of items) {
+      if (item.kind === "fragment") {
+        for (const operand of item.operands) reserveMessageWidths(operand.items);
+      } else if (item.kind === "message" && item.from !== item.to) {
+        const from = doc.participants.findIndex(({ id }) => id === item.from);
+        const to = doc.participants.findIndex(({ id }) => id === item.to);
+        if (from < 0 || to < 0) continue;
+        const left = Math.min(from, to);
+        const right = Math.max(from, to);
+        const required = safeMeasure(item.text, normalFont) + unit(activationW * 2 + 24);
+        const extra = required - (centers[right]! - centers[left]!);
+        if (extra > 0) {
+          for (let index = left + 1; index < centers.length; index += 1) {
+            centers[index]! += extra * Math.min(index - left, right - left) / (right - left);
+          }
+        }
+      }
+    }
+  };
+  reserveMessageWidths(doc.items);
 
   const participantById = new Map<string, SequenceParticipantLayout>();
   const participants = doc.participants.map((participant, index): SequenceParticipantLayout => {
@@ -565,8 +591,15 @@ export function layoutSequence(
       const fallbackCenter = participants.length > 0
         ? (participants[0]!.centerX + participants[participants.length - 1]!.centerX) / 2
         : sideGutter;
-      const involvedLeft = involvedXs.length > 0 ? Math.min(...involvedXs) : fallbackCenter;
-      const involvedRight = involvedXs.length > 0 ? Math.max(...involvedXs) : fallbackCenter;
+      const involvedLeft = involvedXs.length > 0
+        ? Math.min(...participantIds.map(id => participantById.get(id)!.header.x))
+        : fallbackCenter;
+      const involvedRight = involvedXs.length > 0
+        ? Math.max(...participantIds.map(id => {
+            const header = participantById.get(id)!.header;
+            return header.x + header.width;
+          }))
+        : fallbackCenter;
       const tabWidth = safeMeasure(item.op, boldFont) + unit(30);
       const outerLeft = Math.min(involvedLeft, childBounds?.left ?? involvedLeft) - fragmentPad;
       let outerRight = Math.max(involvedRight, childBounds?.right ?? involvedRight) + fragmentPad;
@@ -899,9 +932,21 @@ export function layoutSequence(
     rightEdge = Math.max(rightEdge, activation.rect.x + activation.rect.width);
   }
   const width = rightEdge + sideGutter;
-  const height = contentEnd + unit(margin);
+  const footerY = contentEnd + unit(SEQUENCE_LAYOUT.FOOTER_GAP);
+  const participantFooters = participants.map((participant): SequenceParticipantLayout => {
+    const offset = footerY - participant.header.y;
+    return {
+      ...participant,
+      header: { ...participant.header, y: footerY },
+      labelAnchor: { ...participant.labelAnchor, y: participant.labelAnchor.y + offset },
+      stereotypeAnchor: participant.stereotypeAnchor
+        ? { ...participant.stereotypeAnchor, y: participant.stereotypeAnchor.y + offset }
+        : undefined,
+    };
+  });
+  const height = footerY + unit(SEQUENCE_LAYOUT.HEADER_H + margin);
   const lifelineY1 = headerY + unit(SEQUENCE_LAYOUT.HEADER_H);
-  const lifelineY2 = height - unit(margin);
+  const lifelineY2 = footerY;
   const lifelines: SequenceLifelineSegment[] = participants.map((participant) => ({
     participantId: participant.id,
     x: participant.centerX,
@@ -924,6 +969,7 @@ export function layoutSequence(
         }
       : undefined,
     participants,
+    participantFooters,
     lifelines,
     rows,
     messages,

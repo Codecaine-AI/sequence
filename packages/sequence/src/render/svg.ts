@@ -136,7 +136,7 @@ function renderMessage(
   return [
     `<g class="seq-message seq-message--${message.line}" data-item-id="${escapeXml(message.id)}"${opacityAttr(style.message?.opacity)}>`,
     geometry,
-    `<text ${textAnchor(message.label)} fill="${colors.messageText}" font-family="${FONT_FAMILY}" font-size="${number(12 * scale)}">${escapeXml(message.text)}</text>`,
+    `<text ${textAnchor(message.label)} fill="${colors.messageText}" stroke="${colors.background}" stroke-width="${number(4 * scale)}" stroke-linejoin="round" paint-order="stroke" font-family="${FONT_FAMILY}" font-size="${number(12 * scale)}">${escapeXml(message.text)}</text>`,
     "</g>",
   ].join("");
 }
@@ -162,14 +162,21 @@ function renderFragment(
     `<g class="seq-fragment seq-fragment--${fragment.op}" data-item-id="${escapeXml(fragment.id)}">`,
     `<rect x="${number(frame.x)}" y="${number(frame.y)}" width="${number(frame.width)}" height="${number(frame.height)}"${bodyFill} stroke="${colors.fragmentStroke}" stroke-width="${number(1.5 * scale)}" />`,
     `<path class="seq-fragment-tab" data-seq-fragment-tab="true" d="${pointsPath(fragment.tabPath, true)}" fill="${colors.fragmentLabelFill}" stroke="${colors.fragmentStroke}" stroke-width="${number(1.5 * scale)}" stroke-linejoin="miter" />`,
-    `<text x="${number(fragment.tab.x + 6 * scale)}" y="${number(fragment.tab.y + 14 * scale)}" fill="${colors.fragmentLabelText}" font-family="${FONT_FAMILY}" font-size="${number(12 * scale)}" font-weight="700">${escapeXml(fragment.op)}</text>`,
+
     ...fragment.dividerYs.map((y) =>
       `<line class="seq-operand-divider" data-seq-operand-divider="true" x1="${number(frame.x)}" y1="${number(y)}" x2="${number(frame.x + frame.width)}" y2="${number(y)}" stroke="${colors.fragmentStroke}" stroke-width="${number(scale)}" stroke-dasharray="${number(6 * scale)} ${number(4 * scale)}" />`
     ),
-    ...fragment.guardLabels.map((guard) => guard.label
-      ? `<text ${textAnchor(guard.anchor)} class="seq-fragment-guard" data-operand="${guard.operand}" fill="${colors.text}" font-family="${FONT_FAMILY}" font-size="${number(11 * scale)}">${escapeXml(bracketed(guard.label))}</text>`
-      : ""),
+
     "</g>",
+  ].join("");
+}
+
+function renderFragmentLabels(fragment: SequenceFragmentLayout, scale: number, colors: SequenceResolvedColors): string {
+  return [
+    `<text x="${number(fragment.tab.x + 6 * scale)}" y="${number(fragment.tab.y + 14 * scale)}" fill="${colors.fragmentLabelText}" stroke="${colors.fragmentLabelFill}" stroke-width="${number(4 * scale)}" paint-order="stroke" font-family="${FONT_FAMILY}" font-size="${number(12 * scale)}" font-weight="700">${escapeXml(fragment.op)}</text>`,
+    ...fragment.guardLabels.map((guard) => guard.label
+      ? `<text ${textAnchor(guard.anchor)} class="seq-fragment-guard" data-operand="${guard.operand}" fill="${colors.text}" stroke="${colors.background}" stroke-width="${number(4 * scale)}" stroke-linejoin="round" paint-order="stroke" font-family="${FONT_FAMILY}" font-size="${number(11 * scale)}">${escapeXml(bracketed(guard.label))}</text>`
+      : ""),
   ].join("");
 }
 
@@ -230,9 +237,11 @@ export function renderSequenceSvgContents(
     `<g class="seq-activations">${layout.activations.map((activation) =>
       `<rect data-participant-id="${escapeXml(activation.participantId)}" data-level="${activation.level}" x="${number(activation.rect.x)}" y="${number(activation.rect.y)}" width="${number(activation.rect.width)}" height="${number(activation.rect.height)}" fill="${colors.activationFill}" stroke="${colors.activationStroke}" stroke-width="${number(layout.scale)}"${activationOpacity} />`
     ).join("")}</g>`,
+    `<g class="seq-fragment-labels">${layout.fragments.map((fragment) => renderFragmentLabels(fragment, layout.scale, colors)).join("")}</g>`,
     `<g class="seq-messages">${layout.messages.map((message) => renderMessage(message, layout.scale, colors, style)).join("")}</g>`,
     `<g class="seq-notes">${layout.notes.map((note) => renderNote(note, layout.scale, colors, style)).join("")}</g>`,
     `<g class="seq-participants">${layout.participants.map((participant) => renderParticipant(participant, layout.scale, colors, style)).join("")}</g>`,
+    `<g class="seq-participant-footers">${layout.participantFooters.map((participant) => renderParticipant(participant, layout.scale, colors, style)).join("")}</g>`,
   ].join("");
 }
 

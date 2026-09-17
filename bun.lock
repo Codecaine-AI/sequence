@@ -12,7 +12,7 @@
     },
     "packages/sequence": {
       "name": "@codecaine-ai/sequence",
-      "version": "0.1.0",
+      "version": "0.0.1",
       "dependencies": {
         "@sinclair/typebox": "0.34.49",
       },
@@ -33,7 +33,7 @@
     },
     "packages/studio": {
       "name": "@codecaine-ai/sequence-studio",
-      "version": "0.1.0",
+      "version": "0.0.1",
       "dependencies": {
         "@codecaine-ai/sequence": "workspace:*",
         "react": "^19",

@@ -19,6 +19,7 @@
     "react-dom": "^19"
   },
   "dependencies": {
+    "@codecaine-ai/text-measure": "workspace:*",
     "@sinclair/typebox": "0.34.49"
   },
   "devDependencies": {

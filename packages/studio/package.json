@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@codecaine-ai/sequence": "workspace:*",
+    "@codecaine-ai/text-measure": "workspace:*",
     "react": "^19",
     "react-dom": "^19"
   },

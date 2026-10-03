@@ -32,10 +32,34 @@ SequenceDocument (JSON source of truth)
 ```
 
 Structure flows into layout; coordinates never flow back into the document or
-language. `layoutSequence` is pure and DOM-free, and an injectable text
-measurement function keeps its output deterministic in tests and hosts.
-Rendering consumes the resulting geometry without becoming a second layout
-engine.
+language. `layoutSequence` is pure and DOM-free. Its only environment input is
+text metrics. By default widths and line breaks come from
+`@codecaine-ai/text-measure`, which is exact once the host loads its bundled
+fonts (`useHarfBuzz()` in Bun / Node, `fonts.css` plus `useBrowserFonts()` in a
+browser) and approximate until then. `SequenceDiagram` lays out again whenever
+text-measure switches backend; hosts that call `layoutSequence` themselves
+re-run it on `onBackendChange`. A host can instead pass a measuring function,
+or `{ measure, wrap }` when it also breaks lines. The same input threads
+through `SequenceViewer`, `SequenceDiagram`, and `renderSequenceSvgString`.
+`SEQUENCE_TYPOGRAPHY` gives the font of every text role, and layout and the
+SVG renderer both read it, so text is measured in the font it is drawn in.
+Single-line labels collapse runs of spaces and line breaks to one space
+(`singleLineText`), code points XML forbids are dropped, and the renderer
+emits that same string. If text-measure's line breaking fails (for example
+when another library initialized Pretext first), notes and titles break
+greedily over measured widths and the console gets one warning. SVG text uses
+`text-rendering="geometricPrecision"`, so Chromium keeps the measured widths
+when a diagram is displayed scaled. Rendering consumes the resulting geometry
+without becoming a second layout engine.
+
+Notes keep their fixed 160 px column and wrap inside it, growing taller per
+line; explicit line breaks render as separate lines, and space runs collapse
+as in CSS `white-space: pre-line`. Columns widen so side and over notes stop
+short of the neighbouring lifeline and its activation bars, and so message
+labels keep their room when nested activations move an arrow's end inward. A title wider than
+the diagram wraps at the content width and never widens the diagram. The
+participant row sits below the title's last line, at least one row gap below
+the top margin.
 
 ## Inherited layout-lab conventions
 

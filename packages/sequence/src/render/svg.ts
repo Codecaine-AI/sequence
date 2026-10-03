@@ -9,16 +9,25 @@ import type {
 } from "../layout";
 import type { SequenceDocument, SequenceStyle } from "../schema";
 import {
+  SEQUENCE_TYPOGRAPHY,
+  sequenceFont,
+  singleLineText,
+  withoutXmlInvalid,
+  type SequenceTextRole,
+} from "../text";
+import {
   resolveSequenceColors,
   sequenceStyleToCssVars,
   type SequenceResolvedColors,
 } from "../theme";
 
-const FONT_FAMILY =
-  "var(--seq-font-family, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif)";
-
+/**
+ * Text or attribute value as XML: markup characters escaped, and code points
+ * XML 1.0 forbids removed (a schema-valid document may contain them; drawn
+ * labels already went through the same removal in `singleLineText`).
+ */
 export function escapeXml(value: string): string {
-  return value
+  return withoutXmlInvalid(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -46,8 +55,44 @@ function pointsPath(points: SeqPoint[], close = false): string {
   return commands.join(" ");
 }
 
+/** Escaped single-line label text: the collapsed string layout measured. */
+function labelText(value: string): string {
+  return escapeXml(singleLineText(value));
+}
+
 function textAnchor(anchor: SeqTextAnchor): string {
   return `x="${number(anchor.x)}" y="${number(anchor.y)}" text-anchor="${anchor.anchor}"`;
+}
+
+const FONT_FAMILY_ATTR = escapeXml(`var(--seq-font-family, ${SEQUENCE_TYPOGRAPHY.family})`);
+
+/**
+ * Font attributes for one text role: the exact font layout measured.
+ * `geometricPrecision` keeps the measured widths at any display scale:
+ * otherwise Chromium re-shapes SVG text at a rounded on-screen size whenever
+ * the diagram is scaled (fit-to-column, thumbnails, even a viewBox a
+ * fraction of a pixel off its box), and painted widths drift from the
+ * measured ones by up to about half a pixel.
+ */
+function fontAttrs(role: SequenceTextRole, scale: number): string {
+  const font = sequenceFont(role, scale);
+  return `font-family="${FONT_FAMILY_ATTR}" font-size="${number(font.size)}" font-weight="${font.weight}" text-rendering="geometricPrecision"`;
+}
+
+/**
+ * One `<tspan x dy>` per line, each `dy` measured from the previous span's
+ * baseline. Blank lines emit no span (an empty span cannot carry `dy`); the
+ * next span's `dy` covers them.
+ */
+function lineSpans(lines: string[], x: number, lineHeight: number): string {
+  let previous = 0;
+  const spans: string[] = [];
+  lines.forEach((line, index) => {
+    if (line.trim() === "") return;
+    spans.push(`<tspan x="${number(x)}" dy="${number((index - previous) * lineHeight)}">${escapeXml(line)}</tspan>`);
+    previous = index;
+  });
+  return spans.join("");
 }
 
 function renderDefs(scale: number, colors: SequenceResolvedColors): string {
@@ -93,9 +138,9 @@ function renderParticipant(
       `<g class="seq-participant seq-participant--actor" data-participant-id="${escapeXml(participant.id)}"${groupOpacity}>`,
       glyph,
       stereotype && actorStereotype
-        ? `<text ${textAnchor(actorStereotype)} class="seq-stereotype" fill="${colors.participantText}" font-family="${FONT_FAMILY}" font-size="${number(11 * scale)}">${escapeXml(stereotype)}</text>`
+        ? `<text ${textAnchor(actorStereotype)} class="seq-stereotype" fill="${colors.participantText}" ${fontAttrs("stereotype", scale)}>${labelText(stereotype)}</text>`
         : "",
-      `<text ${textAnchor(label)} class="seq-participant-label" fill="${colors.participantText}" font-family="${FONT_FAMILY}" font-size="${number(12 * scale)}" font-weight="600">${escapeXml(name)}</text>`,
+      `<text ${textAnchor(label)} class="seq-participant-label" fill="${colors.participantText}" ${fontAttrs("participant", scale)}>${labelText(name)}</text>`,
       "</g>",
     ].join("");
   }
@@ -109,9 +154,9 @@ function renderParticipant(
     `<g class="seq-participant seq-participant--box" data-participant-id="${escapeXml(participant.id)}"${groupOpacity}>`,
     `<rect x="${number(participant.header.x)}" y="${number(participant.header.y)}" width="${number(participant.header.width)}" height="${number(participant.header.height)}" rx="${number(cornerRadius * scale)}" fill="${colors.participantFill}" stroke="${colors.participantStroke}" stroke-width="${number(1.5 * scale)}" />`,
     stereotype && participant.stereotypeAnchor
-      ? `<text ${textAnchor(participant.stereotypeAnchor)} class="seq-stereotype" fill="${colors.participantText}" font-family="${FONT_FAMILY}" font-size="${number(11 * scale)}">${escapeXml(stereotype)}</text>`
+      ? `<text ${textAnchor(participant.stereotypeAnchor)} class="seq-stereotype" fill="${colors.participantText}" ${fontAttrs("stereotype", scale)}>${labelText(stereotype)}</text>`
       : "",
-    `<text ${textAnchor(participant.labelAnchor)} class="seq-participant-label" fill="${colors.participantText}" font-family="${FONT_FAMILY}" font-size="${number(12 * scale)}" font-weight="600">${escapeXml(name)}</text>`,
+    `<text ${textAnchor(participant.labelAnchor)} class="seq-participant-label" fill="${colors.participantText}" ${fontAttrs("participant", scale)}>${labelText(name)}</text>`,
     "</g>",
   ].join("");
 }
@@ -136,7 +181,7 @@ function renderMessage(
   return [
     `<g class="seq-message seq-message--${message.line}" data-item-id="${escapeXml(message.id)}"${opacityAttr(style.message?.opacity)}>`,
     geometry,
-    `<text ${textAnchor(message.label)} fill="${colors.messageText}" stroke="${colors.background}" stroke-width="${number(4 * scale)}" stroke-linejoin="round" paint-order="stroke" font-family="${FONT_FAMILY}" font-size="${number(12 * scale)}">${escapeXml(message.text)}</text>`,
+    `<text ${textAnchor(message.label)} class="seq-message-label" fill="${colors.messageText}" stroke="${colors.background}" stroke-width="${number(4 * scale)}" stroke-linejoin="round" paint-order="stroke" ${fontAttrs("message", scale)}>${labelText(message.text)}</text>`,
     "</g>",
   ].join("");
 }
@@ -173,9 +218,9 @@ function renderFragment(
 
 function renderFragmentLabels(fragment: SequenceFragmentLayout, scale: number, colors: SequenceResolvedColors): string {
   return [
-    `<text x="${number(fragment.tab.x + 6 * scale)}" y="${number(fragment.tab.y + 14 * scale)}" fill="${colors.fragmentLabelText}" stroke="${colors.fragmentLabelFill}" stroke-width="${number(4 * scale)}" paint-order="stroke" font-family="${FONT_FAMILY}" font-size="${number(12 * scale)}" font-weight="700">${escapeXml(fragment.op)}</text>`,
+    `<text class="seq-fragment-op" x="${number(fragment.tab.x + 6 * scale)}" y="${number(fragment.tab.y + 14 * scale)}" fill="${colors.fragmentLabelText}" stroke="${colors.fragmentLabelFill}" stroke-width="${number(4 * scale)}" paint-order="stroke" ${fontAttrs("fragmentOp", scale)}>${labelText(fragment.op)}</text>`,
     ...fragment.guardLabels.map((guard) => guard.label
-      ? `<text ${textAnchor(guard.anchor)} class="seq-fragment-guard" data-operand="${guard.operand}" fill="${colors.text}" stroke="${colors.background}" stroke-width="${number(4 * scale)}" stroke-linejoin="round" paint-order="stroke" font-family="${FONT_FAMILY}" font-size="${number(11 * scale)}">${escapeXml(bracketed(guard.label))}</text>`
+      ? `<text ${textAnchor(guard.anchor)} class="seq-fragment-guard" data-operand="${guard.operand}" fill="${colors.text}" stroke="${colors.background}" stroke-width="${number(4 * scale)}" stroke-linejoin="round" paint-order="stroke" ${fontAttrs("guard", scale)}>${labelText(bracketed(guard.label))}</text>`
       : ""),
   ].join("");
 }
@@ -203,7 +248,7 @@ function renderNote(
     `<g class="seq-note seq-note--${note.side}" data-item-id="${escapeXml(note.id)}"${opacityAttr(style.note?.opacity)}>`,
     `<path d="${outline}" fill="${colors.noteFill}" stroke="${colors.noteStroke}" stroke-width="${number(1.25 * scale)}" stroke-linejoin="round" />`,
     `<path class="seq-note-fold" data-seq-note-fold="true" d="${foldPath}" fill="none" stroke="${colors.noteStroke}" stroke-width="${number(1.25 * scale)}" stroke-linejoin="round" />`,
-    `<text ${textAnchor(note.label)} fill="${colors.noteText}" font-family="${FONT_FAMILY}" font-size="${number(12 * scale)}">${escapeXml(note.text)}</text>`,
+    `<text ${textAnchor(note.label)} class="seq-note-text" fill="${colors.noteText}" ${fontAttrs("note", scale)}>${lineSpans(note.lines, note.label.x, note.lineHeight)}</text>`,
     "</g>",
   ].join("");
 }
@@ -228,7 +273,7 @@ export function renderSequenceSvgContents(
     renderDefs(layout.scale, colors),
     `<rect class="seq-background" x="0" y="0" width="${number(layout.width)}" height="${number(layout.height)}" fill="${colors.background}" />`,
     layout.title
-      ? `<text ${textAnchor(layout.title.anchor)} class="seq-title" fill="${colors.text}" font-family="${FONT_FAMILY}" font-size="${number(16 * layout.scale)}" font-weight="700">${escapeXml(layout.title.text)}</text>`
+      ? `<text ${textAnchor(layout.title.anchor)} class="seq-title" fill="${colors.text}" ${fontAttrs("title", layout.scale)}>${lineSpans(layout.title.lines, layout.title.anchor.x, layout.title.lineHeight)}</text>`
       : "",
     `<g class="seq-lifelines">${layout.lifelines.map((lifeline) =>
       `<line data-participant-id="${escapeXml(lifeline.participantId)}" x1="${number(lifeline.x)}" y1="${number(lifeline.y1)}" x2="${number(lifeline.x)}" y2="${number(lifeline.y2)}" stroke="${colors.lifelineStroke}" stroke-width="${number(layout.scale)}"${lifelineDashAttr}${lifelineOpacity} />`

@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { measureWidth } from "@codecaine-ai/text-measure";
 
 import {
   SEQUENCE_LAYOUT,
+  SEQUENCE_TYPOGRAPHY,
   layoutSequence,
+  sequenceFont,
   type SeqPoint,
   type SeqRect,
   type SeqTextAnchor,
@@ -711,6 +714,152 @@ describe("layoutSequence", () => {
     expect(note.box.y - before.y2).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.NOTE_MARGIN_Y);
     expect(after.y1 - (note.box.y + note.box.height))
       .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.NOTE_MARGIN_Y);
+  });
+
+  test("notes, and frames around them, stop short of other lifelines and their nested bars", () => {
+    const halfBar = SEQUENCE_LAYOUT.ACTIVATION_W / 2;
+    const nestedCalls: SequenceItem[] = Array.from({ length: 3 }, (_, index) => ({
+      kind: "message",
+      id: `self-${index}`,
+      from: "p2",
+      to: "p2",
+      line: "sync",
+      text: "recurse",
+    }));
+    const framedNote: SequenceItem = {
+      kind: "fragment",
+      id: "outer",
+      op: "opt",
+      operands: [{
+        items: [{
+          kind: "fragment",
+          id: "inner",
+          op: "opt",
+          operands: [{
+            items: [{ kind: "note", id: "framed", anchor: "p1", side: "right", text: "inside two frames" }],
+          }],
+        }],
+      }],
+    };
+    // 40 is the smallest column gap the studio offers; 140 is the default.
+    for (const columnGap of [40, 140]) {
+      const layout = layoutSequence(documentWith([
+        { kind: "message", id: "m1", from: "p1", to: "p2", line: "sync", text: "call" },
+        ...nestedCalls,
+        { kind: "note", id: "right", anchor: "p1", side: "right", text: "right of the caller" },
+        { kind: "note", id: "left", anchor: "p3", side: "left", text: "left of the store" },
+        { kind: "note", id: "over", anchor: "p2", side: "over", text: "over the active service" },
+        framedNote,
+        { kind: "message", id: "m2", from: "p2", to: "p1", line: "return", text: "done" },
+      ], { surface: { columnGap } }));
+      expect(Math.max(...layout.activations.map(({ level }) => level))).toBe(3);
+      expect(layout.notes).toHaveLength(4);
+
+      // The frames hold only p1's note, so they belong to p1's column too.
+      const extents = [
+        ...layout.notes.map(({ anchorId, box }) => ({ owner: anchorId, left: box.x, right: box.x + box.width })),
+        ...layout.fragments.map(({ outer }) => ({ owner: "p1", left: outer.x, right: outer.x + outer.width })),
+      ];
+      for (const extent of extents) {
+        for (const participant of layout.participants) {
+          if (participant.id === extent.owner) continue;
+          const occupied = [
+            { x: participant.centerX - halfBar, width: halfBar * 2 },
+            ...layout.activations
+              .filter(({ participantId }) => participantId === participant.id)
+              .map(({ rect }) => rect),
+          ];
+          for (const rect of occupied) {
+            expect(rect.x + rect.width <= extent.left || rect.x >= extent.right).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  test("message labels stay inside their arrow after nested activation docking", () => {
+    const text = "long label for a request";
+    const font = sequenceFont("message");
+    const width = measureWidth(text, { family: font.family, size: font.size, weight: 400 });
+    for (const calls of [12, 20]) {
+      const selfCalls: SequenceItem[] = Array.from({ length: calls }, (_, index) => ({
+        kind: "message",
+        id: `s${index}`,
+        from: "p1",
+        to: "p1",
+        line: "sync",
+        text: "",
+      }));
+      const layout = layoutSequence(documentWith([
+        ...selfCalls,
+        { kind: "message", id: "out", from: "p1", to: "p2", line: "async", text },
+        { kind: "message", id: "back", from: "p2", to: "p1", line: "async", text },
+      ]));
+      expect(Math.max(...layout.activations.map(({ level }) => level))).toBe(calls - 1);
+      for (const message of layout.messages.filter(({ text: label }) => label === text)) {
+        expect(message.label.x - width / 2).toBeGreaterThanOrEqual(Math.min(message.x1, message.x2));
+        expect(message.label.x + width / 2).toBeLessThanOrEqual(Math.max(message.x1, message.x2));
+      }
+    }
+  });
+
+  test("a message label below a note clears the box at the smallest row gap", () => {
+    // Inter's ascender (2728 / 2816 em) reaches the top of accented capitals;
+    // the label's 4px halo adds 2px around the glyphs.
+    const ascent = (2728 / 2816) * SEQUENCE_TYPOGRAPHY.message.size;
+    for (const text of ["Label", "Émile"]) {
+      const layout = layoutSequence(documentWith([
+        { kind: "note", id: "n", anchor: "p1", side: "right", text: "wrapped" },
+        { kind: "message", id: "m", from: "p1", to: "p2", line: "async", text },
+      ], { surface: { rowGap: 16 } }));
+      const note = layout.notes[0]!;
+      const message = layout.messages[0]!;
+      expect(message.label.y - ascent - 2).toBeGreaterThanOrEqual(note.box.y + note.box.height);
+    }
+  });
+
+  test("a title keeps the participant row below its last line, even at a small row gap", () => {
+    const items: SequenceItem[] = [
+      { kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "one" },
+    ];
+    const long = "A title long enough to wrap onto more than one line in this small diagram, ".repeat(2);
+    const descent = SEQUENCE_TYPOGRAPHY.title.size * 0.25;
+    // 16 is the smallest row gap the studio offers; 40 is the default.
+    for (const rowGap of [16, 40]) {
+      for (const title of ["Short title", long]) {
+        const layout = layoutSequence({ ...documentWith(items, { surface: { rowGap } }), title });
+        const header = layout.participants[0]!.header;
+        const lastBaseline = layout.title!.anchor.y
+          + (layout.title!.lines.length - 1) * layout.title!.lineHeight;
+
+        expect(header.y - (lastBaseline + descent)).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.GRID);
+        expect(header.y - SEQUENCE_LAYOUT.MARGIN).toBeGreaterThanOrEqual(rowGap);
+      }
+    }
+    expect(layoutSequence({ ...documentWith(items), title: long }).title!.lines.length)
+      .toBeGreaterThan(1);
+  });
+
+  test("wraps note text over a plain measurer and grows the box per line", () => {
+    // 10px per grapheme; the 160px note minus a 10px inset per side leaves
+    // 140px, so 14 graphemes fit on a line.
+    const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+    const measure = (text: string): number => [...segmenter.segment(text)].length * 10;
+    const cases: Array<{ text: string; lines: string[] }> = [
+      { text: "alpha beta gamma delta epsilon", lines: ["alpha beta", "gamma delta", "epsilon"] },
+      { text: "one\n\nthree", lines: ["one", "", "three"] },
+      // The over-long word breaks between graphemes: "e" + U+0301 stays whole.
+      { text: "abcdefghijklméxyz", lines: ["abcdefghijklmé", "xyz"] },
+    ];
+    const descent = SEQUENCE_TYPOGRAPHY.note.size * 0.25;
+    for (const { text, lines } of cases) {
+      const note = layoutSequence(documentWith([
+        { kind: "note", id: "n1", anchor: "p2", side: "right", text },
+      ]), measure).notes[0]!;
+      expect(note.lines).toEqual(lines);
+      const lastBaseline = note.label.y + (lines.length - 1) * note.lineHeight;
+      expect(lastBaseline + descent).toBeLessThanOrEqual(note.box.y + note.box.height);
+    }
   });
 });
 

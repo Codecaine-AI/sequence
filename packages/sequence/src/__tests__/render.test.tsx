@@ -1,10 +1,183 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, render, screen } from "@testing-library/react";
 
-import { SequenceViewer, renderSequenceSvgString } from "../index";
+import {
+  SequenceViewer,
+  layoutSequence,
+  renderSequenceSvgString,
+  type SeqFont,
+  type SequenceDocument,
+  type SequenceTextMetrics,
+} from "../index";
 import { combinedFragments, loginFlow, minimal } from "../fixtures";
 
 afterEach(cleanup);
+
+function svgElement(markup: string): SVGSVGElement {
+  const host = document.createElement("div");
+  host.innerHTML = markup;
+  return host.querySelector("svg")!;
+}
+
+/** The strings one `<text>` paints: one per tspan, else its whole content. */
+function drawnLines(text: Element): string[] {
+  const spans = [...text.querySelectorAll("tspan")];
+  return spans.length > 0 ? spans.map((span) => span.textContent ?? "") : [text.textContent ?? ""];
+}
+
+function spanOffsets(text: Element): number[] {
+  return [...text.querySelectorAll("tspan")].map((span) => Number(span.getAttribute("dy")));
+}
+
+/** Deterministic measurer: half an em per UTF-16 code unit. */
+const halfEm = (text: string, font: SeqFont): number => text.length * font.size * 0.5;
+
+function drawnFont(text: Element): SeqFont {
+  return {
+    size: Number(text.getAttribute("font-size")),
+    family: text.getAttribute("font-family") ?? "",
+    weight: Number(text.getAttribute("font-weight")),
+  };
+}
+
+function withNote(text: string, extra: Partial<SequenceDocument> = {}): SequenceDocument {
+  return {
+    ...minimal,
+    ...extra,
+    items: [...minimal.items, { kind: "note", id: "note-1", anchor: "p2", side: "right", text }],
+  };
+}
+
+describe("sequence text measurement", () => {
+  test("measures every painted text in the font the SVG draws it with", () => {
+    const calls: Array<{ text: string; font: SeqFont }> = [];
+    const measure = (text: string, font: SeqFont): number => {
+      calls.push({ text, font });
+      return halfEm(text, font);
+    };
+    const doc: SequenceDocument = {
+      version: 1,
+      id: "font-parity",
+      title: "Font parity",
+      participants: [
+        { id: "p1", name: "user", kind: "actor" },
+        { id: "p2", name: "api", kind: "participant", label: "Gateway", stereotype: "service" },
+      ],
+      items: [
+        { kind: "message", id: "m1", from: "p1", to: "p2", line: "sync", text: "call gateway" },
+        {
+          kind: "fragment",
+          id: "f1",
+          op: "alt",
+          operands: [
+            {
+              guard: "cached",
+              items: [
+                { kind: "message", id: "m2", from: "p2", to: "p2", line: "async", text: "self check" },
+              ],
+            },
+            { items: [{ kind: "note", id: "n1", anchor: "p2", side: "right", text: "cold path" }] },
+          ],
+        },
+        { kind: "message", id: "m3", from: "p2", to: "p1", line: "return", text: "reply" },
+      ],
+      style: { scale: 1.5 },
+    };
+    const { container } = render(<SequenceViewer document={doc} measure={measure} />);
+    const texts = [...container.querySelectorAll("text")];
+
+    expect(texts.length).toBeGreaterThanOrEqual(10);
+    for (const text of texts) {
+      const drawn = drawnFont(text);
+      // Hosts can only guarantee widths for the bundled family.
+      expect(drawn.family.startsWith('var(--seq-font-family, "Inter",')).toBe(true);
+      for (const line of drawnLines(text)) {
+        const measured = calls.filter((call) => call.text === line);
+        expect(measured.length).toBeGreaterThan(0);
+        for (const { font } of measured) {
+          expect(font.size).toBeCloseTo(drawn.size, 6);
+          expect(font.weight).toBe(drawn.weight);
+          expect(`var(--seq-font-family, ${font.family})`).toBe(drawn.family);
+        }
+      }
+    }
+  });
+
+  test("wraps a long note inside its box", () => {
+    const text = "every write lands in the patch ledger, so POST /api/undo can replay the inverse";
+    const doc = withNote(text);
+    const note = layoutSequence(doc, halfEm).notes[0]!;
+    const drawn = svgElement(renderSequenceSvgString(doc, halfEm)).querySelector(".seq-note text")!;
+    const lines = drawnLines(drawn);
+    const inset = note.label.x - note.box.x;
+    const lastBaseline = Number(drawn.getAttribute("y"))
+      + spanOffsets(drawn).reduce((sum, dy) => sum + dy, 0);
+
+    expect(lines.join(" ")).toBe(text);
+    for (const line of lines) {
+      expect(note.label.x + halfEm(line, drawnFont(drawn)))
+        .toBeLessThanOrEqual(note.box.x + note.box.width - inset);
+    }
+    expect(lastBaseline + drawnFont(drawn).size * 0.25)
+      .toBeLessThanOrEqual(note.box.y + note.box.height);
+  });
+
+  test("renders explicit note line breaks as separate tspans", () => {
+    const doc = withNote("first\nsecond\n\nfourth");
+    const note = layoutSequence(doc).notes[0]!;
+    const drawn = svgElement(renderSequenceSvgString(doc)).querySelector(".seq-note text")!;
+    const spans = [...drawn.querySelectorAll("tspan")];
+
+    expect(drawnLines(drawn)).toEqual(["first", "second", "fourth"]);
+    expect(spans.every((span) => span.getAttribute("x") === drawn.getAttribute("x"))).toBe(true);
+    // The blank third line emits no span; the next span skips its height.
+    expect(spanOffsets(drawn)).toEqual([0, note.lineHeight, 2 * note.lineHeight]);
+  });
+
+  test("wraps a title wider than the diagram instead of widening it", () => {
+    const title = "A deliberately long diagram title that is much wider than this small two participant diagram ever gets";
+    const plain = layoutSequence(minimal, halfEm);
+    const titled = layoutSequence({ ...minimal, title }, halfEm);
+    const drawn = svgElement(renderSequenceSvgString({ ...minimal, title }, halfEm))
+      .querySelector(".seq-title")!;
+    const lines = drawnLines(drawn);
+    const left = Number(drawn.getAttribute("x"));
+    const lastBaseline = Number(drawn.getAttribute("y"))
+      + spanOffsets(drawn).reduce((sum, dy) => sum + dy, 0);
+
+    expect(halfEm(title, drawnFont(drawn))).toBeGreaterThan(plain.width);
+    expect(titled.width).toBe(plain.width);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.join(" ")).toBe(title);
+    for (const line of lines) {
+      expect(left + halfEm(line, drawnFont(drawn))).toBeLessThanOrEqual(titled.width - left);
+    }
+    expect(titled.participants[0]!.header.y)
+      .toBeGreaterThan(lastBaseline + drawnFont(drawn).size * 0.25);
+  });
+
+  test("an injected wrap decides note and title lines at their content widths", () => {
+    const requests: Array<{ text: string; maxWidth: number }> = [];
+    const metrics: SequenceTextMetrics = {
+      measure: halfEm,
+      wrap: (text, _font, maxWidth) => {
+        requests.push({ text, maxWidth });
+        return text.split(" ");
+      },
+    };
+    const doc = withNote("alpha beta gamma", { title: "Two words" });
+    const svg = svgElement(renderSequenceSvgString(doc, metrics));
+    const layout = layoutSequence(doc, metrics);
+    const note = layout.notes[0]!;
+    const noteRequest = requests.find(({ text }) => text === "alpha beta gamma")!;
+    const titleRequest = requests.find(({ text }) => text === "Two words")!;
+
+    expect(drawnLines(svg.querySelector(".seq-note text")!)).toEqual(["alpha", "beta", "gamma"]);
+    expect(drawnLines(svg.querySelector(".seq-title")!)).toEqual(["Two", "words"]);
+    expect(noteRequest.maxWidth).toBe(note.box.width - 2 * (note.label.x - note.box.x));
+    expect(titleRequest.maxWidth).toBe(layout.width - 2 * layout.title!.anchor.x);
+  });
+});
 
 describe("sequence SVG rendering", () => {
   test("renders fixture labels in standalone SVG markup", () => {

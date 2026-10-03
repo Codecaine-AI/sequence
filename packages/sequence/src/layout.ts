@@ -9,6 +9,26 @@ import type {
   SequenceNote,
   SequenceParticipant,
 } from "./schema";
+import {
+  resolveSequenceTextMetrics,
+  sequenceFont,
+  type ResolvedSequenceTextMetrics,
+  type SeqFont,
+  type SequenceMeasureInput,
+} from "./text";
+
+export {
+  SEQUENCE_TYPOGRAPHY,
+  sequenceFont,
+  singleLineText,
+  type SeqFont,
+  type SequenceMeasureInput,
+  type SequenceTextMeasure,
+  type SequenceTextMetrics,
+  type SequenceTextRole,
+  type SequenceTextStyle,
+  type SequenceTextWrap,
+} from "./text";
 
 /** Base (scale = 1) dimensions used by the deterministic sequence layout. */
 export const SEQUENCE_LAYOUT = {
@@ -46,12 +66,6 @@ export interface SeqPoint {
 export interface SeqRect extends SeqPoint {
   width: number;
   height: number;
-}
-
-export interface SeqFont {
-  size: number;
-  family: string;
-  weight: "normal" | "bold" | number;
 }
 
 export interface SeqTextAnchor extends SeqPoint {
@@ -125,10 +139,32 @@ export interface SequenceNoteLayout extends SequenceRowBase {
   anchorId: string;
   side: NoteSide;
   text: string;
+  /**
+   * Display lines: every explicit "\n" starts a line, and longer lines wrap
+   * at the note's content width (box width minus the label inset per side).
+   */
+  lines: string[];
+  /** Scaled distance between line baselines. */
+  lineHeight: number;
   box: SeqRect;
+  /** Baseline of the first line; line `i` sits at `label.y + i * lineHeight`. */
   label: SeqTextAnchor;
   /** Three points describing the folded corner. */
   foldPath: SeqPoint[];
+}
+
+/**
+ * The diagram title. It never widens the diagram: a title wider than the
+ * content width (`width - 2 * margin`) wraps there. The participant row sits
+ * below the title's last line, at least one row gap below the top margin.
+ */
+export interface SequenceTitleLayout {
+  text: string;
+  /** Baseline of the first line; line `i` sits at `anchor.y + i * lineHeight`. */
+  anchor: SeqTextAnchor;
+  lines: string[];
+  /** Scaled distance between line baselines. */
+  lineHeight: number;
 }
 
 export type SequenceLayoutRow =
@@ -148,7 +184,7 @@ export interface SequenceLayout {
   width: number;
   height: number;
   scale: number;
-  title?: { text: string; anchor: SeqTextAnchor };
+  title?: SequenceTitleLayout;
   participants: SequenceParticipantLayout[];
   participantFooters: SequenceParticipantLayout[];
   lifelines: SequenceLifelineSegment[];
@@ -157,15 +193,6 @@ export interface SequenceLayout {
   fragments: SequenceFragmentLayout[];
   notes: SequenceNoteLayout[];
   activations: SequenceActivationLayout[];
-}
-
-export type SequenceTextMeasure = (text: string, font: SeqFont) => number;
-
-const FONT_FAMILY = "ui-sans-serif, system-ui, sans-serif";
-
-function defaultMeasure(text: string, font: SeqFont): number {
-  const widestLine = text.split("\n").reduce((widest, line) => Math.max(widest, line.length), 0);
-  return widestLine * font.size * (font.weight === "bold" ? 0.62 : 0.58);
 }
 
 interface ScopeMessageEvent {
@@ -201,14 +228,74 @@ interface ActivationClosure {
 }
 
 /**
- * Computes all sequence geometry without consulting the DOM. The optional
- * measurer is the only environment-dependent input and is primarily useful to
- * applications that want browser-accurate header widths.
+ * Inter's descender is 0.242 em; text boxes reserve 0.25 em below the last
+ * baseline.
+ */
+const DESCENT_EM = 0.25;
+/** Inter's ascender (0.969 em): the tallest glyph, accents included. */
+const ASCENT_EM = 0.97;
+/** Base px a label's halo (a 4 px background stroke) reaches past its glyphs. */
+const LABEL_HALO = 2;
+/** Base px from the top margin to the title's first baseline. */
+const TITLE_BASELINE = 18;
+
+/**
+ * Computes all sequence geometry without consulting the DOM. Text metrics are
+ * the only environment-dependent input. By default widths and line breaks
+ * come from `@codecaine-ai/text-measure`, exact once the host has loaded the
+ * bundled fonts (`useHarfBuzz()` headless, `useBrowserFonts()` in a browser);
+ * re-run layout when its backend changes. Hosts may instead pass a bare
+ * measurer, or a {@link SequenceTextMetrics} object whose optional `wrap`
+ * breaks note and title lines (otherwise they wrap greedily over `measure`).
+ * Every text is measured in the exact font the SVG renderer draws it with
+ * ({@link SEQUENCE_TYPOGRAPHY}), as the string it draws
+ * ({@link singleLineText}).
  */
 export function layoutSequence(
   doc: SequenceDocument,
-  measure: SequenceTextMeasure = defaultMeasure,
+  measure?: SequenceMeasureInput,
 ): SequenceLayout {
+  const metrics = resolveSequenceTextMetrics(measure);
+  let hints = NO_HINTS;
+  let pass = computeLayout(doc, metrics, hints);
+  // Activation nesting comes out of a pass but decides column spacing: nested
+  // bars move message docking points into the label's span and reach towards
+  // notes. Bars nest the same way at any spacing, so one more pass reserves
+  // that room. The title wraps at the final width, which vertical placement
+  // never changes, so the last pass only moves everything below it down.
+  if (pass.dockingExcess.size > 0 || (pass.activationDepth.size > 0 && pass.layout.notes.length > 0)) {
+    hints = { ...hints, activationDepth: pass.activationDepth, dockingExcess: pass.dockingExcess };
+    pass = computeLayout(doc, metrics, hints);
+  }
+  const titleLineCount = pass.layout.title?.lines.length ?? 1;
+  return titleLineCount > 1
+    ? computeLayout(doc, metrics, { ...hints, titleLineCount }).layout
+    : pass.layout;
+}
+
+/** Results of an earlier pass that a later pass lays out around. */
+interface LayoutHints {
+  titleLineCount: number;
+  /** Deepest activation level per participant id, where deeper than 0. */
+  activationDepth: ReadonlyMap<string, number>;
+  /**
+   * Per message id: how much further inside the span its arrow docks than
+   * on unnested bars (nested bars step right by a third of a bar per level).
+   */
+  dockingExcess: ReadonlyMap<string, number>;
+}
+
+const NO_HINTS: LayoutHints = { titleLineCount: 1, activationDepth: new Map(), dockingExcess: new Map() };
+
+interface LayoutPass extends Omit<LayoutHints, "titleLineCount"> {
+  layout: SequenceLayout;
+}
+
+function computeLayout(
+  doc: SequenceDocument,
+  metrics: ResolvedSequenceTextMetrics,
+  { titleLineCount, activationDepth, dockingExcess }: LayoutHints,
+): LayoutPass {
   const rawScale = doc.style.scale;
   const scale = typeof rawScale === "number" && Number.isFinite(rawScale) && rawScale > 0
     ? rawScale
@@ -226,25 +313,30 @@ export function layoutSequence(
   const fragPad = styleLength(doc.style.fragment?.padding, SEQUENCE_LAYOUT.FRAG_PAD);
   const notePad = styleLength(doc.style.note?.padding, 8);
   const labelGap = styleLength(doc.style.message?.labelGap, 6);
-  const normalFont: SeqFont = { size: unit(13), family: FONT_FAMILY, weight: "normal" };
-  const smallFont: SeqFont = { size: unit(11), family: FONT_FAMILY, weight: "normal" };
-  const boldFont: SeqFont = { size: unit(12), family: FONT_FAMILY, weight: "bold" };
-  const safeMeasure = (text: string, font: SeqFont): number => {
-    let measured: number;
-    try {
-      measured = measure(text, font);
-    } catch {
-      measured = defaultMeasure(text, font);
-    }
-    return Number.isFinite(measured) && measured >= 0 ? measured : defaultMeasure(text, font);
-  };
+  // Each font is exactly the one the SVG renderer paints for that text.
+  const participantFont = sequenceFont("participant", scale);
+  const stereotypeFont = sequenceFont("stereotype", scale);
+  const messageFont = sequenceFont("message", scale);
+  const noteFont = sequenceFont("note", scale);
+  const fragmentOpFont = sequenceFont("fragmentOp", scale);
+  const guardFont = sequenceFont("guard", scale);
+  const titleFont = sequenceFont("title", scale);
+  const safeMeasure = metrics.measure;
 
-  const headerY = unit(margin) + (doc.title ? unit(rowGap) : 0);
+  // The title band holds every title line plus the last line's descent and a
+  // grid step of air. It stays at least one row gap tall, as before, so small
+  // row gaps no longer pull the participant row up into the title.
+  const titleLineHeight = titleFont.lineHeight ?? titleFont.size;
+  const titleBand = Math.max(
+    unit(rowGap),
+    unit(TITLE_BASELINE + SEQUENCE_LAYOUT.GRID) + titleFont.size * DESCENT_EM,
+  ) + (titleLineCount - 1) * titleLineHeight;
+  const headerY = unit(margin) + (doc.title ? titleBand : 0);
   const headerWidths = doc.participants.map((participant) => {
     const display = participant.label ?? participant.name;
     const textWidth = Math.max(
-      safeMeasure(display, normalFont),
-      participant.stereotype ? safeMeasure(`«${participant.stereotype}»`, smallFont) : 0,
+      safeMeasure(display, participantFont),
+      participant.stereotype ? safeMeasure(`«${participant.stereotype}»`, stereotypeFont) : 0,
     );
     return Math.max(unit(64), textWidth + unit(headerPadX * 2));
   });
@@ -283,29 +375,64 @@ export function layoutSequence(
     centers.push(centers[index - 1]! + separation);
   }
 
-  // Widen message spans before placing participants. Labels need room between
-  // the activation bars, including inside nested combined fragments.
-  const reserveMessageWidths = (items: SequenceItem[]): void => {
+  // Widen column spans before placing participants, including inside nested
+  // combined fragments. Message labels need room between the activation bars;
+  // side and over notes must stop short of the neighbouring lifeline and its
+  // activation bar.
+  const widenSpan = (left: number, right: number, required: number): void => {
+    const extra = required - (centers[right]! - centers[left]!);
+    if (extra <= 0) return;
+    for (let index = left + 1; index < centers.length; index += 1) {
+      centers[index]! += extra * Math.min(index - left, right - left) / (right - left);
+    }
+  };
+  const participantIndex = (id: string): number =>
+    doc.participants.findIndex((participant) => participant.id === id);
+  const noteClearance = unit(activationW / 2 + SEQUENCE_LAYOUT.GRID);
+  // Nested bars step right by a third of a bar per level, so a lifeline's
+  // bars reach further right than left.
+  const nestedBarReach = (index: number): number =>
+    unit(activationW / 3) * (activationDepth.get(doc.participants[index]!.id) ?? 0);
+  const reserveColumnWidths = (items: SequenceItem[], fragmentDepth: number): void => {
     for (const item of items) {
       if (item.kind === "fragment") {
-        for (const operand of item.operands) reserveMessageWidths(operand.items);
-      } else if (item.kind === "message" && item.from !== item.to) {
-        const from = doc.participants.findIndex(({ id }) => id === item.from);
-        const to = doc.participants.findIndex(({ id }) => id === item.to);
+        for (const operand of item.operands) reserveColumnWidths(operand.items, fragmentDepth + 1);
+      } else if (item.kind === "message") {
+        if (item.from === item.to) continue;
+        const from = participantIndex(item.from);
+        const to = participantIndex(item.to);
         if (from < 0 || to < 0) continue;
-        const left = Math.min(from, to);
-        const right = Math.max(from, to);
-        const required = safeMeasure(item.text, normalFont) + unit(activationW * 2 + 24);
-        const extra = required - (centers[right]! - centers[left]!);
-        if (extra > 0) {
-          for (let index = left + 1; index < centers.length; index += 1) {
-            centers[index]! += extra * Math.min(index - left, right - left) / (right - left);
-          }
+        widenSpan(
+          Math.min(from, to),
+          Math.max(from, to),
+          safeMeasure(item.text, messageFont)
+            + unit(activationW * 2 + 24)
+            + (dockingExcess.get(item.id) ?? 0),
+        );
+      } else {
+        const index = participantIndex(item.anchor);
+        if (index < 0) continue;
+        // How far the box reaches from its own lifeline: side notes sit one
+        // fragment pad out; over notes straddle it, nudged right by half a
+        // bar when an activation runs through them. Every enclosing frame
+        // adds one more pad around the box.
+        const frameReach = unit(fragPad) * fragmentDepth;
+        const sideReach = unit(fragPad + SEQUENCE_LAYOUT.NOTE_W) + frameReach;
+        const overReach = unit(SEQUENCE_LAYOUT.NOTE_W / 2) + frameReach;
+        const rightReach = item.side === "right"
+          ? sideReach
+          : item.side === "over" ? overReach + unit(activationW / 2) : 0;
+        const leftReach = item.side === "left" ? sideReach : item.side === "over" ? overReach : 0;
+        if (rightReach > 0 && index + 1 < centers.length) {
+          widenSpan(index, index + 1, rightReach + noteClearance);
+        }
+        if (leftReach > 0 && index > 0) {
+          widenSpan(index - 1, index, leftReach + noteClearance + nestedBarReach(index - 1));
         }
       }
     }
   };
-  reserveMessageWidths(doc.items);
+  reserveColumnWidths(doc.items, 0);
 
   const participantById = new Map<string, SequenceParticipantLayout>();
   const participants = doc.participants.map((participant, index): SequenceParticipantLayout => {
@@ -357,10 +484,20 @@ export function layoutSequence(
 
   const participantX = (id: string): number => participantById.get(id)?.centerX ?? sideGutter;
 
-  const noteHeight = (note: SequenceNote): number => Math.max(
+  // Notes keep the fixed NOTE_W column the side gutters are sized for and
+  // grow downward instead: text wraps at the box width minus the label inset
+  // on each side, and each line adds one note line height.
+  const noteWidth = unit(SEQUENCE_LAYOUT.NOTE_W);
+  const noteInset = unit(notePad + 2);
+  const noteLineHeight = noteFont.lineHeight ?? noteFont.size;
+  const noteHeight = (lineCount: number): number => Math.max(
     unit(24 + notePad * 2),
-    note.text.split("\n").length * unit(15) + unit(notePad * 2),
+    lineCount * noteLineHeight + unit(notePad * 2),
   );
+  // A message right below a note draws its label above its arrow; at small
+  // row gaps that label's ascent and halo would reach into the note box.
+  const messageLabelReach = unit(labelGap + LABEL_HALO) + messageFont.size * ASCENT_EM;
+  const noteBottomMargin = Math.max(noteMarginY, messageLabelReach - rowHeight / 2);
 
   const horizontalTextBounds = (
     anchor: SeqTextAnchor,
@@ -389,12 +526,14 @@ export function layoutSequence(
     row: SequenceNoteLayout;
     endY: number;
   } => {
-    const height = noteHeight(note);
-    // Center the box inside a band that reserves NOTE_MARGIN_Y of clearance on
-    // both sides so notes never collide with adjacent frames or messages.
-    const bandHeight = Math.max(rowHeight, height + noteMarginY * 2);
-    const y = top + bandHeight / 2;
-    const width = unit(SEQUENCE_LAYOUT.NOTE_W);
+    const lines = metrics.wrap(note.text, noteFont, noteWidth - noteInset * 2);
+    const height = noteHeight(lines.length);
+    // The band keeps NOTE_MARGIN_Y of clearance above the box and at least
+    // that below it, so notes never collide with adjacent frames or messages;
+    // any slack left in a tall row is split evenly.
+    const bandHeight = Math.max(rowHeight, height + noteMarginY + noteBottomMargin);
+    const y = top + noteMarginY + (bandHeight - noteMarginY - noteBottomMargin) / 2;
+    const width = noteWidth;
     const anchorX = participantX(note.anchor);
     let x: number;
     if (note.side === "left") {
@@ -412,9 +551,11 @@ export function layoutSequence(
       anchorId: note.anchor,
       side: note.side,
       text: note.text,
+      lines,
+      lineHeight: noteLineHeight,
       y,
       box,
-      label: { x: x + unit(notePad + 2), y: box.y + unit(notePad + 12), anchor: "start" },
+      label: { x: x + noteInset, y: box.y + unit(notePad + 12), anchor: "start" },
       foldPath: [
         { x: box.x + box.width - fold, y: box.y },
         { x: box.x + box.width - fold, y: box.y + fold },
@@ -463,7 +604,7 @@ export function layoutSequence(
       ];
       row.y2 = y + rowHeight / 2;
     }
-    keepTextInsideLeftBound(row.label, row.text, normalFont);
+    keepTextInsideLeftBound(row.label, row.text, messageFont);
     return { row, endY: top + bandHeight };
   };
 
@@ -506,7 +647,7 @@ export function layoutSequence(
         }
         const labelBounds = horizontalTextBounds(
           row.label,
-          safeMeasure(row.text, normalFont),
+          safeMeasure(row.text, messageFont),
         );
         left = Math.min(left, labelBounds.left);
         right = Math.max(right, labelBounds.right);
@@ -600,7 +741,7 @@ export function layoutSequence(
             return header.x + header.width;
           }))
         : fallbackCenter;
-      const tabWidth = safeMeasure(item.op, boldFont) + unit(30);
+      const tabWidth = safeMeasure(item.op, fragmentOpFont) + unit(30);
       const outerLeft = Math.min(involvedLeft, childBounds?.left ?? involvedLeft) - fragmentPad;
       let outerRight = Math.max(involvedRight, childBounds?.right ?? involvedRight) + fragmentPad;
       outerRight = Math.max(outerRight, outerLeft + tabWidth + fragmentPad);
@@ -647,7 +788,7 @@ export function layoutSequence(
         if (!guard.label) continue;
         const guardBounds = horizontalTextBounds(
           guard.anchor,
-          safeMeasure(guard.label, smallFont),
+          safeMeasure(guard.label, guardFont),
         );
         outerRight = Math.max(outerRight, guardBounds.right + fragmentPad);
       }
@@ -848,7 +989,7 @@ export function layoutSequence(
   // Activation docking recalculates message anchors, so enforce the left
   // diagram inset after the activation pass as well as during initial layout.
   for (const message of messages) {
-    keepTextInsideLeftBound(message.label, message.text, normalFont);
+    keepTextInsideLeftBound(message.label, message.text, messageFont);
   }
 
   // An "over" note remains centered on its lifeline, with a half-bar nudge
@@ -924,7 +1065,7 @@ export function layoutSequence(
     rightEdge = Math.max(rightEdge, message.x1, message.x2);
     const labelBounds = horizontalTextBounds(
       message.label,
-      safeMeasure(message.text, normalFont),
+      safeMeasure(message.text, messageFont),
     );
     rightEdge = Math.max(rightEdge, labelBounds.right);
   }
@@ -954,7 +1095,25 @@ export function layoutSequence(
     y2: lifelineY2,
   }));
 
-  return {
+  // Feedback for a later pass (see layoutSequence).
+  const deepestLevels = new Map<string, number>();
+  for (const { participantId, level } of activations) {
+    if (level > (deepestLevels.get(participantId) ?? 0)) deepestLevels.set(participantId, level);
+  }
+  const excessByMessage = new Map<string, number>();
+  for (const message of messages) {
+    if (message.selfLoop) continue;
+    const fromX = participantX(message.from);
+    const toX = participantX(message.to);
+    const [leftX, leftCenter, rightX, rightCenter] = fromX <= toX
+      ? [message.x1, fromX, message.x2, toX]
+      : [message.x2, toX, message.x1, fromX];
+    const excess = Math.max(0, leftX - leftCenter - activationWidth / 2)
+      + Math.max(0, rightCenter - rightX - activationWidth / 2);
+    if (excess > 0) excessByMessage.set(message.id, Math.max(excess, excessByMessage.get(message.id) ?? 0));
+  }
+
+  const layout: SequenceLayout = {
     width,
     height,
     scale,
@@ -963,9 +1122,13 @@ export function layoutSequence(
           text: doc.title,
           anchor: {
             x: unit(margin),
-            y: unit(margin + 18),
+            y: unit(margin + TITLE_BASELINE),
             anchor: "start",
           },
+          // Wrap rather than widen: a long title must not shrink the whole
+          // diagram when a host scales it to fit a column.
+          lines: metrics.wrap(doc.title, titleFont, width - unit(margin) * 2),
+          lineHeight: titleLineHeight,
         }
       : undefined,
     participants,
@@ -977,4 +1140,5 @@ export function layoutSequence(
     notes,
     activations,
   };
+  return { layout, activationDepth: deepestLevels, dockingExcess: excessByMessage };
 }

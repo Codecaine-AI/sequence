@@ -1,0 +1,27 @@
+.card-thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-bottom: var(--ds-border-width-hairline) solid var(--border);
+  background: var(--ds-color-surface-sunken);
+}
+
+.card-thumb-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  width: 300%;
+  height: 300%;
+  justify-content: center;
+  padding: var(--ds-space-6);
+  transform: scale(0.3333);
+  transform-origin: 0 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.card-thumb-inner > * {
+  flex: none;
+}

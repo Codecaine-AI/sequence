@@ -1,8 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { useBrowserFonts } from "@codecaine-ai/text-measure/browser";
-import { App } from "./App";
+// The root stylesheet first: every component's styles.css comes after it.
 import "./index.css";
+import { App } from "./App";
 
 /**
  * Diagrams measure text with the bundled Inter faces. index.css declares them

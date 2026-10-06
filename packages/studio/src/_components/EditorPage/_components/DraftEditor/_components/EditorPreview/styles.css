@@ -1,0 +1,46 @@
+.editor-preview {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: var(--ds-color-surface-sunken);
+}
+
+.editor-preview-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+.editor-preview-content {
+  display: grid;
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  place-items: start center;
+  padding: var(--ds-space-12);
+  background-image: radial-gradient(var(--ds-color-border-default) 1px, transparent 1px);
+  background-size: var(--ds-space-4) var(--ds-space-4);
+}
+
+.diagram-card {
+  border-radius: var(--radius);
+  background: var(--seq-bg, var(--ds-color-surface-page));
+  box-shadow: var(--ds-shadow-glass);
+}
+
+/* A hairline in the warning line color edges it on the dotted canvas (it had a
+   glass shadow); the border plus space.1 padding keeps the old 5px height. */
+.stale-pill {
+  position: absolute;
+  top: var(--ds-space-3);
+  left: 50%;
+  z-index: var(--ds-z-raised);
+  padding: var(--ds-space-1) var(--ds-space-3);
+  border: var(--ds-border-width-hairline) solid var(--ds-color-status-warning-line);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-color-status-warning-soft);
+  color: var(--ds-color-status-warning-text);
+  font-size: var(--ds-font-size-ui-2xs);
+  font-weight: var(--ds-font-weight-semibold);
+  transform: translateX(-50%);
+}

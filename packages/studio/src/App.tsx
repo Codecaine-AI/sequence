@@ -1,12 +1,15 @@
 import type { SequenceDocument } from "@codecaine-ai/sequence";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { AppShell, resolveNav, type NavSection, type ShellLinkProps } from "./_components/AppShell";
-import { createDraft, listDrafts } from "./draft-store";
-import { EditorPage, type ShellSlots } from "./EditorPage";
-import { MINIMAL_FIXTURE, cloneSequenceDocument, nextDraftId } from "./fixtures";
-import { GalleryPage } from "./GalleryPage";
-import { Icon } from "./shared/_components/Icon";
-import { useTheme } from "./useTheme";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppShell, resolveNav, type NavSection } from "./_components/AppShell";
+import { EditorPage, type ShellSlots } from "./_components/EditorPage";
+import { GalleryPage } from "./_components/GalleryPage";
+import { NavButton, NavigateContext } from "./_components/NavButton";
+import { StyleToggle } from "./_components/StyleToggle";
+import { ThemeToggle } from "./_components/ThemeToggle";
+import { useStyleInspector } from "./useStyleInspector";
+import { Icon } from "@/shared/_components/Icon";
+import { createDraft, listDrafts } from "@/shared/draft-store";
+import { MINIMAL_FIXTURE, cloneSequenceDocument, nextDraftId } from "@/shared/fixtures";
 
 /**
  * In-memory routing, canvas-studio style: a gallery landing page listing
@@ -20,7 +23,6 @@ type Route = { name: "gallery" } | { name: "editor"; draftId: string };
 
 const APP_NAME = "Sequence Studio";
 const SIDEBAR_STORAGE_KEY = "sequence-studio.sidebar";
-const STYLE_OPEN_KEY = "sequence-studio.showStyle";
 const GALLERY_PATH = "/";
 const DRAFT_PATH_PREFIX = "/drafts/";
 
@@ -32,48 +34,10 @@ function routeFromPath(path: string): Route {
     : { name: "gallery" };
 }
 
-function readStyleOpenPreference(): boolean {
-  try {
-    return window.localStorage.getItem(STYLE_OPEN_KEY) !== "false";
-  } catch {
-    return true;
-  }
-}
-
-function writeStyleOpenPreference(open: boolean): void {
-  try {
-    window.localStorage.setItem(STYLE_OPEN_KEY, String(open));
-  } catch {
-    // A blocked localStorage should not break the toggle for this session.
-  }
-}
-
-const NavigateContext = createContext<(path: string) => void>(() => undefined);
-
-/** The shell's link component: a nav row that switches the in-memory route. */
-function NavButton({ href, className, title, children, ...rest }: ShellLinkProps) {
-  const navigate = useContext(NavigateContext);
-  const dataActive = (rest as Record<string, unknown>)["data-active"] as string | undefined;
-  return (
-    <button
-      type="button"
-      className={className}
-      title={title}
-      aria-current={rest["aria-current"]}
-      data-active={dataActive}
-      onClick={() => navigate(href)}
-    >
-      {children}
-    </button>
-  );
-}
-
 export function App() {
   const [route, setRoute] = useState<Route>({ name: "gallery" });
   const [draftsVersion, setDraftsVersion] = useState(0);
-  const [styleOpen, setStyleOpen] = useState(readStyleOpenPreference);
-  const styleToggleRef = useRef<HTMLButtonElement>(null);
-  const { theme, setTheme } = useTheme();
+  const { styleOpen, styleToggleRef, changeStyleOpen, closeStyle } = useStyleInspector();
   // Portal targets in the shell that the editor fills with its own controls.
   const [titleSlot, setTitleSlot] = useState<HTMLElement | null>(null);
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
@@ -101,20 +65,9 @@ export function App() {
     [openDraft],
   );
 
-  const changeStyleOpen = useCallback((open: boolean) => {
-    setStyleOpen(open);
-    writeStyleOpenPreference(open);
-  }, []);
-
-  // Closing from inside the inspector (its close button, or Escape there or in
-  // the rail) returns focus to the Style toggle. The shell's inspector returns
-  // focus only to an opener it saw open the panel, and the editor mounts with
-  // the panel already open.
-  const closeStyle = useCallback(() => {
-    changeStyleOpen(false);
-    styleToggleRef.current?.focus({ preventScroll: true });
-  }, [changeStyleOpen]);
-
+  // The one answer to "does the open draft exist": the topbar, the inspector
+  // and the page all follow it, so a draft deleted in another tab gives the
+  // not-found page, never a mix of not-found chrome and a live editor.
   const currentDraft = route.name === "editor" ? drafts.find((draft) => draft.id === route.draftId) : undefined;
   // The Style toggle, the inspector and the editor's title slot exist only
   // while a draft is open; a missing draft gets a plain page.
@@ -142,19 +95,6 @@ export function App() {
   ];
   const path = route.name === "editor" ? draftPath(route.draftId) : GALLERY_PATH;
 
-  const themeToggle = (
-    <button
-      type="button"
-      className="ds-shell-icon-button"
-      aria-pressed={theme === "dark"}
-      aria-label="Dark theme"
-      title="Dark theme"
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-    >
-      <Icon name="moon" />
-    </button>
-  );
-
   return (
     <NavigateContext.Provider value={navigate}>
       <AppShell
@@ -168,23 +108,16 @@ export function App() {
           editing ? (
             <>
               <span className="studio-actions-slot" ref={setActionsSlot} />
-              <button
+              <StyleToggle
                 ref={styleToggleRef}
-                type="button"
-                className="ds-shell-button"
-                aria-expanded={styleOpen}
-                aria-controls="ds-inspector"
-                // Closing goes through closeStyle, which also moves focus here: a
-                // mouse click does not focus a button in Safari, so focus could
-                // stay on a rail control inside the hidden panel.
-                onClick={() => (styleOpen ? closeStyle() : changeStyleOpen(true))}
-              >
-                Style
-              </button>
-              {themeToggle}
+                open={styleOpen}
+                onOpen={() => changeStyleOpen(true)}
+                onClose={closeStyle}
+              />
+              <ThemeToggle />
             </>
           ) : route.name === "editor" ? (
-            themeToggle
+            <ThemeToggle />
           ) : (
             <>
               <button
@@ -194,7 +127,7 @@ export function App() {
               >
                 <span aria-hidden="true">+</span> New sequence
               </button>
-              {themeToggle}
+              <ThemeToggle />
             </>
           )
         }
@@ -212,7 +145,7 @@ export function App() {
         {route.name === "editor" ? (
           <EditorPage
             key={route.draftId}
-            draftId={route.draftId}
+            draft={currentDraft}
             slots={slots}
             onDraftsChanged={refreshDrafts}
             onCloseStyle={closeStyle}

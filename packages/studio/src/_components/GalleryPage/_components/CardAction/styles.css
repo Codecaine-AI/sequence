@@ -1,0 +1,21 @@
+.card-action {
+  padding: var(--ds-space-1) var(--ds-space-2);
+  border: var(--ds-border-width-hairline) solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--ds-color-surface-panel) 92%, transparent);
+  color: var(--muted-foreground);
+  font-size: var(--ds-font-size-ui-2xs);
+  font-weight: var(--ds-font-weight-medium);
+  cursor: pointer;
+}
+
+.card-action:hover {
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.card-action.danger:hover {
+  border-color: var(--ds-color-status-danger-line);
+  background: var(--ds-color-status-danger-soft);
+  color: var(--destructive);
+}

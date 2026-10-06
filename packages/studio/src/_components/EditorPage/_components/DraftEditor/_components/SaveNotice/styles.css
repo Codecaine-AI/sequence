@@ -1,0 +1,6 @@
+.save-notice {
+  min-width: 44px;
+  color: var(--muted-foreground);
+  font-size: var(--ds-font-size-ui-xs);
+  text-align: right;
+}

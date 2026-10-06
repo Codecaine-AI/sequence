@@ -1,0 +1,31 @@
+/* The editor is a tool view on the full lane: its panes fill the workspace
+   under the topbar edge to edge, so the shell drops the content padding while
+   the editor is on screen (a shell-scoped layout override, guide/layout.md). */
+.ds-shell:has(.editor) {
+  --ds-layout-content-padding-top: var(--ds-space-0);
+  --ds-layout-content-padding-x: var(--ds-space-0);
+  --ds-layout-content-padding-bottom: var(--ds-space-0);
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--ds-layout-topbar-height));
+  height: calc(100dvh - var(--ds-layout-topbar-height));
+  overflow: hidden;
+  background: var(--background);
+}
+
+.editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 800px is the shell's narrow breakpoint (layout.css, NARROW_VIEWPORT_QUERY):
+   the Program pane stacks over the preview, so nothing scrolls sideways. */
+@media (max-width: 800px) {
+  .editor-body {
+    flex-direction: column;
+  }
+}

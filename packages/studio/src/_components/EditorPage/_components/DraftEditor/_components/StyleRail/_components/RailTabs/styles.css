@@ -1,0 +1,30 @@
+.rail-tabs {
+  display: flex;
+  flex: none;
+  gap: var(--ds-space-1);
+  margin-bottom: var(--ds-space-3);
+  padding: var(--ds-space-2);
+  border-bottom: var(--ds-border-width-hairline) solid var(--border);
+}
+
+.rail-tab {
+  flex: 1;
+  padding: 5px var(--ds-space-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: var(--ds-font-size-ui-2xs);
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.rail-tab:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.rail-tab--active,
+.rail-tab--active:hover {
+  background: var(--ds-color-fill-accent);
+  color: var(--ds-color-blue-text);
+}

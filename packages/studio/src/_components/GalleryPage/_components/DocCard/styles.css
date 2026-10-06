@@ -1,0 +1,74 @@
+.doc-card {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  border: var(--ds-border-width-hairline) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  text-align: left;
+  transition:
+    background var(--ds-motion-duration-fast) var(--ds-motion-easing-standard),
+    border-color var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+.doc-card:hover {
+  background: var(--ds-color-fill-hover);
+}
+
+/* fill.hover and fill.chip are nearly equal, so on a hovered card the tag
+   takes the card's resting panel fill and stays visible in both themes. */
+.doc-card:hover .card-tag {
+  background: var(--card);
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-3) var(--ds-space-4);
+}
+
+.card-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ds-color-text-ink);
+  font-size: var(--ds-font-size-ui-lg);
+  font-weight: var(--ds-font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-tag {
+  flex: none;
+  padding: var(--ds-space-0-5) var(--ds-space-2);
+  border-radius: var(--ds-radius-pill);
+  background: var(--secondary);
+  color: var(--muted-foreground);
+  font-size: var(--ds-font-size-micro);
+  font-weight: var(--ds-font-weight-semibold);
+  letter-spacing: var(--ds-letter-spacing-micro);
+  text-transform: uppercase;
+}
+
+.card-actions {
+  position: absolute;
+  top: var(--ds-space-2);
+  right: var(--ds-space-2);
+  display: flex;
+  gap: var(--ds-space-1);
+  opacity: 0;
+  transition: opacity var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+.doc-card:hover .card-actions,
+.doc-card:focus-within .card-actions {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-card,
+  .card-actions {
+    transition: none;
+  }
+}

@@ -1,0 +1,25 @@
+.title-input {
+  display: block;
+  min-width: var(--ds-space-16);
+  max-width: 100%;
+  height: var(--ds-space-8);
+  padding: 0 var(--ds-space-2);
+  border: var(--ds-border-width-hairline) solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ds-color-text-ink);
+  /* Font and tracking come from the topbar title (h1). */
+  letter-spacing: inherit;
+  text-overflow: ellipsis;
+  field-sizing: content;
+}
+
+.title-input:hover {
+  border-color: var(--border);
+}
+
+/* While editing it reads as a field; the global focus ring marks focus. */
+.title-input:focus {
+  border-color: var(--border);
+  background: var(--card);
+}

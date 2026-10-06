@@ -1,0 +1,50 @@
+.program-sidebar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 360px;
+  min-height: 0;
+  border-right: var(--ds-border-width-hairline) solid var(--border);
+  background: var(--card);
+}
+
+.sidebar-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+  padding: 10px 14px;
+  border-bottom: var(--ds-border-width-hairline) solid var(--border);
+}
+
+.program-editor {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  padding: 14px var(--ds-space-4);
+  border: 0;
+  background: var(--ds-color-surface-page);
+  color: var(--ds-color-text-body);
+  font-family: var(--mono);
+  font-size: var(--ds-font-size-code);
+  line-height: var(--ds-line-height-code);
+  tab-size: 2;
+  white-space: pre;
+}
+
+.program-editor:focus-visible {
+  outline-offset: calc(-1 * var(--ds-border-width-focus));
+}
+
+/* 800px is the shell's narrow breakpoint (layout.css, NARROW_VIEWPORT_QUERY):
+   the Program pane stacks over the preview, so nothing scrolls sideways. */
+@media (max-width: 800px) {
+  .program-sidebar {
+    flex: 1;
+    width: auto;
+    border-right: 0;
+    border-bottom: var(--ds-border-width-hairline) solid var(--border);
+  }
+}

@@ -1,0 +1,22 @@
+/* The shell's inspector frames the rail: its header holds the title and the
+   close button, and its body pads and scrolls. */
+.style-rail {
+  display: flex;
+  flex-direction: column;
+}
+
+.rail-row {
+  font-size: var(--ds-font-size-ui-xs);
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.rail-value {
+  color: var(--foreground);
+  font-family: var(--mono);
+  font-size: var(--ds-font-size-micro);
+  font-weight: var(--ds-font-weight-regular);
+}
+
+.rail-value--inherited {
+  color: var(--muted-foreground);
+}

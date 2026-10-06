@@ -1,0 +1,22 @@
+.rail-row--color {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  min-height: var(--ds-space-7);
+}
+
+.rail-row--color .rail-row-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.rail-swatch {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: var(--ds-space-0-5);
+  border: var(--ds-border-width-hairline) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  cursor: pointer;
+}

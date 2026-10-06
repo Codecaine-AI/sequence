@@ -1,0 +1,17 @@
+.rail-row--slider {
+  display: block;
+}
+
+.rail-slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+}
+
+.rail-range {
+  width: 100%;
+  margin-top: var(--ds-space-1-5);
+  accent-color: var(--ds-color-accent);
+  cursor: pointer;
+}

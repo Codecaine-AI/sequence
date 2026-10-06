@@ -1,0 +1,15 @@
+.rail-chevron {
+  flex: none;
+  color: var(--muted-foreground);
+  transition: transform var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+.rail-chevron--closed {
+  transform: rotate(-90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-chevron {
+    transition: none;
+  }
+}

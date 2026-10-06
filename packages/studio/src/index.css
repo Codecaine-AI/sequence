@@ -20,7 +20,7 @@
   --muted-foreground: var(--ds-color-text-muted);
   --destructive: var(--ds-color-status-danger-text);
   --border: var(--ds-color-border-default);
-  --input: var(--ds-color-focus-ring);
+  --input: var(--ds-color-border-default);
   --ring: var(--ds-color-focus-ring);
   --radius: var(--ds-radius-base);
   --mono: var(--ds-font-family-mono);
@@ -101,8 +101,9 @@ button {
 }
 
 .btn-primary:hover:not(:disabled) {
-  border-color: var(--ds-color-text-body);
-  background: var(--ds-color-text-body);
+  /* The ink fill, one step toward the page: lighter in light, darker in dark. */
+  border-color: color-mix(in srgb, var(--primary) 90%, var(--ds-color-surface-page));
+  background: color-mix(in srgb, var(--primary) 90%, var(--ds-color-surface-page));
 }
 
 .btn-outline {
@@ -179,6 +180,7 @@ button {
 }
 
 .brand h1 {
+  color: var(--ds-color-text-ink);
   font-size: var(--ds-font-size-reading);
   font-weight: var(--ds-font-weight-semibold);
   letter-spacing: var(--ds-letter-spacing-title);
@@ -257,6 +259,7 @@ button {
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  color: var(--ds-color-text-ink);
   font-size: var(--ds-font-size-ui-lg);
   font-weight: var(--ds-font-weight-medium);
   text-overflow: ellipsis;
@@ -358,6 +361,7 @@ button {
   border: var(--ds-border-width-hairline) solid transparent;
   border-radius: var(--radius);
   background: transparent;
+  color: var(--ds-color-text-ink);
   font-size: var(--ds-font-size-ui-lg);
   font-weight: var(--ds-font-weight-semibold);
   text-overflow: ellipsis;
@@ -369,7 +373,7 @@ button {
 
 .title-input:focus,
 .title-input:focus-visible {
-  border-color: var(--input);
+  border-color: var(--ds-color-focus-ring);
   background: var(--card);
   outline: none;
   box-shadow: 0 0 0 var(--ds-border-width-focus) color-mix(in srgb, var(--ds-color-focus-ring) 35%, transparent);

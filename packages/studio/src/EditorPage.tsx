@@ -51,10 +51,18 @@ type EditorPageProps = {
   slots: ShellSlots;
   /** The draft was renamed: App re-reads the store for the nav. */
   onDraftsChanged: () => void;
+  /** Closes the Style inspector and returns focus to its toggle. */
+  onCloseStyle: () => void;
   onBack: () => void;
 };
 
-export function EditorPage({ draftId, slots, onDraftsChanged, onBack }: EditorPageProps) {
+export function EditorPage({
+  draftId,
+  slots,
+  onDraftsChanged,
+  onCloseStyle,
+  onBack,
+}: EditorPageProps) {
   // Loaded once per mount (App keys this component by draft id).
   const initialDraftRef = useRef<StudioDraft | null | undefined>(undefined);
   if (initialDraftRef.current === undefined) {
@@ -66,7 +74,6 @@ export function EditorPage({ draftId, slots, onDraftsChanged, onBack }: EditorPa
   if (!initialDraft) {
     return (
       <div className="status-page">
-        {slots.title ? createPortal("Draft not found", slots.title) : null}
         <p>This draft was not found.</p>
         <button type="button" className="btn btn-outline" onClick={onBack}>
           Back to gallery
@@ -80,6 +87,7 @@ export function EditorPage({ draftId, slots, onDraftsChanged, onBack }: EditorPa
       draft={initialDraft}
       slots={slots}
       onDraftsChanged={onDraftsChanged}
+      onCloseStyle={onCloseStyle}
     />
   );
 }
@@ -88,10 +96,12 @@ function DraftEditor({
   draft,
   slots,
   onDraftsChanged,
+  onCloseStyle,
 }: {
   draft: StudioDraft;
   slots: ShellSlots;
   onDraftsChanged: () => void;
+  onCloseStyle: () => void;
 }) {
   const [doc, setDoc] = useState<SequenceDocument>(() =>
     cloneSequenceDocument(draft.document),
@@ -222,6 +232,13 @@ function DraftEditor({
     onDraftsChanged();
   };
 
+  // React events from a portal bubble through the component tree (this
+  // editor), not the DOM, so the shell inspector's Escape handler never sees
+  // keys pressed in the rail. Close it here instead.
+  const handleRailKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape" && !event.defaultPrevented) onCloseStyle();
+  };
+
   const handleTitleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.currentTarget.blur();
@@ -257,7 +274,12 @@ function DraftEditor({
           )
         : null}
       {slots.inspector
-        ? createPortal(<StyleRail style={doc.style} onPatch={updateStyle} />, slots.inspector)
+        ? createPortal(
+            <div onKeyDown={handleRailKeyDown}>
+              <StyleRail style={doc.style} onPatch={updateStyle} />
+            </div>,
+            slots.inspector,
+          )
         : null}
 
       <div className="editor-body">

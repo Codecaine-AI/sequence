@@ -1,5 +1,5 @@
 import type { SequenceDocument } from "@codecaine-ai/sequence";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, resolveNav, type NavSection, type ShellLinkProps } from "./_components/AppShell";
 import { createDraft, listDrafts } from "./draft-store";
 import { EditorPage, type ShellSlots } from "./EditorPage";
@@ -72,6 +72,7 @@ export function App() {
   const [route, setRoute] = useState<Route>({ name: "gallery" });
   const [draftsVersion, setDraftsVersion] = useState(0);
   const [styleOpen, setStyleOpen] = useState(readStyleOpenPreference);
+  const styleToggleRef = useRef<HTMLButtonElement>(null);
   const { theme, setTheme } = useTheme();
   // Portal targets in the shell that the editor fills with its own controls.
   const [titleSlot, setTitleSlot] = useState<HTMLElement | null>(null);
@@ -105,12 +106,24 @@ export function App() {
     writeStyleOpenPreference(open);
   }, []);
 
+  // Closing from inside the inspector (its close button, or Escape there or in
+  // the rail) returns focus to the Style toggle. The shell's inspector returns
+  // focus only to an opener it saw open the panel, and the editor mounts with
+  // the panel already open.
+  const closeStyle = useCallback(() => {
+    changeStyleOpen(false);
+    styleToggleRef.current?.focus({ preventScroll: true });
+  }, [changeStyleOpen]);
+
   const currentDraft = route.name === "editor" ? drafts.find((draft) => draft.id === route.draftId) : undefined;
-  const documentTitle =
-    route.name === "gallery" ? APP_NAME : `${currentDraft?.title ?? "Draft not found"} · ${APP_NAME}`;
+  // The Style toggle, the inspector and the editor's title slot exist only
+  // while a draft is open; a missing draft gets a plain page.
+  const editing = currentDraft !== undefined;
+  const pageTitle = route.name === "gallery" ? APP_NAME : (currentDraft?.title ?? "Draft not found");
+  // The document title is the page's h1 (layout.md rule 10).
   useEffect(() => {
-    document.title = documentTitle;
-  }, [documentTitle]);
+    document.title = pageTitle;
+  }, [pageTitle]);
 
   const sections: NavSection[] = [
     {
@@ -150,12 +163,13 @@ export function App() {
         sections={resolveNav(sections, path)}
         linkComponent={NavButton}
         lane={route.name === "editor" ? "full" : undefined}
-        title={route.name === "editor" ? <span className="studio-title-slot" ref={setTitleSlot} /> : APP_NAME}
+        title={editing ? <span className="studio-title-slot" ref={setTitleSlot} /> : pageTitle}
         actions={
-          route.name === "editor" ? (
+          editing ? (
             <>
               <span className="studio-actions-slot" ref={setActionsSlot} />
               <button
+                ref={styleToggleRef}
                 type="button"
                 className="ds-shell-button"
                 aria-expanded={styleOpen}
@@ -166,6 +180,8 @@ export function App() {
               </button>
               {themeToggle}
             </>
+          ) : route.name === "editor" ? (
+            themeToggle
           ) : (
             <>
               <button
@@ -180,11 +196,11 @@ export function App() {
           )
         }
         inspector={
-          route.name === "editor"
+          editing
             ? {
                 title: "Style",
                 open: styleOpen,
-                onClose: () => changeStyleOpen(false),
+                onClose: closeStyle,
                 content: <div className="studio-inspector-slot" ref={setInspectorSlot} />,
               }
             : undefined
@@ -196,6 +212,7 @@ export function App() {
             draftId={route.draftId}
             slots={slots}
             onDraftsChanged={refreshDrafts}
+            onCloseStyle={closeStyle}
             onBack={() => navigate(GALLERY_PATH)}
           />
         ) : (

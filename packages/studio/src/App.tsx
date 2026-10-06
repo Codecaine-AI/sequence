@@ -174,7 +174,10 @@ export function App() {
                 className="ds-shell-button"
                 aria-expanded={styleOpen}
                 aria-controls="ds-inspector"
-                onClick={() => changeStyleOpen(!styleOpen)}
+                // Closing goes through closeStyle, which also moves focus here: a
+                // mouse click does not focus a button in Safari, so focus could
+                // stay on a rail control inside the hidden panel.
+                onClick={() => (styleOpen ? closeStyle() : changeStyleOpen(true))}
               >
                 Style
               </button>

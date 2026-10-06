@@ -234,9 +234,12 @@ function DraftEditor({
 
   // React events from a portal bubble through the component tree (this
   // editor), not the DOM, so the shell inspector's Escape handler never sees
-  // keys pressed in the rail. Close it here instead.
+  // keys pressed in the rail. Close it here instead. An Escape that cancels
+  // IME composition (isComposing, or the legacy keyCode 229) is not a close.
   const handleRailKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Escape" && !event.defaultPrevented) onCloseStyle();
+    if (event.key !== "Escape" || event.defaultPrevented) return;
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+    onCloseStyle();
   };
 
   const handleTitleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {

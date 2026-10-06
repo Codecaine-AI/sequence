@@ -1,3 +1,4 @@
+import { cssVarName, flat, type ThemeName, type ThemeTokenPath } from "@codecaine-ai/design-system";
 import type { CSSProperties } from "react";
 
 import type { SequenceStyle } from "./schema";
@@ -23,14 +24,57 @@ export const SEQUENCE_CSS_VARIABLES = {
   noteText: "--seq-note-text",
 } as const;
 
-export const SEQUENCE_THEME_DEFAULTS = {
-  accent: "#C77D2E",
-  fragmentAccent: "#5B7FBD",
-  participantFill: "#FFF8F0",
-  text: "#252525",
-  muted: "#9AA0A6",
-  background: "#FFFFFF",
-} as const;
+/**
+ * The `@codecaine-ai/design-system` token behind each default color. Lines
+ * and fragments are two element families, so they keep a categorical pair of
+ * hue tokens (orange and blue); everything else takes a neutral role.
+ */
+export const SEQUENCE_THEME_TOKENS = {
+  accent: "color.orange.solid",
+  fragmentAccent: "color.blue.solid",
+  participantFill: "color.surface.panel",
+  text: "color.text.body",
+  muted: "color.text.faint",
+  background: "color.surface.page",
+} as const satisfies Record<string, ThemeTokenPath>;
+
+export type SequenceThemeColor = keyof typeof SEQUENCE_THEME_TOKENS;
+export type SequenceThemeDefaults = Readonly<Record<SequenceThemeColor, string>>;
+
+const THEME_COLORS = Object.keys(SEQUENCE_THEME_TOKENS) as SequenceThemeColor[];
+
+function themeDefaults(theme: ThemeName): SequenceThemeDefaults {
+  const values = {} as Record<SequenceThemeColor, string>;
+  for (const color of THEME_COLORS) values[color] = flat[theme][SEQUENCE_THEME_TOKENS[color]];
+  return Object.freeze(values);
+}
+
+/**
+ * The default colors as resolved light-theme token values. They are what an
+ * SVG paints where no CSS variable reaches it: `<img>`, data URLs, PDF and
+ * resvg exports.
+ */
+export const SEQUENCE_THEME_DEFAULTS = themeDefaults("light");
+
+/** The same defaults resolved from the dark theme. */
+export const SEQUENCE_THEME_DEFAULTS_DARK = themeDefaults("dark");
+
+const THEME_DEFAULTS: Readonly<Record<ThemeName, SequenceThemeDefaults>> = {
+  light: SEQUENCE_THEME_DEFAULTS,
+  dark: SEQUENCE_THEME_DEFAULTS_DARK,
+};
+
+/**
+ * One theme's defaults as `--seq-*` custom properties, for a standalone SVG
+ * that cannot load the design-system stylesheet (a dark `<img>` export, for
+ * example). A page that loads `tokens.css` needs none of this: the render
+ * fallbacks already follow its light or dark theme.
+ */
+export function sequenceThemeCssVars(theme: ThemeName = "light"): Record<string, string> {
+  const variables: Record<string, string> = {};
+  for (const color of THEME_COLORS) variables[SEQUENCE_CSS_VARIABLES[color]] = THEME_DEFAULTS[theme][color];
+  return variables;
+}
 
 // Short aliases are convenient when these objects are used as token maps.
 export const SEQUENCE_CSS_VARS = SEQUENCE_CSS_VARIABLES;
@@ -59,15 +103,25 @@ export interface SequenceResolvedColors {
 const varOr = (name: string, fallback: string): string => `var(${name}, ${fallback})`;
 
 /**
+ * Built-in default per color: `var(--ds-<token>, <light value>)`. In a page
+ * that loads the design-system tokens it follows that page's light or dark
+ * theme; anywhere else it is the light value.
+ */
+const DEFAULT_CHAINS = {} as Record<SequenceThemeColor, string>;
+for (const color of THEME_COLORS) {
+  DEFAULT_CHAINS[color] = varOr(cssVarName(SEQUENCE_THEME_TOKENS[color]), SEQUENCE_THEME_DEFAULTS[color]);
+}
+
+/**
  * Resolve every renderer color for a document. Precedence per knob:
  * per-element style value > shortcut (accent / fragmentAccent /
- * participantFill) > CSS variable > built-in default. Explicit style values
- * become literals; everything else stays a var() chain so host CSS can
- * re-theme the SVG.
+ * participantFill) > `--seq-*` CSS variable > design-system token
+ * (`--ds-*`) > its light value. Explicit style values become literals;
+ * everything else stays a var() chain so host CSS can re-theme the SVG.
  */
 export function resolveSequenceColors(style: SequenceStyle): SequenceResolvedColors {
   const vars = SEQUENCE_CSS_VARIABLES;
-  const defaults = SEQUENCE_THEME_DEFAULTS;
+  const defaults = DEFAULT_CHAINS;
   const accentChain = varOr(vars.accent, defaults.accent);
   const textChain = varOr(vars.text, defaults.text);
   const mutedChain = varOr(vars.muted, defaults.muted);

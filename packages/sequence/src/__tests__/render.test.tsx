@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { flat } from "@codecaine-ai/design-system";
 import { cleanup, render, screen } from "@testing-library/react";
 
 import {
+  SEQUENCE_THEME_DEFAULTS,
+  SEQUENCE_THEME_DEFAULTS_DARK,
   SequenceViewer,
   layoutSequence,
   renderSequenceSvgString,
@@ -90,7 +93,7 @@ describe("sequence text measurement", () => {
     for (const text of texts) {
       const drawn = drawnFont(text);
       // Hosts can only guarantee widths for the bundled family.
-      expect(drawn.family.startsWith('var(--seq-font-family, "Inter",')).toBe(true);
+      expect(drawn.family).toMatch(/^var\(--seq-font-family, "?Inter"?,/);
       for (const line of drawnLines(text)) {
         const measured = calls.filter((call) => call.text === line);
         expect(measured.length).toBeGreaterThan(0);
@@ -242,7 +245,19 @@ describe("sequence SVG rendering", () => {
     expect(svg).toContain('fill="#0FF0FF"');
     // The unresolved shortcut still applies where no per-element value exists
     // (activation bars keep following the muted default chain, not accent).
-    expect(svg).toContain("var(--seq-muted, #9AA0A6)");
+    expect(svg).toContain("var(--seq-activation-fill, var(--seq-muted, ");
+  });
+
+  test("defaults come from design-system tokens, below the --seq-* variables", () => {
+    // Exports (<img>, PDF, resvg) and color inputs read the resolved defaults
+    // directly, so each must stay a plain hex color in both themes.
+    for (const defaults of [SEQUENCE_THEME_DEFAULTS, SEQUENCE_THEME_DEFAULTS_DARK]) {
+      for (const value of Object.values(defaults)) expect(value).toMatch(/^#[0-9a-f]{6}$/i);
+    }
+    // Host CSS wins through --seq-*; a page with the design-system tokens
+    // follows its theme; anything else paints the light token value.
+    const background = renderSequenceSvgString(minimal).match(/class="seq-background"[^>]*fill="([^"]+)"/)?.[1];
+    expect(background).toBe(`var(--seq-bg, var(--ds-color-surface-page, ${flat.light["color.surface.page"]}))`);
   });
 
   test("shortcuts still color elements that have no per-element override", () => {

@@ -12,6 +12,7 @@
  * within about 1 px per string elsewhere).
  */
 
+import { flat } from "@codecaine-ai/design-system";
 import { measureWidth, onBackendChange, wrapText, type FontSpec } from "@codecaine-ai/text-measure";
 
 export interface SeqFont {
@@ -73,12 +74,13 @@ export interface SequenceTextStyle {
 }
 
 /**
- * Size and weight per text role, plus the family stack. Hosts can still
- * restyle the family with `--seq-font-family`, but measurements then model
- * this stack rather than the override.
+ * Size and weight per text role, plus the family stack (the design system's
+ * `font.family.sans`, Inter first). Hosts can still restyle the family with
+ * `--seq-font-family`, but measurements then model this stack rather than the
+ * override.
  */
 export const SEQUENCE_TYPOGRAPHY = {
-  family: '"Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+  family: flat.base["font.family.sans"],
   participant: { size: 12, weight: 600 },
   stereotype: { size: 11, weight: 400 },
   message: { size: 12, weight: 400 },

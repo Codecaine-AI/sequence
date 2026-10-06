@@ -15,13 +15,27 @@ import { useState, type ReactNode } from "react";
  * setStyle (deep-merging); a section's Reset sends explicit nulls so the
  * merge clears just that section's fields. Unset knobs show the effective
  * inherited value (shortcut or built-in default) grayed.
+ *
+ * The Colors tab is hidden for now (SHOW_COLOR_CONTROLS): diagrams take
+ * their colors from the shared design-system tokens, so the rail shows only
+ * the size and density controls on the Layout tab. Its code stays so the
+ * tab can come back.
  */
 
 export type PatchSequenceStyle = (patch: SequenceStylePatch) => void;
 
 const DEFAULTS = SEQUENCE_THEME_DEFAULTS;
 
-const SECTION_KEY_PREFIX = "sequence-studio.styleRail.section:";
+/** Owner decision: style engines hide their color controls (and keep the code). */
+const SHOW_COLOR_CONTROLS = false;
+
+type RailTab = "colors" | "layout";
+
+const RAIL_TABS: readonly RailTab[] = SHOW_COLOR_CONTROLS ? ["colors", "layout"] : ["layout"];
+
+// v2: bumped when the color controls were hidden, so no open-state saved by
+// the old rail carries over.
+const SECTION_KEY_PREFIX = "sequence-studio.styleRail.v2.section:";
 
 function readSectionOpen(id: string, fallback: boolean): boolean {
   try {
@@ -214,14 +228,16 @@ export function StyleRail({
   onPatch: PatchSequenceStyle;
   onHide: () => void;
 }) {
-  const [tab, setTab] = useState<"colors" | "layout">("colors");
+  const [tab, setTab] = useState<RailTab>(RAIL_TABS[0]);
 
   // Effective inherited values, resolved through the shortcut chain the
   // renderer uses: per-element > shortcut > built-in default.
   const accent = style.accent ?? DEFAULTS.accent;
   const fragmentAccent = style.fragmentAccent ?? DEFAULTS.fragmentAccent;
   const participantFill = style.participantFill ?? DEFAULTS.participantFill;
-  const fragmentStroke = style.fragment?.stroke ?? fragmentAccent;
+  // The label follows the frame's own color when one is set; otherwise its
+  // default takes the text role (renderer: resolveSequenceColors).
+  const fragmentLabelText = style.fragment?.stroke ?? style.fragmentAccent ?? DEFAULTS.fragmentLabelText;
 
   const defined = (...values: unknown[]): boolean =>
     values.some((value) => value !== undefined);
@@ -244,23 +260,25 @@ export function StyleRail({
         </button>
       </div>
 
-      <div className="rail-tabs" role="tablist">
-        {(["colors", "layout"] as const).map((id) => (
-          <button
-            key={id}
-            aria-selected={tab === id}
-            className={tab === id ? "rail-tab rail-tab--active" : "rail-tab"}
-            onClick={() => setTab(id)}
-            role="tab"
-            type="button"
-          >
-            {id === "colors" ? "Colors" : "Layout"}
-          </button>
-        ))}
-      </div>
+      {RAIL_TABS.length > 1 ? (
+        <div className="rail-tabs" role="tablist">
+          {RAIL_TABS.map((id) => (
+            <button
+              key={id}
+              aria-selected={tab === id}
+              className={tab === id ? "rail-tab rail-tab--active" : "rail-tab"}
+              onClick={() => setTab(id)}
+              role="tab"
+              type="button"
+            >
+              {id === "colors" ? "Colors" : "Layout"}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="rail-body">
-        {tab === "colors" ? (
+        {SHOW_COLOR_CONTROLS && tab === "colors" ? (
           <>
             <RailSection
               hasOverrides={defined(style.accent, style.fragmentAccent, style.participantFill, style.scale)}
@@ -420,13 +438,13 @@ export function StyleRail({
               title="Activations"
             >
               <ColorRow
-                effective={DEFAULTS.muted}
+                effective={DEFAULTS.activationFill}
                 label="Fill"
                 onChange={(value) => onPatch({ activation: { fill: value } })}
                 value={style.activation?.fill}
               />
               <ColorRow
-                effective={DEFAULTS.muted}
+                effective={DEFAULTS.activationStroke}
                 label="Stroke"
                 onChange={(value) => onPatch({ activation: { stroke: value } })}
                 value={style.activation?.stroke}
@@ -468,7 +486,7 @@ export function StyleRail({
                 value={style.fragment?.labelFill}
               />
               <ColorRow
-                effective={fragmentStroke}
+                effective={fragmentLabelText}
                 label="Label text"
                 onChange={(value) => onPatch({ fragment: { labelText: value } })}
                 value={style.fragment?.labelText}

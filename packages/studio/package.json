@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codecaine-ai/design-system": "workspace:*",
     "@codecaine-ai/sequence": "workspace:*",
     "@codecaine-ai/text-measure": "workspace:*",
     "react": "^19",

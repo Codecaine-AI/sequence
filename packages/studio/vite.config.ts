@@ -5,10 +5,15 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, searchForWorkspaceRoot } from "vite";
 
 const STUDIO_DIR = dirname(fileURLToPath(import.meta.url));
+const resolveFrom = createRequire(import.meta.url);
+// @codecaine-ai/design-system sits outside this workspace (Core links it), so
+// the dev server must be allowed to serve its fonts and stylesheets.
+const DESIGN_SYSTEM = dirname(resolveFrom.resolve("@codecaine-ai/design-system/package.json"));
 // @codecaine-ai/text-measure lives in the canvas repo, outside this
-// workspace, so the dev server must be allowed to serve its font files.
+// workspace: useBrowserFonts falls back to its font files for any face the
+// page does not declare.
 const TEXT_MEASURE_FONTS = resolve(
-  dirname(createRequire(import.meta.url).resolve("@codecaine-ai/text-measure/fonts.css")),
+  dirname(resolveFrom.resolve("@codecaine-ai/text-measure/fonts.css")),
   "fonts",
 );
 
@@ -25,7 +30,7 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 3998,
     fs: {
-      allow: [searchForWorkspaceRoot(STUDIO_DIR), TEXT_MEASURE_FONTS],
+      allow: [searchForWorkspaceRoot(STUDIO_DIR), DESIGN_SYSTEM, TEXT_MEASURE_FONTS],
     },
   },
   preview: {

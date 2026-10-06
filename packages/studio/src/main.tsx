@@ -1,13 +1,14 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@codecaine-ai/text-measure/fonts.css";
 import { useBrowserFonts } from "@codecaine-ai/text-measure/browser";
 import { App } from "./App";
 import "./index.css";
 
 /**
- * Diagrams measure text with the bundled Inter faces (fonts.css). Loading
- * them before the first render lays every diagram out once, with exact
+ * Diagrams measure text with the bundled Inter faces. index.css declares them
+ * through @codecaine-ai/design-system/fonts.css (the same woff2 files as
+ * text-measure's), and useBrowserFonts loads the page's @font-face rules.
+ * Loading them before the first render lays every diagram out once, with exact
  * widths. SequenceViewer lays out again by itself on any later backend
  * switch; if loading fails, layout keeps text-measure's advance table.
  */

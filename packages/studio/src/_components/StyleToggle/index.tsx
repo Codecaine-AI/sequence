@@ -1,7 +1,8 @@
-import type { Ref } from "react";
+import { useLayoutEffect, type RefObject } from "react";
 
 export type StyleToggleProps = {
-  ref?: Ref<HTMLButtonElement>;
+  /** The button's element: closing the inspector returns focus to it. */
+  toggleRef: RefObject<HTMLButtonElement | null>;
   /** The Style inspector is open. */
   open: boolean;
   onOpen: () => void;
@@ -10,10 +11,23 @@ export type StyleToggleProps = {
 };
 
 /** The topbar button that opens and closes the Style inspector. */
-export function StyleToggle({ ref, open, onOpen, onClose }: StyleToggleProps) {
+export function StyleToggle({ toggleRef, open, onOpen, onClose }: StyleToggleProps) {
+  // Leaving the editor by a click that does not move focus (Safari) removes
+  // this button while it has focus. Hand focus to the next topbar control, the
+  // theme toggle, which stays on every page, instead of dropping it to <body>.
+  // A layout cleanup runs while the button is still in the page.
+  useLayoutEffect(() => {
+    const button = toggleRef.current;
+    return () => {
+      if (button && button === document.activeElement) {
+        (button.nextElementSibling as HTMLElement | null)?.focus({ preventScroll: true });
+      }
+    };
+  }, [toggleRef]);
+
   return (
     <button
-      ref={ref}
+      ref={toggleRef}
       type="button"
       className="ds-shell-button"
       aria-expanded={open}

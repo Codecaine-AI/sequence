@@ -22,6 +22,10 @@ import { MINIMAL_FIXTURE, cloneSequenceDocument, nextDraftId } from "@/shared/fi
 type Route = { name: "gallery" } | { name: "editor"; draftId: string };
 
 const APP_NAME = "Sequence Studio";
+// One key for the theme toggle in every page's topbar actions, so React keeps
+// its element across pages: a focused toggle keeps focus when a click that
+// does not move focus (Safari) changes the page.
+const THEME_TOGGLE_KEY = "theme-toggle";
 const SIDEBAR_STORAGE_KEY = "sequence-studio.sidebar";
 const GALLERY_PATH = "/";
 const DRAFT_PATH_PREFIX = "/drafts/";
@@ -109,15 +113,15 @@ export function App() {
             <>
               <span className="studio-actions-slot" ref={setActionsSlot} />
               <StyleToggle
-                ref={styleToggleRef}
+                toggleRef={styleToggleRef}
                 open={styleOpen}
                 onOpen={() => changeStyleOpen(true)}
                 onClose={closeStyle}
               />
-              <ThemeToggle />
+              <ThemeToggle key={THEME_TOGGLE_KEY} />
             </>
           ) : route.name === "editor" ? (
-            <ThemeToggle />
+            <ThemeToggle key={THEME_TOGGLE_KEY} />
           ) : (
             <>
               <button
@@ -127,7 +131,7 @@ export function App() {
               >
                 <span aria-hidden="true">+</span> New sequence
               </button>
-              <ThemeToggle />
+              <ThemeToggle key={THEME_TOGGLE_KEY} />
             </>
           )
         }

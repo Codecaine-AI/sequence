@@ -25,16 +25,25 @@ export const SEQUENCE_CSS_VARIABLES = {
 } as const;
 
 /**
- * The `@codecaine-ai/design-system` token behind each default color. Lines
- * and fragments are two element families, so they keep a categorical pair of
- * hue tokens (orange and blue); everything else takes a neutral role.
+ * The `@codecaine-ai/design-system` token behind each default color. Lines,
+ * fragments and activation bars are three element families, so they take
+ * categorical hue tokens (orange, blue, gray), each in the role it paints:
+ * `.solid` for strokes and fills, `.text` for fragment labels. Activation
+ * outlines take a border role; everything else takes a neutral role.
+ *
+ * `muted` is kept for compatibility. `--seq-muted` has no default of its own
+ * (a host that sets it colors both activation fill and stroke), and its value
+ * equals `activationFill`.
  */
 export const SEQUENCE_THEME_TOKENS = {
   accent: "color.orange.solid",
   fragmentAccent: "color.blue.solid",
+  fragmentLabelText: "color.blue.text",
   participantFill: "color.surface.panel",
   text: "color.text.body",
-  muted: "color.text.faint",
+  muted: "color.gray.solid",
+  activationFill: "color.gray.solid",
+  activationStroke: "color.border.default",
   background: "color.surface.page",
 } as const satisfies Record<string, ThemeTokenPath>;
 
@@ -50,9 +59,12 @@ function themeDefaults(theme: ThemeName): SequenceThemeDefaults {
 }
 
 /**
- * The default colors as resolved light-theme token values. They are what an
- * SVG paints where no CSS variable reaches it: `<img>`, data URLs, PDF and
- * resvg exports.
+ * The default colors as resolved light-theme token values, each a `#rrggbb`.
+ * They are the innermost `var()` fallbacks, so a renderer that resolves
+ * `var()` paints them where no stylesheet defines the variables: an `<img>`
+ * or data-URL SVG, or a page or PDF frame without `tokens.css`. Not checked:
+ * renderers without CSS `var()` support (resvg, for example); give those
+ * literal colors.
  */
 export const SEQUENCE_THEME_DEFAULTS = themeDefaults("light");
 
@@ -65,14 +77,32 @@ const THEME_DEFAULTS: Readonly<Record<ThemeName, SequenceThemeDefaults>> = {
 };
 
 /**
+ * The defaults {@link sequenceThemeCssVars} pins: for each chain, the lowest
+ * `--seq-*` variable that holds one default. Left out: `--seq-muted` (it would
+ * paint activation fill and stroke alike) and `--seq-fragment-label-text`
+ * (the label follows `--seq-fragment-accent` and a document's fragment
+ * shortcut, which a pinned label would override).
+ */
+const PINNED_COLORS = [
+  "accent",
+  "fragmentAccent",
+  "participantFill",
+  "text",
+  "activationFill",
+  "activationStroke",
+  "background",
+] as const satisfies readonly SequenceThemeColor[];
+
+/**
  * One theme's defaults as `--seq-*` custom properties, for a standalone SVG
  * that cannot load the design-system stylesheet (a dark `<img>` export, for
- * example). A page that loads `tokens.css` needs none of this: the render
+ * example). Apply a document's own style variables after these so they still
+ * win. A page that loads `tokens.css` needs none of this: the render
  * fallbacks already follow its light or dark theme.
  */
 export function sequenceThemeCssVars(theme: ThemeName = "light"): Record<string, string> {
   const variables: Record<string, string> = {};
-  for (const color of THEME_COLORS) variables[SEQUENCE_CSS_VARIABLES[color]] = THEME_DEFAULTS[theme][color];
+  for (const color of PINNED_COLORS) variables[SEQUENCE_CSS_VARIABLES[color]] = THEME_DEFAULTS[theme][color];
   return variables;
 }
 
@@ -124,7 +154,6 @@ export function resolveSequenceColors(style: SequenceStyle): SequenceResolvedCol
   const defaults = DEFAULT_CHAINS;
   const accentChain = varOr(vars.accent, defaults.accent);
   const textChain = varOr(vars.text, defaults.text);
-  const mutedChain = varOr(vars.muted, defaults.muted);
   const backgroundChain = varOr(vars.background, defaults.background);
   const pick = (
     perElement: string | undefined,
@@ -138,6 +167,13 @@ export function resolveSequenceColors(style: SequenceStyle): SequenceResolvedCol
     style.fragmentAccent,
     vars.fragmentAccent,
     defaults.fragmentAccent,
+  );
+  // Same precedence as the frame; only the built-in default takes the text role.
+  const fragmentText = pick(
+    style.fragment?.stroke,
+    style.fragmentAccent,
+    vars.fragmentAccent,
+    defaults.fragmentLabelText,
   );
 
   return {
@@ -154,11 +190,21 @@ export function resolveSequenceColors(style: SequenceStyle): SequenceResolvedCol
     lifelineStroke: pick(style.lifeline?.stroke, style.accent, vars.lifeline, accentChain),
     messageStroke: pick(style.message?.stroke, style.accent, vars.message, accentChain),
     messageText: pick(style.message?.text, undefined, vars.messageText, textChain),
-    activationFill: pick(style.activation?.fill, undefined, vars.activationFill, mutedChain),
-    activationStroke: pick(style.activation?.stroke, undefined, vars.activationStroke, mutedChain),
+    activationFill: pick(
+      style.activation?.fill,
+      undefined,
+      vars.activationFill,
+      varOr(vars.muted, defaults.activationFill),
+    ),
+    activationStroke: pick(
+      style.activation?.stroke,
+      undefined,
+      vars.activationStroke,
+      varOr(vars.muted, defaults.activationStroke),
+    ),
     fragmentStroke,
     fragmentLabelFill: pick(style.fragment?.labelFill, undefined, vars.fragmentLabelFill, backgroundChain),
-    fragmentLabelText: pick(style.fragment?.labelText, undefined, vars.fragmentLabelText, fragmentStroke),
+    fragmentLabelText: pick(style.fragment?.labelText, undefined, vars.fragmentLabelText, fragmentText),
     noteFill: pick(
       style.note?.fill,
       style.participantFill,

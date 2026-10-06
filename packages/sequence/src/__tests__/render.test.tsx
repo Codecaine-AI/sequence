@@ -8,6 +8,7 @@ import {
   SequenceViewer,
   layoutSequence,
   renderSequenceSvgString,
+  sequenceThemeCssVars,
   type SeqFont,
   type SequenceDocument,
   type SequenceTextMetrics,
@@ -246,6 +247,7 @@ describe("sequence SVG rendering", () => {
     // The unresolved shortcut still applies where no per-element value exists
     // (activation bars keep following the muted default chain, not accent).
     expect(svg).toContain("var(--seq-activation-fill, var(--seq-muted, ");
+    expect(svg).toContain("var(--seq-activation-stroke, var(--seq-muted, ");
   });
 
   test("defaults come from design-system tokens, below the --seq-* variables", () => {
@@ -258,6 +260,18 @@ describe("sequence SVG rendering", () => {
     // follows its theme; anything else paints the light token value.
     const background = renderSequenceSvgString(minimal).match(/class="seq-background"[^>]*fill="([^"]+)"/)?.[1];
     expect(background).toBe(`var(--seq-bg, var(--ds-color-surface-page, ${flat.light["color.surface.page"]}))`);
+  });
+
+  test("sequenceThemeCssVars pins one theme's defaults for a standalone SVG", () => {
+    expect(sequenceThemeCssVars("dark")).toEqual({
+      "--seq-accent": flat.dark["color.orange.solid"],
+      "--seq-fragment-accent": flat.dark["color.blue.solid"],
+      "--seq-participant-fill": flat.dark["color.surface.panel"],
+      "--seq-text": flat.dark["color.text.body"],
+      "--seq-activation-fill": flat.dark["color.gray.solid"],
+      "--seq-activation-stroke": flat.dark["color.border.default"],
+      "--seq-bg": flat.dark["color.surface.page"],
+    });
   });
 
   test("shortcuts still color elements that have no per-element override", () => {

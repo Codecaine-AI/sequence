@@ -12,7 +12,7 @@
  * within about 1 px per string elsewhere).
  */
 
-import { flat } from "@codecaine-ai/design-system";
+import { flat, type BaseTokenPath } from "@codecaine-ai/design-system";
 import { measureWidth, onBackendChange, wrapText, type FontSpec } from "@codecaine-ai/text-measure";
 
 export interface SeqFont {
@@ -73,21 +73,36 @@ export interface SequenceTextStyle {
   readonly lineHeight?: number;
 }
 
+/** A design-system px token as a number: "12px" is 12. */
+function tokenPx(path: BaseTokenPath): number {
+  const value = String(flat.base[path]);
+  const match = /^(\d+(?:\.\d+)?)px$/.exec(value);
+  if (!match) throw new Error(`@codecaine-ai/sequence: token ${path} is "${value}", not a px size`);
+  return Number(match[1]);
+}
+
+const UI_XS = tokenPx("font.size.ui-xs");
+const UI_2XS = tokenPx("font.size.ui-2xs");
+const REGULAR = Number(flat.base["font.weight.regular"]);
+const SEMIBOLD = Number(flat.base["font.weight.semibold"]);
+const BOLD = Number(flat.base["font.weight.bold"]);
+
 /**
  * Size and weight per text role, plus the family stack (the design system's
- * `font.family.sans`, Inter first). Hosts can still restyle the family with
- * `--seq-font-family`, but measurements then model this stack rather than the
- * override.
+ * `font.family.sans`, Inter first). Sizes and weights come from the design
+ * tokens; the title's 16 px and the wrap line heights have no token. Hosts can
+ * still restyle the family with `--seq-font-family`, but measurements then
+ * model this stack rather than the override.
  */
 export const SEQUENCE_TYPOGRAPHY = {
   family: flat.base["font.family.sans"],
-  participant: { size: 12, weight: 600 },
-  stereotype: { size: 11, weight: 400 },
-  message: { size: 12, weight: 400 },
-  note: { size: 12, weight: 400, lineHeight: 15 },
-  fragmentOp: { size: 12, weight: 700 },
-  guard: { size: 11, weight: 400 },
-  title: { size: 16, weight: 700, lineHeight: 20 },
+  participant: { size: UI_XS, weight: SEMIBOLD },
+  stereotype: { size: UI_2XS, weight: REGULAR },
+  message: { size: UI_XS, weight: REGULAR },
+  note: { size: UI_XS, weight: REGULAR, lineHeight: 15 },
+  fragmentOp: { size: UI_XS, weight: BOLD },
+  guard: { size: UI_2XS, weight: REGULAR },
+  title: { size: 16, weight: BOLD, lineHeight: 20 },
 } as const satisfies { readonly family: string } & Record<SequenceTextRole, SequenceTextStyle>;
 
 /** The font one text role is measured and drawn with at a document scale. */

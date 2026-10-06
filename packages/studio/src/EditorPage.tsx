@@ -14,6 +14,7 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   listDrafts,
   renameDraft,
@@ -25,7 +26,16 @@ import { StyleRail } from "./StyleRail";
 
 type ProgramError = { line: number; message: string };
 
-const STYLE_OPEN_KEY = "sequence-studio.showStyle";
+/**
+ * Elements in the app shell that the editor fills through portals: the topbar
+ * title (the editable draft title), the topbar actions (the save notice) and
+ * the inspector body (the Style rail). Null until the shell has mounted them.
+ */
+export type ShellSlots = {
+  title: HTMLElement | null;
+  actions: HTMLElement | null;
+  inspector: HTMLElement | null;
+};
 
 function errorLine(message: string): number {
   const match = message.match(/(?:line\s+|^)(\d+)/i);
@@ -36,20 +46,15 @@ function errorsFromOperation(messages: string[]): ProgramError[] {
   return messages.map((message) => ({ line: errorLine(message), message }));
 }
 
-function readStyleOpenPreference(): boolean {
-  try {
-    return window.localStorage.getItem(STYLE_OPEN_KEY) !== "false";
-  } catch {
-    return true;
-  }
-}
-
 type EditorPageProps = {
   draftId: string;
+  slots: ShellSlots;
+  /** The draft was renamed: App re-reads the store for the nav. */
+  onDraftsChanged: () => void;
   onBack: () => void;
 };
 
-export function EditorPage({ draftId, onBack }: EditorPageProps) {
+export function EditorPage({ draftId, slots, onDraftsChanged, onBack }: EditorPageProps) {
   // Loaded once per mount (App keys this component by draft id).
   const initialDraftRef = useRef<StudioDraft | null | undefined>(undefined);
   if (initialDraftRef.current === undefined) {
@@ -61,6 +66,7 @@ export function EditorPage({ draftId, onBack }: EditorPageProps) {
   if (!initialDraft) {
     return (
       <div className="status-page">
+        {slots.title ? createPortal("Draft not found", slots.title) : null}
         <p>This draft was not found.</p>
         <button type="button" className="btn btn-outline" onClick={onBack}>
           Back to gallery
@@ -69,15 +75,23 @@ export function EditorPage({ draftId, onBack }: EditorPageProps) {
     );
   }
 
-  return <DraftEditor draft={initialDraft} onBack={onBack} />;
+  return (
+    <DraftEditor
+      draft={initialDraft}
+      slots={slots}
+      onDraftsChanged={onDraftsChanged}
+    />
+  );
 }
 
 function DraftEditor({
   draft,
-  onBack,
+  slots,
+  onDraftsChanged,
 }: {
   draft: StudioDraft;
-  onBack: () => void;
+  slots: ShellSlots;
+  onDraftsChanged: () => void;
 }) {
   const [doc, setDoc] = useState<SequenceDocument>(() =>
     cloneSequenceDocument(draft.document),
@@ -91,7 +105,6 @@ function DraftEditor({
   const [parseState, setParseState] = useState<"valid" | "pending" | "error">(
     "valid",
   );
-  const [styleOpen, setStyleOpen] = useState(readStyleOpenPreference);
   const [saveNotice, setSaveNotice] = useState<"idle" | "saved">("idle");
   const noticeTimerRef = useRef<number | null>(null);
   const [titleInput, setTitleInput] = useState(draft.title);
@@ -116,14 +129,6 @@ function DraftEditor({
       }
     };
   }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(STYLE_OPEN_KEY, String(styleOpen));
-    } catch {
-      // A blocked localStorage should not break the toggle for this session.
-    }
-  }, [styleOpen]);
 
   /**
    * Accept a new document; unless the snapshot is unchanged, autosave it to
@@ -214,6 +219,7 @@ function DraftEditor({
     titleValueRef.current = trimmed;
     setTitleInput(trimmed);
     brieflyShowSaved();
+    onDraftsChanged();
   };
 
   const handleTitleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -228,43 +234,34 @@ function DraftEditor({
 
   return (
     <div className="editor">
-      <header className="editor-topbar">
-        <button
-          type="button"
-          className="btn btn-ghost btn-icon"
-          aria-label="Back to gallery"
-          title="Back to gallery"
-          onClick={onBack}
-        >
-          ←
-        </button>
-        <input
-          className="title-input"
-          value={titleInput}
-          aria-label="Draft title"
-          spellCheck={false}
-          onChange={handleTitleChange}
-          onBlur={commitTitle}
-          onKeyDown={handleTitleKeyDown}
-        />
-        <div className="topbar-actions">
-          <span className="save-notice" aria-live="polite">
-            {saveNotice === "saved" ? "Saved" : ""}
-          </span>
-          <button
-            type="button"
-            className={styleOpen ? "btn btn-primary" : "btn btn-outline"}
-            aria-pressed={styleOpen}
-            title="Toggle the style sidebar"
-            onClick={() => setStyleOpen((open) => !open)}
-          >
-            Style
-          </button>
-        </div>
-      </header>
+      {slots.title
+        ? createPortal(
+            <input
+              className="title-input"
+              value={titleInput}
+              aria-label="Draft title"
+              spellCheck={false}
+              onChange={handleTitleChange}
+              onBlur={commitTitle}
+              onKeyDown={handleTitleKeyDown}
+            />,
+            slots.title,
+          )
+        : null}
+      {slots.actions
+        ? createPortal(
+            <span className="save-notice" aria-live="polite">
+              {saveNotice === "saved" ? "Saved" : ""}
+            </span>,
+            slots.actions,
+          )
+        : null}
+      {slots.inspector
+        ? createPortal(<StyleRail style={doc.style} onPatch={updateStyle} />, slots.inspector)
+        : null}
 
       <div className="editor-body">
-        <aside className="program-sidebar" aria-label="Program">
+        <section className="program-sidebar" aria-label="Program">
           <div className="sidebar-head">
             <span className="micro-label">Program</span>
             <button
@@ -309,7 +306,7 @@ function DraftEditor({
               <p>Program is valid.</p>
             )}
           </div>
-        </aside>
+        </section>
 
         <section className="editor-preview" aria-label="Preview">
           {errors.length > 0 ? (
@@ -323,14 +320,6 @@ function DraftEditor({
             </div>
           </div>
         </section>
-
-        {styleOpen ? (
-          <StyleRail
-            style={doc.style}
-            onPatch={updateStyle}
-            onHide={() => setStyleOpen(false)}
-          />
-        ) : null}
       </div>
     </div>
   );

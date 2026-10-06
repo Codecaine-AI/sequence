@@ -3,10 +3,12 @@
 @import "@codecaine-ai/design-system/layout.css";
 
 /*
- * Sequence Studio styles: a gallery landing page and a full-screen editor with
- * a top bar and side panels. Every value comes from the shared design system
- * (@codecaine-ai/design-system): the names below are this app's own knobs,
- * each pointing at a --ds-* token, and follow light and dark (data-theme).
+ * Sequence Studio styles: a gallery page and an editor, both inside the
+ * design-system app shell (layout.css: sidebar, topbar, inspector). Every value
+ * comes from the shared design system (@codecaine-ai/design-system): the names
+ * below are this app's own knobs, each pointing at a --ds-* token, and follow
+ * light and dark (data-theme on <html>). The few px values left are the
+ * studio's own geometry (pane widths, control sizes) with no equal token.
  */
 
 :root {
@@ -20,7 +22,6 @@
   --muted-foreground: var(--ds-color-text-muted);
   --destructive: var(--ds-color-status-danger-text);
   --border: var(--ds-color-border-default);
-  --input: var(--ds-color-border-default);
   --ring: var(--ds-color-focus-ring);
   --radius: var(--ds-radius-base);
   --mono: var(--ds-font-family-mono);
@@ -30,6 +31,12 @@
   font-family: var(--ds-font-family-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+/* The sidebar title is the app name: "Sequence Studio" at the shell's title
+   size needs 143px, and the 220px sidebar leaves 138px beside the toggle. */
+.ds-shell {
+  --ds-layout-sidebar-width: 232px;
 }
 
 * {
@@ -69,13 +76,15 @@ button {
 
 /* ---------- Buttons (canvas-studio feel) ---------- */
 
+/* Sized like the shell's buttons (layout.css .ds-shell-button): the primary
+   action sits in the topbar beside them. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 0 14px;
+  gap: var(--ds-space-1-5);
+  min-height: var(--ds-space-8);
+  padding: 0 var(--ds-space-3);
   border: var(--ds-border-width-hairline) solid transparent;
   border-radius: var(--radius);
   background: transparent;
@@ -89,9 +98,10 @@ button {
     color var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
 }
 
+/* The shell's disabled pattern: faint text, no dimmed fill. */
 .btn:disabled {
+  color: var(--ds-color-text-faint);
   cursor: default;
-  opacity: 0.45;
 }
 
 .btn-primary {
@@ -111,8 +121,7 @@ button {
   background: var(--card);
 }
 
-.btn-outline:hover:not(:disabled),
-.btn-ghost:hover:not(:disabled) {
+.btn-outline:hover:not(:disabled) {
   background: var(--muted);
 }
 
@@ -120,14 +129,6 @@ button {
   min-height: 30px;
   padding: 0 10px;
   font-size: var(--ds-font-size-ui-xs);
-}
-
-.btn-icon {
-  width: 32px;
-  min-height: 32px;
-  padding: 0;
-  /* The glyph (←) is the button's icon: sized to the 16px icon box. */
-  font-size: var(--ds-space-4);
 }
 
 .micro-label {
@@ -141,55 +142,17 @@ button {
 
 /* ---------- Gallery ---------- */
 
+/* The shell's main sets the lane (wide) and the page padding. */
 .gallery {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  max-width: 1040px;
-  min-height: 100vh;
-  margin: 0 auto;
-  padding: 32px;
-}
-
-.gallery-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: var(--ds-border-width-hairline) solid var(--border);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.brand-mark {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border-radius: var(--radius);
-  background: var(--primary);
-  color: var(--primary-foreground);
-  box-shadow: var(--ds-shadow-glass);
-  /* The glyph (↦) is the mark's icon: sized to a 20px icon box. */
-  font-size: var(--ds-space-5);
-}
-
-.brand h1 {
-  color: var(--ds-color-text-ink);
-  font-size: var(--ds-font-size-reading);
-  font-weight: var(--ds-font-weight-semibold);
-  letter-spacing: var(--ds-letter-spacing-title);
+  gap: var(--ds-space-6);
 }
 
 .gallery-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--ds-space-3);
 }
 
 .empty-note {
@@ -200,7 +163,7 @@ button {
 .card-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--ds-space-3);
 }
 
 .doc-card {
@@ -220,6 +183,12 @@ button {
   background: var(--ds-color-fill-hover);
 }
 
+/* fill.hover and fill.chip are nearly equal, so on a hovered card the tag
+   takes the card's resting panel fill and stays visible in both themes. */
+.doc-card:hover .card-tag {
+  background: var(--card);
+}
+
 .card-thumb {
   position: relative;
   display: block;
@@ -237,7 +206,7 @@ button {
   width: 300%;
   height: 300%;
   justify-content: center;
-  padding: 24px;
+  padding: var(--ds-space-6);
   transform: scale(0.3333);
   transform-origin: 0 0;
   pointer-events: none;
@@ -251,8 +220,8 @@ button {
 .card-title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-3) var(--ds-space-4);
 }
 
 .card-title {
@@ -268,7 +237,7 @@ button {
 
 .card-tag {
   flex: none;
-  padding: 2px 8px;
+  padding: var(--ds-space-0-5) var(--ds-space-2);
   border-radius: var(--ds-radius-pill);
   background: var(--secondary);
   color: var(--muted-foreground);
@@ -280,10 +249,10 @@ button {
 
 .card-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: var(--ds-space-2);
+  right: var(--ds-space-2);
   display: flex;
-  gap: 4px;
+  gap: var(--ds-space-1);
   opacity: 0;
   transition: opacity var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
 }
@@ -294,7 +263,7 @@ button {
 }
 
 .card-action {
-  padding: 4px 8px;
+  padding: var(--ds-space-1) var(--ds-space-2);
   border: var(--ds-border-width-hairline) solid var(--border);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--ds-color-surface-panel) 92%, transparent);
@@ -322,68 +291,67 @@ button {
 }
 
 @media (max-width: 640px) {
-  .gallery {
-    padding: 20px;
-  }
-
   .card-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* ---------- Editor shell ---------- */
+/* ---------- Editor ---------- */
+
+/* The editor is a tool view on the full lane: its panes fill the workspace
+   under the topbar edge to edge, so the shell drops the content padding while
+   the editor is on screen (a shell-scoped layout override, guide/layout.md). */
+.ds-shell:has(.editor) {
+  --ds-layout-content-padding-top: var(--ds-space-0);
+  --ds-layout-content-padding-x: var(--ds-space-0);
+  --ds-layout-content-padding-bottom: var(--ds-space-0);
+}
 
 .editor {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - var(--ds-layout-topbar-height));
+  height: calc(100dvh - var(--ds-layout-topbar-height));
   overflow: hidden;
   background: var(--background);
 }
 
-.editor-topbar {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 8px;
-  height: 52px;
-  padding: 0 12px;
-  border-bottom: var(--ds-border-width-hairline) solid var(--border);
-  background: var(--card);
+/* The topbar h1 holds the editable draft title. The slot's padding leaves
+   room for the input's focus ring inside the title's clipping box. */
+.studio-title-slot {
+  display: block;
+  padding: var(--ds-space-1);
+}
+
+/* The editor's save notice joins the topbar actions row. */
+.studio-actions-slot {
+  display: contents;
 }
 
 .title-input {
-  flex: 1;
-  min-width: 0;
-  max-width: 420px;
-  height: 32px;
-  padding: 0 8px;
+  display: block;
+  min-width: var(--ds-space-16);
+  max-width: 100%;
+  height: var(--ds-space-8);
+  padding: 0 var(--ds-space-2);
   border: var(--ds-border-width-hairline) solid transparent;
   border-radius: var(--radius);
   background: transparent;
   color: var(--ds-color-text-ink);
-  font-size: var(--ds-font-size-ui-lg);
-  font-weight: var(--ds-font-weight-semibold);
+  /* Font and tracking come from the topbar title (h1). */
+  letter-spacing: inherit;
   text-overflow: ellipsis;
+  field-sizing: content;
 }
 
 .title-input:hover {
   border-color: var(--border);
 }
 
-.title-input:focus,
-.title-input:focus-visible {
-  border-color: var(--ds-color-focus-ring);
+/* While editing it reads as a field; the global focus ring marks focus. */
+.title-input:focus {
+  border-color: var(--border);
   background: var(--card);
-  outline: none;
-  box-shadow: 0 0 0 var(--ds-border-width-focus) color-mix(in srgb, var(--ds-color-focus-ring) 35%, transparent);
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
 }
 
 .save-notice {
@@ -416,7 +384,7 @@ button {
   flex: none;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--ds-space-2);
   padding: 10px 14px;
   border-bottom: var(--ds-border-width-hairline) solid var(--border);
 }
@@ -426,7 +394,7 @@ button {
   width: 100%;
   min-height: 0;
   resize: none;
-  padding: 14px 16px;
+  padding: 14px var(--ds-space-4);
   border: 0;
   background: var(--ds-color-surface-page);
   color: var(--ds-color-text-body);
@@ -467,12 +435,12 @@ button {
 }
 
 .program-status ul {
-  margin: 6px 0 0;
+  margin: var(--ds-space-1-5) 0 0;
   padding-left: 18px;
 }
 
 .program-status li + li {
-  margin-top: 4px;
+  margin-top: var(--ds-space-1);
 }
 
 .status-title {
@@ -500,9 +468,9 @@ button {
   min-width: 100%;
   min-height: 100%;
   place-items: start center;
-  padding: 48px;
+  padding: var(--ds-space-12);
   background-image: radial-gradient(var(--ds-color-border-default) 1px, transparent 1px);
-  background-size: 16px 16px;
+  background-size: var(--ds-space-4) var(--ds-space-4);
 }
 
 .diagram-card {
@@ -511,16 +479,18 @@ button {
   box-shadow: var(--ds-shadow-glass);
 }
 
+/* A hairline in the warning line color edges it on the dotted canvas (it had a
+   glass shadow); the border plus space.1 padding keeps the old 5px height. */
 .stale-pill {
   position: absolute;
-  top: 12px;
+  top: var(--ds-space-3);
   left: 50%;
   z-index: var(--ds-z-raised);
-  padding: 5px 12px;
+  padding: var(--ds-space-1) var(--ds-space-3);
+  border: var(--ds-border-width-hairline) solid var(--ds-color-status-warning-line);
   border-radius: var(--ds-radius-pill);
   background: var(--ds-color-status-warning-soft);
   color: var(--ds-color-status-warning-text);
-  box-shadow: var(--ds-shadow-glass);
   font-size: var(--ds-font-size-ui-2xs);
   font-weight: var(--ds-font-weight-semibold);
   transform: translateX(-50%);
@@ -528,61 +498,25 @@ button {
 
 /* ---------- Style rail ---------- */
 
+/* The shell's inspector frames the rail: its header holds the title and the
+   close button, and its body pads and scrolls. */
 .style-rail {
   display: flex;
-  flex: none;
   flex-direction: column;
-  width: 320px;
-  min-height: 0;
-  border-left: var(--ds-border-width-hairline) solid var(--border);
-  background: var(--card);
-}
-
-.rail-head {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  height: 44px;
-  padding: 0 12px;
-  border-bottom: var(--ds-border-width-hairline) solid var(--border);
-}
-
-.rail-head-title {
-  font-size: var(--ds-font-size-ui-sm);
-  font-weight: var(--ds-font-weight-semibold);
-  letter-spacing: var(--ds-letter-spacing-micro);
-  text-transform: uppercase;
-}
-
-.rail-hide {
-  display: grid;
-  width: 26px;
-  height: 26px;
-  place-items: center;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--muted-foreground);
-}
-
-.rail-hide:hover {
-  background: var(--muted);
-  color: var(--foreground);
 }
 
 .rail-tabs {
   display: flex;
   flex: none;
-  gap: 4px;
-  padding: 8px;
+  gap: var(--ds-space-1);
+  margin-bottom: var(--ds-space-3);
+  padding: var(--ds-space-2);
   border-bottom: var(--ds-border-width-hairline) solid var(--border);
 }
 
 .rail-tab {
   flex: 1;
-  padding: 5px 8px;
+  padding: 5px var(--ds-space-2);
   border: 0;
   border-radius: var(--radius);
   background: transparent;
@@ -602,15 +536,8 @@ button {
   color: var(--ds-color-blue-text);
 }
 
-.rail-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 12px;
-}
-
 .rail-section {
-  padding-top: 12px;
+  padding-top: var(--ds-space-3);
   border-top: var(--ds-border-width-hairline) solid var(--border);
 }
 
@@ -620,13 +547,13 @@ button {
 }
 
 .rail-section + .rail-section {
-  margin-top: 12px;
+  margin-top: var(--ds-space-3);
 }
 
 .rail-section-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--ds-space-1-5);
 }
 
 .rail-section-toggle {
@@ -634,7 +561,7 @@ button {
   flex: 1;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--ds-space-2);
   min-width: 0;
   padding: 0;
   border: 0;
@@ -662,7 +589,7 @@ button {
 
 .rail-reset {
   flex: none;
-  padding: 2px 7px;
+  padding: var(--ds-space-0-5) 7px;
   border: var(--ds-border-width-hairline) solid var(--border);
   border-radius: var(--ds-radius-pill);
   background: transparent;
@@ -691,8 +618,8 @@ button {
 .rail-row--color {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 28px;
+  gap: var(--ds-space-2);
+  min-height: var(--ds-space-7);
 }
 
 .rail-row--color .rail-row-label {
@@ -715,7 +642,7 @@ button {
   flex: none;
   width: 26px;
   height: 26px;
-  padding: 2px;
+  padding: var(--ds-space-0-5);
   border: var(--ds-border-width-hairline) solid var(--border);
   border-radius: var(--radius);
   background: var(--card);
@@ -730,30 +657,58 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--ds-space-2);
 }
 
 .rail-range {
   width: 100%;
-  margin-top: 6px;
+  margin-top: var(--ds-space-1-5);
   accent-color: var(--ds-color-accent);
   cursor: pointer;
 }
 
 /* ---------- Status page ---------- */
 
+/* Inside the shell's main: the topbar names the page. */
 .status-page {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  min-height: 100vh;
-  padding: 32px;
+  gap: var(--ds-space-4);
+  padding: var(--ds-space-8);
   text-align: center;
 }
 
 .status-page p {
   color: var(--muted-foreground);
   font-size: var(--ds-font-size-ui-lg);
+}
+
+/* ---------- Narrow viewports ---------- */
+
+/* 800px is the shell's narrow breakpoint (layout.css, NARROW_VIEWPORT_QUERY):
+   the Program pane stacks over the preview, so nothing scrolls sideways. */
+@media (max-width: 800px) {
+  .editor-body {
+    flex-direction: column;
+  }
+
+  .program-sidebar {
+    flex: 1;
+    width: auto;
+    border-right: 0;
+    border-bottom: var(--ds-border-width-hairline) solid var(--border);
+  }
+}
+
+/* ---------- Preferences ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .doc-card,
+  .card-actions,
+  .rail-chevron {
+    transition: none;
+  }
 }

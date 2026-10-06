@@ -7,7 +7,7 @@ import {
 import { useState, type ReactNode } from "react";
 
 /**
- * Style rail — right-docked panel for live-tuning a document's style,
+ * Style rail — the editor's inspector content for live-tuning a document's style,
  * modeled on the docs-system StyleRail profile: two pill tabs (Colors /
  * Layout), stacked collapsible sections with uppercase micro-labels and
  * chevrons, kind-aware rows (color swatch + hex, 0–1 opacity sliders,
@@ -20,6 +20,9 @@ import { useState, type ReactNode } from "react";
  * their colors from the shared design-system tokens, so the rail shows only
  * the size and density controls on the Layout tab. Its code stays so the
  * tab can come back.
+ *
+ * The app shell's inspector frames it: the inspector header carries the
+ * "Style" title and the close button, and its body scrolls.
  */
 
 export type PatchSequenceStyle = (patch: SequenceStylePatch) => void;
@@ -222,11 +225,9 @@ const ratio = (value: number): string => value.toFixed(2);
 export function StyleRail({
   style,
   onPatch,
-  onHide,
 }: {
   style: SequenceStyle;
   onPatch: PatchSequenceStyle;
-  onHide: () => void;
 }) {
   const [tab, setTab] = useState<RailTab>(RAIL_TABS[0]);
 
@@ -243,23 +244,7 @@ export function StyleRail({
     values.some((value) => value !== undefined);
 
   return (
-    <aside aria-label="Style" className="style-rail">
-      <div className="rail-head">
-        <span className="rail-head-title">Style</span>
-        <button
-          aria-label="Hide style controls"
-          className="rail-hide"
-          onClick={onHide}
-          title="Hide style controls"
-          type="button"
-        >
-          <svg aria-hidden="true" fill="none" height="14" viewBox="0 0 14 14" width="14">
-            <rect height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" width="10" x="2" y="2" />
-            <path d="M9 2 V12" stroke="currentColor" strokeWidth="1.2" />
-          </svg>
-        </button>
-      </div>
-
+    <div className="style-rail">
       {RAIL_TABS.length > 1 ? (
         <div className="rail-tabs" role="tablist">
           {RAIL_TABS.map((id) => (
@@ -715,6 +700,6 @@ export function StyleRail({
           </>
         )}
       </div>
-    </aside>
+    </div>
   );
 }

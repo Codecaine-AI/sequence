@@ -1,22 +1,16 @@
 import { SequenceViewer, type SequenceDocument } from "@codecaine-ai/sequence";
-import { useState, type KeyboardEvent, type MouseEvent } from "react";
-import {
-  createDraft,
-  deleteDraft,
-  listDrafts,
-  renameDraft,
-  type StudioDraft,
-} from "./draft-store";
-import {
-  MINIMAL_FIXTURE,
-  STUDIO_FIXTURES,
-  cloneSequenceDocument,
-  nextDraftId,
-  type StudioFixture,
-} from "./fixtures";
+import type { KeyboardEvent, MouseEvent } from "react";
+import { deleteDraft, renameDraft, type StudioDraft } from "./draft-store";
+import { STUDIO_FIXTURES, type StudioFixture } from "./fixtures";
 
 type GalleryPageProps = {
+  /** The stored drafts, newest first (App reads them for the nav too). */
+  drafts: StudioDraft[];
   onOpenDraft: (draftId: string) => void;
+  /** Copies a document into a new draft and opens it. */
+  onSeedDraft: (source: SequenceDocument, title: string) => void;
+  /** A draft was renamed or deleted: App re-reads the store. */
+  onDraftsChanged: () => void;
 };
 
 /**
@@ -70,57 +64,31 @@ function CardAction({
   );
 }
 
-export function GalleryPage({ onOpenDraft }: GalleryPageProps) {
-  const [drafts, setDrafts] = useState<StudioDraft[]>(listDrafts);
-
-  const refreshDrafts = () => setDrafts(listDrafts());
-
-  const seedDraft = (source: SequenceDocument, title: string) => {
-    const document = cloneSequenceDocument(source);
-    document.id = nextDraftId(listDrafts());
-    const created = createDraft(document, title);
-    onOpenDraft(created.id);
-  };
-
+export function GalleryPage({
+  drafts,
+  onOpenDraft,
+  onSeedDraft,
+  onDraftsChanged,
+}: GalleryPageProps) {
   const openFixture = (fixture: StudioFixture) => {
-    seedDraft(fixture.document, fixture.label);
-  };
-
-  const createNewSequence = () => {
-    seedDraft(MINIMAL_FIXTURE.document, "Untitled sequence");
+    onSeedDraft(fixture.document, fixture.label);
   };
 
   const renameDraftCard = (draft: StudioDraft) => {
     const requested = window.prompt("Rename draft", draft.title)?.trim();
     if (!requested || requested === draft.title) return;
     renameDraft(draft.id, requested);
-    refreshDrafts();
+    onDraftsChanged();
   };
 
   const deleteDraftCard = (draft: StudioDraft) => {
     if (!window.confirm(`Delete "${draft.title}"?`)) return;
     deleteDraft(draft.id);
-    refreshDrafts();
+    onDraftsChanged();
   };
 
   return (
-    <main className="gallery">
-      <header className="gallery-head">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            ↦
-          </span>
-          <h1>Sequence Studio</h1>
-        </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={createNewSequence}
-        >
-          <span aria-hidden="true">+</span> New sequence
-        </button>
-      </header>
-
+    <div className="gallery">
       <section className="gallery-section" aria-label="Examples">
         <h2 className="micro-label">Examples</h2>
         <div className="card-grid">
@@ -179,6 +147,6 @@ export function GalleryPage({ onOpenDraft }: GalleryPageProps) {
           </div>
         )}
       </section>
-    </main>
+    </div>
   );
 }

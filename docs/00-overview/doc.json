@@ -1,0 +1,768 @@
+{
+  "schemaVersion": 1,
+  "id": "00-overview",
+  "title": "Sequence architecture",
+  "root": "b-00-overview-root-30",
+  "blocks": {
+    "b-00-overview-root-30": {
+      "id": "b-00-overview-root-30",
+      "type": "paragraph",
+      "props": {},
+      "children": [
+        "b-00-overview-sequence-is-a-sequence-d-2",
+        "b-00-overview-the-engine-follows-one-d-3",
+        "b-00-overview-text-4",
+        "b-00-overview-structure-flows-into-lay-5",
+        "b-00-overview-structure-flows-into-lay-5-p2",
+        "b-00-overview-structure-flows-into-lay-5-p3",
+        "b-00-overview-structure-flows-into-lay-5-p4",
+        "b-00-overview-notes-keep-their-fixed-1-6",
+        "b-00-overview-inherited-layout-lab-con-7",
+        "b-00-overview-the-language-carries-for-8",
+        "b-00-overview-json-remains-authorita-9",
+        "b-00-overview-rewrites-replace-the-w-11",
+        "b-00-overview-numbers-are-identity-13",
+        "b-00-overview-structure-goes-in-geo-15",
+        "b-00-overview-style-is-fully-separat-17",
+        "b-00-overview-expansion-is-determini-19",
+        "b-00-overview-this-separation-keeps-pr-21",
+        "b-00-overview-package-map-22",
+        "b-00-overview-path-package-respo-23-table",
+        "b-00-overview-the-engine-is-a-raw-type-24",
+        "b-00-overview-future-docs-system-integ-25",
+        "b-00-overview-the-intended-docs-system-26",
+        "b-00-overview-text-27",
+        "b-00-overview-the-docs-model-should-se-28",
+        "b-00-overview-that-arrangement-permits-29"
+      ]
+    },
+    "b-00-overview-sequence-is-a-sequence-d-2": {
+      "id": "b-00-overview-sequence-is-a-sequence-d-2",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Sequence is a sequence-diagram engine ("
+        },
+        {
+          "insert": "@codecaine-ai/sequence",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ") plus a standalone studio ("
+        },
+        {
+          "insert": "@codecaine-ai/sequence-studio",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "). Its JSON "
+        },
+        {
+          "insert": "SequenceDocument",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is the source of truth. The text language is a compact, disposable projection for agents: serialize the current document, rewrite the whole program, parse it, then replace the document structure while preserving its separately managed style."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-the-engine-follows-one-d-3": {
+      "id": "b-00-overview-the-engine-follows-one-d-3",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The engine follows one deterministic path:"
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-text-4": {
+      "id": "b-00-overview-text-4",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "SequenceDocument (JSON source of truth)\n  │\n  ├─ serializeSequenceProgram ─→ disposable text projection\n  │                                  │\n  │                             whole-program agent rewrite\n  │                                  │\n  │                         parseSequenceProgram\n  │                                  │\n  │                    validated replacement structure\n  │                     + preserved document style/id\n  │                                  │\n  └────────────────────────────────────────┘\n                         │\n                   layoutSequence\n             deterministic geometry only\n                         │\n                    SVG rendering\n                         │\n          SequenceViewer / standalone SVG string"
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-structure-flows-into-lay-5": {
+      "id": "b-00-overview-structure-flows-into-lay-5",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Structure flows into layout. Coordinates never flow back into the document or language. "
+        },
+        {
+          "insert": "layoutSequence",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is pure and DOM-free. Its only environment input is text metrics."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-structure-flows-into-lay-5-p2": {
+      "id": "b-00-overview-structure-flows-into-lay-5-p2",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "By default widths and line breaks come from "
+        },
+        {
+          "insert": "@codecaine-ai/text-measure",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", which is exact once the host loads its bundled fonts ("
+        },
+        {
+          "insert": "useHarfBuzz()",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " in Bun / Node, "
+        },
+        {
+          "insert": "fonts.css",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " plus "
+        },
+        {
+          "insert": "useBrowserFonts()",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " in a browser) and approximate until then. "
+        },
+        {
+          "insert": "SequenceDiagram",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " lays out again whenever text-measure switches backend. Hosts that call "
+        },
+        {
+          "insert": "layoutSequence",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " themselves re-run it on "
+        },
+        {
+          "insert": "onBackendChange",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-structure-flows-into-lay-5-p3": {
+      "id": "b-00-overview-structure-flows-into-lay-5-p3",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "A host can instead pass a measuring function, or "
+        },
+        {
+          "insert": "{ measure, wrap }",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " when it also breaks lines. The same input threads through "
+        },
+        {
+          "insert": "SequenceViewer",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", "
+        },
+        {
+          "insert": "SequenceDiagram",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", and "
+        },
+        {
+          "insert": "renderSequenceSvgString",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". "
+        },
+        {
+          "insert": "SEQUENCE_TYPOGRAPHY",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " gives the font of every text role, and layout and the SVG renderer both read it, so text is measured in the font it is drawn in."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-structure-flows-into-lay-5-p4": {
+      "id": "b-00-overview-structure-flows-into-lay-5-p4",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Single-line labels collapse runs of spaces and line breaks to one space ("
+        },
+        {
+          "insert": "singleLineText",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "), code points XML forbids are dropped, and the renderer emits that same string. If text-measure's line breaking fails (for example when another library initialized Pretext first), notes and titles break greedily over measured widths and the console gets one warning. SVG text uses "
+        },
+        {
+          "insert": "text-rendering=\"geometricPrecision\"",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", so Chromium keeps the measured widths when a diagram is displayed scaled. Rendering consumes the resulting geometry without becoming a second layout engine."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-notes-keep-their-fixed-1-6": {
+      "id": "b-00-overview-notes-keep-their-fixed-1-6",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Notes keep their fixed 160 px column and wrap inside it, growing taller per line. Explicit line breaks render as separate lines, and space runs collapse as in CSS "
+        },
+        {
+          "insert": "white-space: pre-line",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". Columns widen so side and over notes stop short of the neighbouring lifeline and its activation bars, and so message labels keep their room when nested activations move an arrow's end inward. A title wider than the diagram wraps at the content width and never widens the diagram. The participant row sits below the title's last line, at least one row gap below the top margin."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-inherited-layout-lab-con-7": {
+      "id": "b-00-overview-inherited-layout-lab-con-7",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Inherited layout-lab conventions"
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-the-language-carries-for-8": {
+      "id": "b-00-overview-the-language-carries-for-8",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The language carries forward the canvas layout-lab v3 approach:"
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-json-remains-authorita-9": {
+      "id": "b-00-overview-json-remains-authorita-9",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "JSON remains authoritative.",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-00-overview-json-remains-authorita-9-s1"
+      ]
+    },
+    "b-00-overview-json-remains-authorita-9-s1": {
+      "id": "b-00-overview-json-remains-authorita-9-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "The program is an agent-facing view, not a second persistence format."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-rewrites-replace-the-w-11": {
+      "id": "b-00-overview-rewrites-replace-the-w-11",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Rewrites replace the whole program.",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-00-overview-rewrites-replace-the-w-11-s1",
+        "b-00-overview-rewrites-replace-the-w-11-s2"
+      ]
+    },
+    "b-00-overview-rewrites-replace-the-w-11-s1": {
+      "id": "b-00-overview-rewrites-replace-the-w-11-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "There is no text patch DSL."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-rewrites-replace-the-w-11-s2": {
+      "id": "b-00-overview-rewrites-replace-the-w-11-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Parsing either produces a validated replacement structure or line-numbered errors."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-numbers-are-identity-13": {
+      "id": "b-00-overview-numbers-are-identity-13",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Numbers are identity.",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-00-overview-numbers-are-identity-13-s1"
+      ]
+    },
+    "b-00-overview-numbers-are-identity-13-s1": {
+      "id": "b-00-overview-numbers-are-identity-13-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Participants are declared densely as "
+        },
+        {
+          "insert": "1..n",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", in column order, and every message or note refers to those numbers."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-structure-goes-in-geo-15": {
+      "id": "b-00-overview-structure-goes-in-geo-15",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Structure goes in, geometry comes out.",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-00-overview-structure-goes-in-geo-15-s1",
+        "b-00-overview-structure-goes-in-geo-15-s2"
+      ]
+    },
+    "b-00-overview-structure-goes-in-geo-15-s1": {
+      "id": "b-00-overview-structure-goes-in-geo-15-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Two-space indentation expresses nesting."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-structure-goes-in-geo-15-s2": {
+      "id": "b-00-overview-structure-goes-in-geo-15-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "No position, size, path, or other coordinate appears in the text."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-style-is-fully-separat-17": {
+      "id": "b-00-overview-style-is-fully-separat-17",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Style is fully separated.",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-00-overview-style-is-fully-separat-17-s1",
+        "b-00-overview-style-is-fully-separat-17-s2"
+      ]
+    },
+    "b-00-overview-style-is-fully-separat-17-s1": {
+      "id": "b-00-overview-style-is-fully-separat-17-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Colors and scale live in "
+        },
+        {
+          "insert": "SequenceDocument.style",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-style-is-fully-separat-17-s2": {
+      "id": "b-00-overview-style-is-fully-separat-17-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Serialization never emits them, and a program rewrite preserves the existing style."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-expansion-is-determini-19": {
+      "id": "b-00-overview-expansion-is-determini-19",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Expansion is deterministic.",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-00-overview-expansion-is-determini-19-s1"
+      ]
+    },
+    "b-00-overview-expansion-is-determini-19-s1": {
+      "id": "b-00-overview-expansion-is-determini-19-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Parsing regenerates stable internal ids and layout derives rows, frames, lifelines, arrow docking, notes, and activation bars from structure alone."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-this-separation-keeps-pr-21": {
+      "id": "b-00-overview-this-separation-keeps-pr-21",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "This separation keeps programs readable to an agent while allowing the JSON document and renderer to retain richer engine concerns. In particular, activations are inferred from synchronous calls and returns rather than stated in the grammar."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-package-map-22": {
+      "id": "b-00-overview-package-map-22",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Package map"
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-path-package-respo-23-table": {
+      "id": "b-00-overview-path-package-respo-23-table",
+      "type": "structured-table",
+      "props": {
+        "columns": [
+          "Path",
+          "Package",
+          "Responsibility"
+        ],
+        "rows": [
+          [
+            [
+              {
+                "insert": "packages/sequence",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            [
+              {
+                "insert": "@codecaine-ai/sequence",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "Public schema and validation, canonical language parser/serializer, deterministic layout, SVG rendering and React embed surface, agent operations, theme mapping, and fixtures."
+          ],
+          [
+            [
+              {
+                "insert": "packages/studio",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            [
+              {
+                "insert": "@codecaine-ai/sequence-studio",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "Minimal Vite+React workbench for editing programs, seeing line-numbered parse errors, previewing the last valid document, managing local drafts, and changing style independently of text."
+          ],
+          [
+            [
+              {
+                "insert": "docs",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "None",
+            "Architecture, language reference, and provenance."
+          ],
+          [
+            [
+              {
+                "insert": "design-reference",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "None",
+            "UML 2.x visual references used to establish the notation and rendering vocabulary."
+          ]
+        ]
+      },
+      "children": []
+    },
+    "b-00-overview-the-engine-is-a-raw-type-24": {
+      "id": "b-00-overview-the-engine-is-a-raw-type-24",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The engine is a raw-TypeScript workspace package with granular exports for the schema, language, layout, agent schema, and theme. The studio is a consumer of that public surface, not a privileged rendering or parsing implementation."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-future-docs-system-integ-25": {
+      "id": "b-00-overview-future-docs-system-integ-25",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Future docs-system integration"
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-the-intended-docs-system-26": {
+      "id": "b-00-overview-the-intended-docs-system-26",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The intended docs-system integration keeps the same narrow boundaries:"
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-text-27": {
+      "id": "b-00-overview-text-27",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "docs host\n  ├─ external/sequence             sequence repository as a submodule\n  ├─ agent-schema-only boundary   operations exposed to the docs model\n  └─ host-injected embed          host supplies document/state plumbing\n       └─ SequenceViewer          engine-owned read-only SVG surface"
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-the-docs-model-should-se-28": {
+      "id": "b-00-overview-the-docs-model-should-se-28",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The docs model should see only the agent operation schema: rewrite the complete program with "
+        },
+        {
+          "insert": "setProgram",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", adjust presentation with "
+        },
+        {
+          "insert": "setStyle",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", or set the title explicitly. It should not depend on studio state, renderer internals, or layout coordinates. The host owns persistence and injects the current document into the embed. Sequence owns validation, deterministic expansion, and drawing."
+        }
+      ],
+      "children": []
+    },
+    "b-00-overview-that-arrangement-permits-29": {
+      "id": "b-00-overview-that-arrangement-permits-29",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "That arrangement permits the repository to live at "
+        },
+        {
+          "insert": "external/sequence",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " without coupling the docs system to Sequence's workspace tooling or editor UI. It also preserves the core invariant across standalone and embedded use: JSON is the source of truth, text is disposable, and styling stays outside the language."
+        }
+      ],
+      "children": []
+    }
+  }
+}

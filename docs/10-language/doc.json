@@ -1,0 +1,1900 @@
+{
+  "schemaVersion": 1,
+  "id": "language",
+  "title": "The Sequence Language, v1 Grammar",
+  "root": "b-language-root-85",
+  "blocks": {
+    "b-language-root-85": {
+      "id": "b-language-root-85",
+      "type": "paragraph",
+      "props": {},
+      "children": [
+        "b-language-the-language-is-a-derive-2",
+        "b-language-a-program-has-three-part-3",
+        "b-language-the-optional-title-4",
+        "b-language-participants-decla-6",
+        "b-language-the-sequence-one-7",
+        "b-language-in-canonical-form-the-t-9",
+        "b-language-reference-numbers-10",
+        "b-language-every-participant-line-d-11",
+        "b-language-numbers-are-a-projection-12",
+        "b-language-the-optional-title-13",
+        "b-language-title-login-flow-14-code",
+        "b-language-the-title-line-is-legal-15",
+        "b-language-participants-16",
+        "b-language-participant-1-text-user-17-code",
+        "b-language-fields-are-in-fixed-orde-18",
+        "b-language-field-required-val-19-table",
+        "b-language-the-only-explicit-non-de-20",
+        "b-language-the-sequence-21",
+        "b-language-the-sequence-block-is-ma-22",
+        "b-language-seq-1-2-text-req-23-code",
+        "b-language-seq-is-written-at-the-24",
+        "b-language-messages-25",
+        "b-language-1-2-text-input-userna-26-code",
+        "b-language-the-form-is-from-arr-27",
+        "b-language-arrow-message-line-28-table",
+        "b-language-a-self-message-uses-the-29",
+        "b-language-2-2-text-validate-30-code",
+        "b-language-combined-fragments-31",
+        "b-language-fragments-are-indentatio-32",
+        "b-language-alt-alternatives-33",
+        "b-language-alt-guard-available-34-code",
+        "b-language-an-alt-has-one-or-more-35",
+        "b-language-opt-optional-behavio-36",
+        "b-language-opt-guard-needs-confirm-37-code",
+        "b-language-an-opt-has-exactly-one-38",
+        "b-language-loop-repeated-behavi-39",
+        "b-language-loop-guard-for-each-ord-40-code",
+        "b-language-a-loop-has-exactly-one-41",
+        "b-language-fragments-may-nest-inde-42",
+        "b-language-loop-guard-for-each-ord-43-code",
+        "b-language-there-is-no-closing-keyw-44",
+        "b-language-notes-45",
+        "b-language-note-over-2-text-valida-46-code",
+        "b-language-the-form-is-note-side-47",
+        "b-language-value-syntax-48",
+        "b-language-values-used-in-labeled-f-49",
+        "b-language-text-user-text-input-50-code",
+        "b-language-field-names-and-field-or-51",
+        "b-language-canonical-form-52",
+        "b-language-serializesequenceprogra-53",
+        "b-language-canon-g1",
+        "b-language-canon-g2",
+        "b-language-canon-g3",
+        "b-language-for-any-valid-document-63",
+        "b-language-serialize-parse-serializ-64-code",
+        "b-language-the-parser-creates-a-se-65",
+        "b-language-complete-example-66",
+        "b-language-participant-1-text-user-67-code",
+        "b-language-read-aloud-three-partic-69",
+        "b-language-error-behavior-70",
+        "b-language-parsesequenceprogram-te-71",
+        "b-language-ts-72",
+        "b-language-the-parser-collects-mult-73",
+        "b-language-deliberately-absent-74",
+        "b-language-styling-accent-col-75",
+        "b-language-coordinates-and-geomet-77",
+        "b-language-document-and-item-ids-79",
+        "b-language-activations-activa-81",
+        "b-language-patch-commands-an-83"
+      ]
+    },
+    "b-language-the-language-is-a-derive-2": {
+      "id": "b-language-the-language-is-a-derive-2",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The language is a derived, disposable view of a sequence document. The serializer writes it, an agent rewrites the whole program, and the parser expands it back into document structure. The JSON "
+        },
+        {
+          "insert": "SequenceDocument",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " remains the source of truth. The language is optimized for "
+        },
+        {
+          "insert": "clarity over compression",
+          "attributes": {
+            "bold": true
+          }
+        },
+        {
+          "insert": ": every value is labeled, every reference is a declared number, and indentation is the only nesting syntax."
+        }
+      ],
+      "children": []
+    },
+    "b-language-a-program-has-three-part-3": {
+      "id": "b-language-a-program-has-three-part-3",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "A program has three parts, in this order:"
+        }
+      ],
+      "children": []
+    },
+    "b-language-the-optional-title-4": {
+      "id": "b-language-the-optional-title-4",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "The optional title.",
+          "attributes": {
+            "bold": true
+          }
+        },
+        {
+          "insert": " One "
+        },
+        {
+          "insert": "title",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " line, present if and only if the document has a title."
+        }
+      ],
+      "children": []
+    },
+    "b-language-participants-decla-6": {
+      "id": "b-language-participants-decla-6",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "Participants.",
+          "attributes": {
+            "bold": true
+          }
+        },
+        {
+          "insert": " Declarations in left-to-right column order."
+        }
+      ],
+      "children": []
+    },
+    "b-language-the-sequence-one-7": {
+      "id": "b-language-the-sequence-one-7",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "The sequence.",
+          "attributes": {
+            "bold": true
+          }
+        },
+        {
+          "insert": " One "
+        },
+        {
+          "insert": "seq",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " block containing messages, combined fragments, and notes in top-to-bottom order."
+        }
+      ],
+      "children": []
+    },
+    "b-language-in-canonical-form-the-t-9": {
+      "id": "b-language-in-canonical-form-the-t-9",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "In canonical form, the title (when present) is immediately followed by the participant declarations. Exactly one blank line separates the participants from "
+        },
+        {
+          "insert": "seq",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". Blank lines do not create nesting. Tabs are an error. Indentation is exactly 2 spaces per level. "
+        },
+        {
+          "insert": "seq",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is at the left margin, and every item in it is indented by at least one level."
+        }
+      ],
+      "children": []
+    },
+    "b-language-reference-numbers-10": {
+      "id": "b-language-reference-numbers-10",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Reference numbers"
+        }
+      ],
+      "children": []
+    },
+    "b-language-every-participant-line-d-11": {
+      "id": "b-language-every-participant-line-d-11",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Every participant line declares a positive integer. Numbers are dense and in declaration order: "
+        },
+        {
+          "insert": "1",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", "
+        },
+        {
+          "insert": "2",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", …, "
+        },
+        {
+          "insert": "n",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". All messages and notes refer to participants by those numbers. The number "
+        },
+        {
+          "insert": "is",
+          "attributes": {
+            "bold": true
+          }
+        },
+        {
+          "insert": " the participant's identity in the program. "
+        },
+        {
+          "insert": "text=",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is only its short name. Several participants may share the same text without ambiguity."
+        }
+      ],
+      "children": []
+    },
+    "b-language-numbers-are-a-projection-12": {
+      "id": "b-language-numbers-are-a-projection-12",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Numbers are a projection detail. Parsing assigns participant ids "
+        },
+        {
+          "insert": "p1",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " through "
+        },
+        {
+          "insert": "pn",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " from their numbers. Messages, fragments, and notes receive deterministic ids "
+        },
+        {
+          "insert": "m1",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "…, "
+        },
+        {
+          "insert": "f1",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "…, and "
+        },
+        {
+          "insert": "n1",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "… in encounter order. Document ids and item ids are never written in the language."
+        }
+      ],
+      "children": []
+    },
+    "b-language-the-optional-title-13": {
+      "id": "b-language-the-optional-title-13",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "The optional title"
+        }
+      ],
+      "children": []
+    },
+    "b-language-title-login-flow-14-code": {
+      "id": "b-language-title-login-flow-14-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "title \"Login flow\""
+        }
+      ],
+      "children": []
+    },
+    "b-language-the-title-line-is-legal-15": {
+      "id": "b-language-the-title-line-is-legal-15",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The title line is legal only as the first line. Its value is a JSON string. The line is emitted if and only if "
+        },
+        {
+          "insert": "document.title",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is set. A program without this line has no title."
+        }
+      ],
+      "children": []
+    },
+    "b-language-participants-16": {
+      "id": "b-language-participants-16",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Participants"
+        }
+      ],
+      "children": []
+    },
+    "b-language-participant-1-text-user-17-code": {
+      "id": "b-language-participant-1-text-user-17-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "participant 1 text=user kind=actor\nparticipant 2 text=login label=\"Login page\"\nparticipant 3 text=db label=\"Database server\" stereotype=servlet"
+        }
+      ],
+      "children": []
+    },
+    "b-language-fields-are-in-fixed-orde-18": {
+      "id": "b-language-fields-are-in-fixed-orde-18",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Fields are in fixed order:"
+        }
+      ],
+      "children": []
+    },
+    "b-language-field-required-val-19-table": {
+      "id": "b-language-field-required-val-19-table",
+      "type": "structured-table",
+      "props": {
+        "columns": [
+          "field",
+          "required",
+          "values"
+        ],
+        "rows": [
+          [
+            "number",
+            "yes",
+            "the next dense positive integer"
+          ],
+          [
+            [
+              {
+                "insert": "text=",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "yes",
+            "the participant's short name"
+          ],
+          [
+            [
+              {
+                "insert": "kind=",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "optional",
+            [
+              {
+                "insert": "actor",
+                "attributes": {
+                  "code": true
+                }
+              },
+              {
+                "insert": ". Omitted means "
+              },
+              {
+                "insert": "participant",
+                "attributes": {
+                  "code": true
+                }
+              },
+              {
+                "insert": "."
+              }
+            ]
+          ],
+          [
+            [
+              {
+                "insert": "label=",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "optional",
+            "a longer display label"
+          ],
+          [
+            [
+              {
+                "insert": "stereotype=",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "optional",
+            "the UML stereotype text"
+          ]
+        ]
+      },
+      "children": []
+    },
+    "b-language-the-only-explicit-non-de-20": {
+      "id": "b-language-the-only-explicit-non-de-20",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The only explicit non-default kind is "
+        },
+        {
+          "insert": "kind=actor",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". "
+        },
+        {
+          "insert": "kind=participant",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is the default and is omitted in canonical output. Participant array order is therefore both declaration order and left-to-right column order."
+        }
+      ],
+      "children": []
+    },
+    "b-language-the-sequence-21": {
+      "id": "b-language-the-sequence-21",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "The sequence"
+        }
+      ],
+      "children": []
+    },
+    "b-language-the-sequence-block-is-ma-22": {
+      "id": "b-language-the-sequence-block-is-ma-22",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The sequence block is mandatory and appears exactly once:"
+        }
+      ],
+      "children": []
+    },
+    "b-language-seq-1-2-text-req-23-code": {
+      "id": "b-language-seq-1-2-text-req-23-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "seq\n  1 > 2 text=request"
+        }
+      ],
+      "children": []
+    },
+    "b-language-seq-is-written-at-the-24": {
+      "id": "b-language-seq-is-written-at-the-24",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "seq",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is written at the left margin. Its items are ordered top to bottom and indented one level. Nested operand items are indented one additional level. Dedentation closes a construct. There is no "
+        },
+        {
+          "insert": "end",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " keyword."
+        }
+      ],
+      "children": []
+    },
+    "b-language-messages-25": {
+      "id": "b-language-messages-25",
+      "type": "heading",
+      "props": {
+        "level": 3
+      },
+      "text": [
+        {
+          "insert": "Messages"
+        }
+      ],
+      "children": []
+    },
+    "b-language-1-2-text-input-userna-26-code": {
+      "id": "b-language-1-2-text-input-userna-26-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "1 > 2 text=\"input(username, password)\"\n2 -> 3 text=confirm\n3 --> 2 text=\"end fetching\""
+        }
+      ],
+      "children": []
+    },
+    "b-language-the-form-is-from-arr-27": {
+      "id": "b-language-the-form-is-from-arr-27",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The form is "
+        },
+        {
+          "insert": "<from> <arrow> <to> text=<v>",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". Both references must name declared participant numbers."
+        }
+      ],
+      "children": []
+    },
+    "b-language-arrow-message-line-28-table": {
+      "id": "b-language-arrow-message-line-28-table",
+      "type": "structured-table",
+      "props": {
+        "columns": [
+          "arrow",
+          "message line",
+          "rendering"
+        ],
+        "rows": [
+          [
+            [
+              {
+                "insert": ">",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "sync",
+            "solid line, filled arrowhead"
+          ],
+          [
+            [
+              {
+                "insert": "->",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "async",
+            "solid line, open arrowhead"
+          ],
+          [
+            [
+              {
+                "insert": "-->",
+                "attributes": {
+                  "code": true
+                }
+              }
+            ],
+            "return",
+            "dashed line, open arrowhead"
+          ]
+        ]
+      },
+      "children": []
+    },
+    "b-language-a-self-message-uses-the-29": {
+      "id": "b-language-a-self-message-uses-the-29",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "A self-message uses the same number on both sides:"
+        }
+      ],
+      "children": []
+    },
+    "b-language-2-2-text-validate-30-code": {
+      "id": "b-language-2-2-text-validate-30-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "2 > 2 text=validate"
+        }
+      ],
+      "children": []
+    },
+    "b-language-combined-fragments-31": {
+      "id": "b-language-combined-fragments-31",
+      "type": "heading",
+      "props": {
+        "level": 3
+      },
+      "text": [
+        {
+          "insert": "Combined fragments"
+        }
+      ],
+      "children": []
+    },
+    "b-language-fragments-are-indentatio-32": {
+      "id": "b-language-fragments-are-indentatio-32",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Fragments are indentation-nested containers. "
+        },
+        {
+          "insert": "alt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", "
+        },
+        {
+          "insert": "opt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", and "
+        },
+        {
+          "insert": "loop",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " each begin an operand, and the operand's items are indented one more level."
+        }
+      ],
+      "children": []
+    },
+    "b-language-alt-alternatives-33": {
+      "id": "b-language-alt-alternatives-33",
+      "type": "heading",
+      "props": {
+        "level": 4
+      },
+      "text": [
+        {
+          "insert": "alt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " (Alternatives)"
+        }
+      ],
+      "children": []
+    },
+    "b-language-alt-guard-available-34-code": {
+      "id": "b-language-alt-guard-available-34-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "alt guard=available\n  2 > 1 text=success\nelse guard=retryable\n  2 --> 1 text=retry\nelse\n  2 --> 1 text=failure"
+        }
+      ],
+      "children": []
+    },
+    "b-language-an-alt-has-one-or-more-35": {
+      "id": "b-language-an-alt-has-one-or-more-35",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "An "
+        },
+        {
+          "insert": "alt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " has one or more operands. Its first line is "
+        },
+        {
+          "insert": "alt guard=<v>",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". Further operands use "
+        },
+        {
+          "insert": "else",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " or "
+        },
+        {
+          "insert": "else guard=<v>",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " at the same indentation as the "
+        },
+        {
+          "insert": "alt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". A non-first operand may omit its guard. An "
+        },
+        {
+          "insert": "else",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is legal only when it is at the same indentation as its "
+        },
+        {
+          "insert": "alt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " and directly follows the first operand's items or the preceding alternative operand's items. It cannot stand alone."
+        }
+      ],
+      "children": []
+    },
+    "b-language-opt-optional-behavio-36": {
+      "id": "b-language-opt-optional-behavio-36",
+      "type": "heading",
+      "props": {
+        "level": 4
+      },
+      "text": [
+        {
+          "insert": "opt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " (Optional Behavior)"
+        }
+      ],
+      "children": []
+    },
+    "b-language-opt-guard-needs-confirm-37-code": {
+      "id": "b-language-opt-guard-needs-confirm-37-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "opt guard=\"needs confirmation\"\n  2 -> 3 text=confirm"
+        }
+      ],
+      "children": []
+    },
+    "b-language-an-opt-has-exactly-one-38": {
+      "id": "b-language-an-opt-has-exactly-one-38",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "An "
+        },
+        {
+          "insert": "opt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " has exactly one operand and requires "
+        },
+        {
+          "insert": "guard=<v>",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-loop-repeated-behavi-39": {
+      "id": "b-language-loop-repeated-behavi-39",
+      "type": "heading",
+      "props": {
+        "level": 4
+      },
+      "text": [
+        {
+          "insert": "loop",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " (Repeated Behavior)"
+        }
+      ],
+      "children": []
+    },
+    "b-language-loop-guard-for-each-ord-40-code": {
+      "id": "b-language-loop-guard-for-each-ord-40-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "loop guard=\"for each order\"\n  1 > 2 text=dispatch"
+        }
+      ],
+      "children": []
+    },
+    "b-language-a-loop-has-exactly-one-41": {
+      "id": "b-language-a-loop-has-exactly-one-41",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "A "
+        },
+        {
+          "insert": "loop",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " has exactly one operand and requires "
+        },
+        {
+          "insert": "guard=<v>",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-fragments-may-nest-inde-42": {
+      "id": "b-language-fragments-may-nest-inde-42",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Fragments may nest. Indentation alone defines their operand scope:"
+        }
+      ],
+      "children": []
+    },
+    "b-language-loop-guard-for-each-ord-43-code": {
+      "id": "b-language-loop-guard-for-each-ord-43-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "loop guard=\"for each order\"\n  alt guard=stocked\n    1 > 2 text=ship\n  else guard=backordered\n    2 --> 1 text=wait"
+        }
+      ],
+      "children": []
+    },
+    "b-language-there-is-no-closing-keyw-44": {
+      "id": "b-language-there-is-no-closing-keyw-44",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "There is no closing keyword. Dedenting from an operand closes it. Dedenting from the fragment closes the fragment."
+        }
+      ],
+      "children": []
+    },
+    "b-language-notes-45": {
+      "id": "b-language-notes-45",
+      "type": "heading",
+      "props": {
+        "level": 3
+      },
+      "text": [
+        {
+          "insert": "Notes"
+        }
+      ],
+      "children": []
+    },
+    "b-language-note-over-2-text-valida-46-code": {
+      "id": "b-language-note-over-2-text-valida-46-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "note over=2 text=\"validates first\"\nnote left=1 text=caller\nnote right=3 text=database"
+        }
+      ],
+      "children": []
+    },
+    "b-language-the-form-is-note-side-47": {
+      "id": "b-language-the-form-is-note-side-47",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The form is "
+        },
+        {
+          "insert": "note <side>=<N> text=<v>",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", where "
+        },
+        {
+          "insert": "<side>",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is exactly "
+        },
+        {
+          "insert": "over",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", "
+        },
+        {
+          "insert": "left",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", or "
+        },
+        {
+          "insert": "right",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", and "
+        },
+        {
+          "insert": "<N>",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is a declared participant number."
+        }
+      ],
+      "children": []
+    },
+    "b-language-value-syntax-48": {
+      "id": "b-language-value-syntax-48",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Value syntax"
+        }
+      ],
+      "children": []
+    },
+    "b-language-values-used-in-labeled-f-49": {
+      "id": "b-language-values-used-in-labeled-f-49",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Values used in labeled fields are bare tokens if and only if they match "
+        },
+        {
+          "insert": "/^[A-Za-z0-9_()-]*$/",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " and contain no space. All other values are JSON-quoted strings. JSON quoting supplies the standard escapes for quotes, backslashes, and control characters."
+        }
+      ],
+      "children": []
+    },
+    "b-language-text-user-text-input-50-code": {
+      "id": "b-language-text-user-text-input-50-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "text=user\ntext=input(username)\nstereotype=servlet\ntext=\"end fetching\"\nlabel=\"Database server\"\ntext=\"say \\\"hello\\\"\""
+        }
+      ],
+      "children": []
+    },
+    "b-language-field-names-and-field-or-51": {
+      "id": "b-language-field-names-and-field-or-51",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Field names and field order are fixed for every construct. There are no positional text values and no interchangeable field orderings. The title is the sole exception to the "
+        },
+        {
+          "insert": "key=value",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " presentation: its JSON string directly follows the "
+        },
+        {
+          "insert": "title",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " keyword."
+        }
+      ],
+      "children": []
+    },
+    "b-language-canonical-form-52": {
+      "id": "b-language-canonical-form-52",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Canonical form"
+        }
+      ],
+      "children": []
+    },
+    "b-language-serializesequenceprogra-53": {
+      "id": "b-language-serializesequenceprogra-53",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "serializeSequenceProgram",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is the single canonical serializer. It emits:"
+        }
+      ],
+      "children": []
+    },
+    "b-language-canon-g1": {
+      "id": "b-language-canon-g1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Title and participants",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-an-optional-first-line-t-54",
+        "b-language-participants-numbered-de-55",
+        "b-language-participant-fields-in-th-56"
+      ]
+    },
+    "b-language-an-optional-first-line-t-54": {
+      "id": "b-language-an-optional-first-line-t-54",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "an optional first-line title exactly when "
+        },
+        {
+          "insert": "document.title",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is set"
+        }
+      ],
+      "children": []
+    },
+    "b-language-participants-numbered-de-55": {
+      "id": "b-language-participants-numbered-de-55",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "participants numbered densely in array order"
+        }
+      ],
+      "children": []
+    },
+    "b-language-participant-fields-in-th-56": {
+      "id": "b-language-participant-fields-in-th-56",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "participant fields in the fixed order "
+        },
+        {
+          "insert": "text=",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", "
+        },
+        {
+          "insert": "kind=actor",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", "
+        },
+        {
+          "insert": "label=",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", "
+        },
+        {
+          "insert": "stereotype=",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", omitting absent optional fields and the default participant kind"
+        }
+      ],
+      "children": []
+    },
+    "b-language-canon-g2": {
+      "id": "b-language-canon-g2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "The `seq` block",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-exactly-one-blank-line-b-58",
+        "b-language-seq-at-the-left-margin-59",
+        "b-language-2-space-indentation-at-e-60",
+        "b-language-messages-fragment-opera-61"
+      ]
+    },
+    "b-language-exactly-one-blank-line-b-58": {
+      "id": "b-language-exactly-one-blank-line-b-58",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "exactly one blank line before "
+        },
+        {
+          "insert": "seq",
+          "attributes": {
+            "code": true
+          }
+        }
+      ],
+      "children": []
+    },
+    "b-language-seq-at-the-left-margin-59": {
+      "id": "b-language-seq-at-the-left-margin-59",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "seq",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " at the left margin"
+        }
+      ],
+      "children": []
+    },
+    "b-language-2-space-indentation-at-e-60": {
+      "id": "b-language-2-space-indentation-at-e-60",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "2-space indentation at every nesting level"
+        }
+      ],
+      "children": []
+    },
+    "b-language-messages-fragment-opera-61": {
+      "id": "b-language-messages-fragment-opera-61",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "messages, fragment operands, and notes in document order"
+        }
+      ],
+      "children": []
+    },
+    "b-language-canon-g3": {
+      "id": "b-language-canon-g3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Values",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-canonical-bare-or-json-q-62"
+      ]
+    },
+    "b-language-canonical-bare-or-json-q-62": {
+      "id": "b-language-canonical-bare-or-json-q-62",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "canonical bare or JSON-quoted values according to the value rule above."
+        }
+      ],
+      "children": []
+    },
+    "b-language-for-any-valid-document-63": {
+      "id": "b-language-for-any-valid-document-63",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "For any valid document, "
+        },
+        {
+          "insert": "parseSequenceProgram(serializeSequenceProgram(document))",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " is structurally identical modulo deterministically regenerated ids. Serializing the parsed result again reproduces the exact same bytes:"
+        }
+      ],
+      "children": []
+    },
+    "b-language-serialize-parse-serializ-64-code": {
+      "id": "b-language-serialize-parse-serializ-64-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "serialize(parse(serialize(document))) === serialize(document)"
+        }
+      ],
+      "children": []
+    },
+    "b-language-the-parser-creates-a-se-65": {
+      "id": "b-language-the-parser-creates-a-se-65",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The parser creates a "
+        },
+        {
+          "insert": "SequenceDocument",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " with "
+        },
+        {
+          "insert": "version: 1",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", id "
+        },
+        {
+          "insert": "\"sequence\"",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", and "
+        },
+        {
+          "insert": "style: {}",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". Callers that apply an agent rewrite preserve the real document id and style while replacing its parsed structure."
+        }
+      ],
+      "children": []
+    },
+    "b-language-complete-example-66": {
+      "id": "b-language-complete-example-66",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Complete example"
+        }
+      ],
+      "children": []
+    },
+    "b-language-participant-1-text-user-67-code": {
+      "id": "b-language-participant-1-text-user-67-code",
+      "type": "code",
+      "props": {
+        "language": "text"
+      },
+      "text": [
+        {
+          "insert": "participant 1 text=user kind=actor\nparticipant 2 text=login label=\"Login page\"\nparticipant 3 text=db label=\"Database server\" stereotype=servlet\n\nseq\n  1 > 2 text=\"input(username, password)\"\n  2 > 3 text=\"fetch(username, password)\"\n  alt guard=\"fetching\"\n    3 --> 2 text=\"end fetching\"\n    2 > 1 text=\"success\"\n  else\n    2 --> 1 text=\"incorrect input\"\n  opt guard=\"needs confirmation\"\n    2 -> 3 text=\"confirm\"\n  note over=2 text=\"validates first\""
+        }
+      ],
+      "children": []
+    },
+    "b-language-read-aloud-three-partic-69": {
+      "id": "b-language-read-aloud-three-partic-69",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Read aloud, three participants appear left to right: an actor, a login page, and a stereotyped database server. The actor calls the login page, which calls the database. An alternative covers success and incorrect-input paths. An optional confirmation follows. Finally, a note sits over the login page."
+        }
+      ],
+      "children": []
+    },
+    "b-language-error-behavior-70": {
+      "id": "b-language-error-behavior-70",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Error behavior"
+        }
+      ],
+      "children": []
+    },
+    "b-language-parsesequenceprogram-te-71": {
+      "id": "b-language-parsesequenceprogram-te-71",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "parseSequenceProgram(text)",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " never throws for bad input. It returns either a successful document or line-numbered errors:"
+        }
+      ],
+      "children": []
+    },
+    "b-language-ts-72": {
+      "id": "b-language-ts-72",
+      "type": "code",
+      "props": {
+        "language": "ts"
+      },
+      "text": [
+        {
+          "insert": "{ ok: true, document: SequenceDocument }\n\n{ ok: false, errors: { line: number; message: string }[] }"
+        }
+      ],
+      "children": []
+    },
+    "b-language-the-parser-collects-mult-73": {
+      "id": "b-language-the-parser-collects-mult-73",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The parser collects multiple errors where feasible. Tabs, indentation not in 2-space levels, non-dense participant numbering, references to unknown participant numbers, an "
+        },
+        {
+          "insert": "else",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " outside its matching "
+        },
+        {
+          "insert": "alt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", incorrect field order, illegal arrows or sides, malformed quoted values, and unrecognized lines are errors. A failed parse produces no replacement document."
+        }
+      ],
+      "children": []
+    },
+    "b-language-deliberately-absent-74": {
+      "id": "b-language-deliberately-absent-74",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Deliberately absent"
+        }
+      ],
+      "children": []
+    },
+    "b-language-styling-accent-col-75": {
+      "id": "b-language-styling-accent-col-75",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Styling",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-styling-accent-col-75-s1",
+        "b-language-styling-accent-col-75-s2"
+      ]
+    },
+    "b-language-styling-accent-col-75-s1": {
+      "id": "b-language-styling-accent-col-75-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Accent colors, fragment color, participant fill, and scale live only in "
+        },
+        {
+          "insert": "SequenceDocument.style",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-styling-accent-col-75-s2": {
+      "id": "b-language-styling-accent-col-75-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Styling never appears in a program."
+        }
+      ],
+      "children": []
+    },
+    "b-language-coordinates-and-geomet-77": {
+      "id": "b-language-coordinates-and-geomet-77",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Coordinates and geometry",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-coordinates-and-geomet-77-s1",
+        "b-language-coordinates-and-geomet-77-s2"
+      ]
+    },
+    "b-language-coordinates-and-geomet-77-s1": {
+      "id": "b-language-coordinates-and-geomet-77-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "The language describes ordered structure."
+        }
+      ],
+      "children": []
+    },
+    "b-language-coordinates-and-geomet-77-s2": {
+      "id": "b-language-coordinates-and-geomet-77-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Deterministic layout derives every position, row, frame, and path."
+        }
+      ],
+      "children": []
+    },
+    "b-language-document-and-item-ids-79": {
+      "id": "b-language-document-and-item-ids-79",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Document and item ids",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-document-and-item-ids-79-s1",
+        "b-language-document-and-item-ids-79-s2"
+      ]
+    },
+    "b-language-document-and-item-ids-79-s1": {
+      "id": "b-language-document-and-item-ids-79-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Numbers provide temporary program identity."
+        }
+      ],
+      "children": []
+    },
+    "b-language-document-and-item-ids-79-s2": {
+      "id": "b-language-document-and-item-ids-79-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Stable ids are regenerated deterministically during parsing."
+        }
+      ],
+      "children": []
+    },
+    "b-language-activations-activa-81": {
+      "id": "b-language-activations-activa-81",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Activations",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-activations-activa-81-s1",
+        "b-language-activations-activa-81-s2"
+      ]
+    },
+    "b-language-activations-activa-81-s1": {
+      "id": "b-language-activations-activa-81-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Activation bars are derived from sync calls and matching returns within operand scope."
+        }
+      ],
+      "children": []
+    },
+    "b-language-activations-activa-81-s2": {
+      "id": "b-language-activations-activa-81-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "They are not expressible in the language."
+        }
+      ],
+      "children": []
+    },
+    "b-language-patch-commands-an-83": {
+      "id": "b-language-patch-commands-an-83",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Patch commands",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-patch-commands-an-83-s1",
+        "b-language-patch-commands-an-83-s2"
+      ]
+    },
+    "b-language-patch-commands-an-83-s1": {
+      "id": "b-language-patch-commands-an-83-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "An agent rewrites the whole program."
+        }
+      ],
+      "children": []
+    },
+    "b-language-patch-commands-an-83-s2": {
+      "id": "b-language-patch-commands-an-83-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "There is no patch DSL and no incremental edit syntax."
+        }
+      ],
+      "children": []
+    }
+  }
+}

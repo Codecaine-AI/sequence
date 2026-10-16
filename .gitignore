@@ -1,3 +1,7 @@
 node_modules
 dist
 .DS_Store
+
+# Derived Codecaine docs state (rebuildable)
+docs/.index/
+docs/.changesets/

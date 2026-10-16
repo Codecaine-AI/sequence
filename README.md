@@ -63,5 +63,5 @@ bun run dev:studio
 
 The studio runs at [http://localhost:3998](http://localhost:3998).
 
-Start with [`docs/00-overview.md`](docs/00-overview.md) for the architecture
-map and [`docs/LANGUAGE.md`](docs/LANGUAGE.md) for the complete program grammar.
+Start with [`docs/00-overview`](docs/00-overview) for the architecture
+map and [`docs/10-language`](docs/10-language) for the complete program grammar.

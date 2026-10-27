@@ -1,0 +1,14 @@
+{
+  "strictness": 2,
+  "commentTypes": [
+    "logic",
+    "syntax"
+  ],
+  "triggerOnDrafts": false,
+  "autoReview": [
+    "open",
+    "push"
+  ],
+  "ignorePatterns": "**/dist/**\n**/dist-static/**\n**/build/**\n**/coverage/**\nbun.lock\n**/package-lock.json\n**/__snapshots__/**\n**/*.snap\n**/__fixtures__/**\n**/fixtures/**\n**/*.log\ndocs/**/*.json\ndesign-reference/**",
+  "instructions": "Bun and TypeScript monorepo; the sequence diagram language and renderer live in packages/sequence and the React studio in packages/studio. Docs pages (docs/**/doc.json) are written by tools, not by hand. Focus on correctness, types, error handling and missing tests. Skip style nits."
+}

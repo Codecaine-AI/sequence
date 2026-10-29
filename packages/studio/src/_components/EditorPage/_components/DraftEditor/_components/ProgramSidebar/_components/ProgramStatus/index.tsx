@@ -16,6 +16,8 @@ export function ProgramStatus({ parseState, errors }: ProgramStatusProps) {
       id="program-status"
       className={`program-status status-${parseState}`}
       aria-live="polite"
+      // A long error list scrolls: focusable then, so a keyboard can scroll it.
+      tabIndex={errors.length > 0 ? 0 : undefined}
     >
       {parseState === "pending" ? (
         <p>Checking program…</p>

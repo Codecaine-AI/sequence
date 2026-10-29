@@ -51,7 +51,7 @@
   border-radius: var(--ds-radius-pill);
   background: var(--secondary);
   color: var(--muted-foreground);
-  font-size: var(--ds-font-size-micro);
+  font-size: var(--ds-font-size-ui-2xs);
   font-weight: var(--ds-font-weight-semibold);
   letter-spacing: var(--ds-letter-spacing-micro);
   text-transform: uppercase;

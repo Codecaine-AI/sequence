@@ -1,6 +1,12 @@
-.doc-card {
+/* The frame holds the card button and its actions, which cannot nest. */
+.doc-card-frame {
   position: relative;
+}
+
+.doc-card {
+  display: block;
   overflow: hidden;
+  width: 100%;
   padding: 0;
   border: var(--ds-border-width-hairline) solid var(--border);
   border-radius: var(--radius);
@@ -11,13 +17,13 @@
     border-color var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
 }
 
-.doc-card:hover {
+.doc-card-frame:hover .doc-card {
   background: var(--ds-color-fill-hover);
 }
 
 /* fill.hover and fill.chip are nearly equal, so on a hovered card the tag
    takes the card's resting panel fill and stays visible in both themes. */
-.doc-card:hover .card-tag {
+.doc-card-frame:hover .card-tag {
   background: var(--card);
 }
 
@@ -45,7 +51,7 @@
   border-radius: var(--ds-radius-pill);
   background: var(--secondary);
   color: var(--muted-foreground);
-  font-size: var(--ds-font-size-micro);
+  font-size: var(--ds-font-size-ui-2xs);
   font-weight: var(--ds-font-weight-semibold);
   letter-spacing: var(--ds-letter-spacing-micro);
   text-transform: uppercase;
@@ -61,8 +67,8 @@
   transition: opacity var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
 }
 
-.doc-card:hover .card-actions,
-.doc-card:focus-within .card-actions {
+.doc-card-frame:hover .card-actions,
+.doc-card-frame:focus-within .card-actions {
   opacity: 1;
 }
 

@@ -11,6 +11,11 @@
   overflow: auto;
 }
 
+/* The scroller fills the pane, so its ring sits inside its edge. */
+.editor-preview-scroll:focus-visible {
+  outline-offset: calc(-1 * var(--ds-border-width-focus));
+}
+
 .editor-preview-content {
   display: grid;
   width: max-content;

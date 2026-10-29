@@ -14,7 +14,8 @@ export function EditorPreview({ document, stale }: EditorPreviewProps) {
       {stale ? (
         <span className="stale-pill">Showing last valid program</span>
       ) : null}
-      <div className="editor-preview-scroll">
+      {/* Focusable, so a keyboard can scroll a diagram wider than the pane. */}
+      <div className="editor-preview-scroll" tabIndex={0} role="group" aria-label="Diagram">
         <div className="editor-preview-content">
           <div className="diagram-card">
             <SequenceViewer document={document} />

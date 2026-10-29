@@ -15,16 +15,21 @@ export type DocCardProps = {
   onOpen: () => void;
 };
 
-/** A gallery card: the whole card is a button that opens the document. */
+/**
+ * A gallery card: a button that opens the document. The actions sit beside
+ * it in the same frame, not inside it, since a button cannot nest.
+ */
 export function DocCard({ title, document, hint, tag, actions, onOpen }: DocCardProps) {
   return (
-    <button type="button" className="doc-card" title={hint} onClick={onOpen}>
-      <SequenceThumbnail document={document} />
-      <span className="card-title-row">
-        <span className="card-title">{title}</span>
-        {tag ? <span className="card-tag">{tag}</span> : null}
-      </span>
-      {actions ? <span className="card-actions">{actions}</span> : null}
-    </button>
+    <div className="doc-card-frame">
+      <button type="button" className="doc-card" title={hint} onClick={onOpen}>
+        <SequenceThumbnail document={document} />
+        <span className="card-title-row">
+          <span className="card-title">{title}</span>
+          {tag ? <span className="card-tag">{tag}</span> : null}
+        </span>
+      </button>
+      {actions ? <div className="card-actions">{actions}</div> : null}
+    </div>
   );
 }

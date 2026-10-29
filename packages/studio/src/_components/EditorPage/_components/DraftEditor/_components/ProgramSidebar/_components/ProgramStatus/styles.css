@@ -8,6 +8,10 @@
   line-height: var(--ds-line-height-ui);
 }
 
+.program-status:focus-visible {
+  outline-offset: calc(-1 * var(--ds-border-width-focus));
+}
+
 .program-status.status-valid {
   background: var(--ds-color-status-success-soft);
   color: var(--ds-color-status-success-text);

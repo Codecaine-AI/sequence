@@ -13,7 +13,7 @@
 .rail-value {
   color: var(--foreground);
   font-family: var(--mono);
-  font-size: var(--ds-font-size-micro);
+  font-size: var(--ds-font-size-ui-2xs);
   font-weight: var(--ds-font-weight-regular);
 }
 

@@ -163,7 +163,7 @@ This skill has no MCP server of its own.
 2. Read \`docs_guidance\` topic \`style\`, then read the page with \`docs_read\`.
 3. Read \`references/language.md\` before you write a program. Read \`references/design-decisions.md\` before you change how a diagram is built.
 4. For a new diagram, call \`docs_component_create\` with \`component: "sequence"\`, then insert the block with the returned \`src\`.
-5. Call \`docs_component_read\` on the block. It returns \`expected_hash\` for the page and \`expected_component_hash\` for the sidecar.
+5. Call \`docs_component_read\` on the block. Pass its \`doc_hash\` as \`expected_hash\` and its \`hash\` as \`expected_component_hash\`.
 6. Call \`docs_sequence_set_program\` with the whole program and both hashes.
 7. Read the result: the program text, the findings and the SVG path. Open the SVG, fix each finding, and send the whole program again.
 8. Set colors and spacing with \`docs_sequence_set_style\`. Style never goes in the program. \`docs_sequence_set_title\` changes only the title.

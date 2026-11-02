@@ -43,7 +43,7 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 
 - Send the whole program every time. There is no patch or partial program.
 - A program has three parts in this order: an optional `title` line, the participants, then `seq`.
-  - A program without a `title` line removes the title. Keep the line when you rewrite a titled diagram.
+  - A program without a `title` line keeps the diagram's existing title. Change or clear a title with `docs_sequence_set_title`.
   - Put exactly one blank line before `seq`.
 - Number participants 1, 2, 3 with no gaps, in left-to-right order. The number is the participant's identity.
 - Write participant fields in this order: `text=`, `kind=actor`, `label=`, `stereotype=`. Only `text=` is required.

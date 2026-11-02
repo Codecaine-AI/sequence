@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "generatorVersion": 1,
+  "snapshotId": "sha256:d636b09ffd1f3fbd673169ff6714f683b502be10e95b2a68716513fc5e3e8518",
+  "sources": [
+    {
+      "path": "docs/10-language/doc.json",
+      "sha256": "206a10c7383d55a8efd08647e47a10e5ddb540c184ad72180775aa1d39b3c19c",
+      "kind": "language"
+    },
+    {
+      "path": "STATE.md",
+      "sha256": "2b17c6695fe06fdc03ea90a2e38b8de82d081c9ee0b31b50139575856d5e3a3f",
+      "kind": "decisions"
+    },
+    {
+      "path": "packages/sequence/src/skill/generate-skill.ts",
+      "sha256": "0cd5af419cfec9bbf48dd1d02124ffe65167753e2ba57287856e035e99d29788",
+      "kind": "generator"
+    }
+  ]
+}

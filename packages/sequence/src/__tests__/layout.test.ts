@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { measureWidth } from "@codecaine-ai/text-measure";
 
 import {
+  LABEL_BOX_PAD,
   SEQUENCE_LAYOUT,
   SEQUENCE_TYPOGRAPHY,
   layoutSequence,
@@ -1112,9 +1113,38 @@ describe("layoutSequence", () => {
 
     expect(bar.y).toBeLessThan(box.y);
     expect(bar.y + bar.height).toBeGreaterThan(box.y + box.height);
-    // Clear of the bar, on the arrow, on the sender's side.
-    expect(box.x + box.width).toBeLessThanOrEqual(bar.x);
+    // Clear of the bar, on the arrow.
+    expect(box.x + box.width <= bar.x || box.x >= bar.x + bar.width).toBe(true);
     expect(box.x).toBeGreaterThanOrEqual(past.x1);
+    expect(box.x + box.width).toBeLessThanOrEqual(past.x2);
+  });
+
+  test("a moved label sits in the clear stretch nearest the arrow's midpoint, as near the midpoint as it can", () => {
+    // p1 -> p4 passes p2 and p3, and p3 is active. A long label on p3 -> p4
+    // widens the last gap, so the arrow's midpoint falls just right of p3's
+    // bar. The label goes to the p3..p4 stretch and hugs the bar's
+    // clearance there, not the sender's end of the arrow.
+    const layout = layoutSequence({
+      ...documentWith([
+        { kind: "message", id: "hold", from: "p1", to: "p3", line: "sync", text: "hold" },
+        { kind: "message", id: "widen", from: "p3", to: "p4", line: "async", text: "a very long label to widen the last gap a lot" },
+        { kind: "message", id: "far", from: "p1", to: "p4", line: "async", text: "label" },
+        { kind: "message", id: "back", from: "p4", to: "p1", line: "return", text: "ok" },
+        { kind: "message", id: "release", from: "p3", to: "p1", line: "return", text: "done" },
+      ]),
+      participants: [...participants, { id: "p4", name: "far end", kind: "participant" }],
+    });
+    const far = layout.messages.find(({ id }) => id === "far")!;
+    const back = layout.messages.find(({ id }) => id === "back")!;
+    const p3 = layout.participants.find(({ id }) => id === "p3")!;
+    const barRight = p3.centerX + SEQUENCE_LAYOUT.ACTIVATION_W / 2;
+    const middle = (far.x1 + far.x2) / 2;
+
+    expect(middle).toBeGreaterThan(barRight);
+    expect(far.labelBox.x + LABEL_BOX_PAD.x).toBeCloseTo(barRight + SEQUENCE_LAYOUT.LABEL_CLEARANCE, 3);
+    // The short return label moves off the bar by the least it can: it stays within a label's width of the midpoint.
+    expect(back.labelBox.x).toBeGreaterThanOrEqual(barRight + SEQUENCE_LAYOUT.LABEL_CLEARANCE - LABEL_BOX_PAD.x);
+    expect(Math.abs(back.label.x - middle)).toBeLessThan(back.labelBox.width);
   });
 
   test("frames keep vertical clearance from neighboring rows and sibling frames", () => {

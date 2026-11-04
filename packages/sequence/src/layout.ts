@@ -1565,8 +1565,11 @@ function computeLayout(
   }
 
   // A label centered on a long arrow sits on the lifelines and bars the
-  // arrow passes. When one stretch of the arrow between those obstacles
-  // holds the whole label, the label moves there, nearest the sender first.
+  // arrow passes. When a stretch of the arrow between those obstacles holds
+  // the whole label, the label moves to the stretch nearest the arrow's
+  // midpoint, and within it as near the midpoint as the clearance allows,
+  // so it stays near the middle of the arrow instead of sliding to one end.
+  // On a tie the sender's side wins.
   const labelClearance = unit(SEQUENCE_LAYOUT.LABEL_CLEARANCE);
   for (const message of messages) {
     if (message.selfLoop) continue;
@@ -1602,8 +1605,17 @@ function computeLayout(
     }
     slots.push({ left: slotLeft, right });
     if (message.x1 > message.x2) slots.reverse();
-    const slot = slots.find((candidate) => candidate.right - candidate.left - labelClearance * 2 >= textWidth);
-    if (slot) message.label.x = (slot.left + slot.right) / 2;
+    const middle = (left + right) / 2;
+    let best: { x: number; distance: number } | undefined;
+    for (const slot of slots) {
+      const lowest = slot.left + labelClearance + textWidth / 2;
+      const highest = slot.right - labelClearance - textWidth / 2;
+      if (highest < lowest) continue;
+      const x = Math.min(Math.max(middle, lowest), highest);
+      const distance = Math.abs(x - middle);
+      if (best === undefined || distance < best.distance) best = { x, distance };
+    }
+    if (best) message.label.x = best.x;
   }
 
   // Activation docking recalculates message anchors, so enforce the left

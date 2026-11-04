@@ -686,13 +686,24 @@ function computeLayout(
         const from = participantIndex(item.from);
         const to = participantIndex(item.to);
         if (from < 0 || to < 0) continue;
+        const textWidth = safeMeasure(item.text, messageFont);
         widenSpan(
           Math.min(from, to),
           Math.max(from, to),
-          safeMeasure(item.text, messageFont)
+          textWidth
             + unit(activationW * 2 + 24)
             + (dockingExcess.get(item.id) ?? 0),
         );
+        // A label on an arrow that crosses a lifeline needs one gap that
+        // holds it whole, clear of the lifelines and bars on either side,
+        // or it straddles a lifeline. The gap nearest the arrow's midpoint
+        // holds it, the sender's side on a tie, where the label moves to.
+        const gaps = Math.abs(to - from);
+        if (gaps >= 2) {
+          const first = Math.min(from, to);
+          const gap = first + (from < to ? Math.floor((gaps - 1) / 2) : Math.ceil((gaps - 1) / 2));
+          widenSpan(gap, gap + 1, textWidth + unit(activationW + SEQUENCE_LAYOUT.LABEL_CLEARANCE * 2 + LABEL_BOX_PAD.x * 2));
+        }
       } else {
         const index = participantIndex(item.anchor);
         if (index < 0) continue;

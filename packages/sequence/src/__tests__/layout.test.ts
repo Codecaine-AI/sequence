@@ -1150,6 +1150,23 @@ describe("layoutSequence", () => {
     expect(Math.abs(back.label.x - middle)).toBeLessThan(back.labelBox.width);
   });
 
+  test("a long label on an arrow that crosses a lifeline gets a gap of its own, so it never straddles the lifeline", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "hold", from: "p1", to: "p2", line: "sync", text: "hold" },
+      { kind: "message", id: "far", from: "p1", to: "p3", line: "async", text: "session_update(sessionId, threadId, phase, addLinks)" },
+      { kind: "message", id: "release", from: "p2", to: "p1", line: "return", text: "done" },
+    ]));
+    const far = layout.messages.find(({ id }) => id === "far")!;
+    const p2 = layout.participants.find(({ id }) => id === "p2")!;
+    const box = far.labelBox;
+    const keepOut = SEQUENCE_LAYOUT.ACTIVATION_W / 2 + SEQUENCE_LAYOUT.LABEL_CLEARANCE - LABEL_BOX_PAD.x;
+
+    // The label sits whole on one side of p2's lifeline and bar, on the arrow.
+    expect(box.x + box.width <= p2.centerX - keepOut || box.x >= p2.centerX + keepOut).toBe(true);
+    expect(box.x).toBeGreaterThanOrEqual(far.x1);
+    expect(box.x + box.width).toBeLessThanOrEqual(far.x2);
+  });
+
   test("frames keep vertical clearance from neighboring rows and sibling frames", () => {
     const optOperand = (id: string) => ({
       guard: "ready",

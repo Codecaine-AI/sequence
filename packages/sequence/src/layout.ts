@@ -1654,7 +1654,14 @@ function computeLayout(
   for (const activation of activations) {
     rightEdge = Math.max(rightEdge, activation.rect.x + activation.rect.width);
   }
-  const width = rightEdge + sideGutter;
+  // The right margin matches the left one: the space left of the leftmost
+  // lifeline, frame, note or bar. The title is left out, since it sits at the margin.
+  let leftEdge = Number.POSITIVE_INFINITY;
+  for (const participant of participants) leftEdge = Math.min(leftEdge, participant.header.x);
+  for (const note of notes) leftEdge = Math.min(leftEdge, note.box.x);
+  for (const fragment of fragments) leftEdge = Math.min(leftEdge, fragment.outer.x);
+  for (const activation of activations) leftEdge = Math.min(leftEdge, activation.rect.x);
+  const width = rightEdge + Math.max(unit(margin), Number.isFinite(leftEdge) ? leftEdge : sideGutter);
   const footerY = contentEnd + unit(SEQUENCE_LAYOUT.FOOTER_GAP);
   const participantFooters = participants.map((participant): SequenceParticipantLayout => {
     const offset = footerY - participant.header.y;

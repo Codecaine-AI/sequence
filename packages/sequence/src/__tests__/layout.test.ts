@@ -1122,6 +1122,34 @@ describe("layoutSequence", () => {
     expect(frame.x + frame.width).toBeLessThan(service.header.x + service.header.width);
   });
 
+  test.each([
+    ["messages only", [
+      { kind: "message", id: "m1", from: "p1", to: "p3", line: "sync", text: "store(x)" },
+    ]],
+    ["a frame with a right note", [
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "loop",
+        operands: [{ guard: "each item", items: [
+          { kind: "message", id: "m1", from: "p1", to: "p2", line: "sync", text: "next()" },
+          { kind: "note", id: "n1", anchor: "p3", side: "right", text: "keeps a log" },
+        ] }],
+      },
+    ]],
+  ] as [string, SequenceItem[]][])("the right margin is as wide as the left one: %s", (_name, items) => {
+    const layout = layoutSequence(documentWith(items));
+    const boxes: SeqRect[] = [
+      ...layout.participants.map(({ header }) => header),
+      ...layout.fragments.map(({ outer }) => outer),
+      ...layout.notes.map(({ box }) => box),
+    ];
+    const left = Math.min(...boxes.map(({ x }) => x));
+    const right = Math.max(...boxes.map(({ x, width }) => x + width));
+
+    expect(layout.width - right).toBe(left);
+  });
+
   test("operand dividers keep clearance from surrounding operand contents", () => {
     const layout = layoutSequence(documentWith([
       {

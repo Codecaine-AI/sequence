@@ -1140,6 +1140,34 @@ function computeLayout(
         operandTops: operandStarts,
       });
     }
+    {
+      // Sibling frames that open on the same leftmost lifeline line up their
+      // left edges, so stacked frames at one level read as one column.
+      const siblings = scope.events.flatMap((event) => event.type === "fragment" ? [event.frame] : []);
+      const byLeftmost = new Map<string, SequenceFragmentLayout[]>();
+      for (const frame of siblings) {
+        const xs = frame.participantIds.map(participantX);
+        if (xs.length === 0) continue;
+        const leftmost = frame.participantIds[xs.indexOf(Math.min(...xs))]!;
+        byLeftmost.set(leftmost, [...(byLeftmost.get(leftmost) ?? []), frame]);
+      }
+      for (const group of byLeftmost.values()) {
+        if (group.length < 2) continue;
+        const left = Math.min(...group.map((frame) => frame.outer.x));
+        for (const frame of group) {
+          const delta = left - frame.outer.x;
+          if (delta === 0) continue;
+          frame.outer.width -= delta;
+          frame.outer.x = left;
+          frame.tab.x += delta;
+          frame.tabPath = frame.tabPath.map((point) => ({ x: point.x + delta, y: point.y }));
+          frame.guardLabels = frame.guardLabels.map((guard) => ({
+            ...guard,
+            anchor: { ...guard.anchor, x: guard.anchor.x + delta },
+          }));
+        }
+      }
+    }
     scope.endY = cursor;
     return scope;
   };

@@ -908,6 +908,24 @@ describe("layoutSequence", () => {
     expect(longNote.box.width).toBeGreaterThanOrEqual(Math.max(...longNote.lines.map(width)) + 2 * inset);
   });
 
+  test("sibling frames that open on the same leftmost lifeline share a left edge", () => {
+    const step = (id: string, from: string, to: string): SequenceItem =>
+      ({ kind: "message", id, from, to, line: "async", text: id });
+    const layout = layoutSequence(documentWith([
+      { kind: "fragment", id: "rounds", op: "loop", operands: [{ guard: "each round", items: [step("a", "p1", "p2")] }] },
+      { kind: "fragment", id: "tail", op: "opt", operands: [{ guard: "ready", items: [step("b", "p1", "p3")] }] },
+      { kind: "fragment", id: "store", op: "opt", operands: [{ guard: "stored", items: [step("c", "p2", "p3")] }] },
+    ]));
+    const frame = (id: string) => layout.fragments.find((row) => row.id === id)!;
+
+    // "loop" and "opt" tabs differ in width, so the frames would start apart.
+    expect(frame("rounds").outer.x).toBe(frame("tail").outer.x);
+    expect(frame("tail").tab.x).toBe(frame("tail").outer.x);
+    expect(frame("tail").guardLabels[0]!.anchor.x).toBeGreaterThan(frame("tail").tab.x + frame("tail").tab.width);
+    // A sibling on another lifeline keeps its own edge.
+    expect(frame("store").outer.x).toBeGreaterThan(frame("tail").outer.x);
+  });
+
   test("a guard moves off a lifeline when a clear stretch of its frame holds it", () => {
     // The guard starts after the tab, on the p2 lifeline. The long p2-p3
     // arrow makes that stretch wide enough to hold it.

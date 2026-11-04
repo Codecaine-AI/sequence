@@ -1,11 +1,14 @@
 import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { docsMcpCli, docsSystemRoot, OVERLAY_PRELOAD, runPaths, SKILL_DIR } from "./paths.ts";
 import { readRound, type RoundBrief } from "./round.ts";
+
+/** Where the docs daemon writes each sequence's SVG (docs-server component-lints.ts). */
+const RENDERS_DIR = join(tmpdir(), "codecaine-docs-renders");
 
 /** The drawer's Claude Code binary. PATH can pick a stale install, so a round always names it. */
 export const CLAUDE_BIN = process.env.CLIMB_CLAUDE_BIN ?? `${process.env.HOME}/.local/bin/claude`;
@@ -61,6 +64,7 @@ export function drawerPrompt({ brief, entry }: { brief: string; entry: RoundBrie
     `- The page already holds an empty sequence block with id \`${entry.blockId}\`. Its sidecar is \`${entry.src}\`.`,
     "- Write the diagram into that block. Do not add, move or delete blocks, and do not edit any other page.",
     `- Edit the diagram only with ${SEQUENCE_TOOLS.map((tool) => `\`${tool}\``).join(", ")}. Read hashes with \`docs_component_read\`.`,
+    "- After each write, open the returned `svg_path` with Read and fix what you see before you finish.",
     "",
     "When the diagram is done, reply with one line: done.",
   ].join("\n");
@@ -110,8 +114,9 @@ async function runDrawer({ entry, runDir, timeoutMs }: { entry: RoundBrief; runD
     "--strict-mcp-config",
     "--append-system-prompt-file", paths.systemPrompt,
     // No built-in tools: the docs MCP is the drawer's only instrument.
-    "--tools", "",
-    "--allowedTools", `mcp__${MCP_SERVER}`,
+    // Read lets the drawer open the SVG that docs_sequence_set_program returns, and nothing else.
+    "--tools", "Read",
+    "--allowedTools", `mcp__${MCP_SERVER}`, `Read(/${RENDERS_DIR}/**)`,
     "--permission-mode", "dontAsk",
     "--no-session-persistence",
     // Auth and the gateway still come from user settings; CLAUDE.md files and hooks must not reach the drawer.

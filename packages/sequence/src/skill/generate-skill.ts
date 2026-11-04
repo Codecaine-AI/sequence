@@ -223,6 +223,11 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - Write a message label as the call or event the reader knows, such as \`fetch(user)\` or \`200 OK\`.
   - Keep a label to 40 characters or fewer. Keep each argument the brief names, and drop the others.
   - Use one label style in a diagram: a code call for a tool or API call, plain words for an event. Never add a prefix such as \`publish:\`.
+- Copy each detail the brief lists. Never rename, merge or drop one.
+  - Copy each argument the brief names into the call label, such as \`getOrder(orderId, userId)\`.
+  - Copy each condition into its guard or note. A guard the brief gives two conditions keeps both.
+  - Draw each return the brief lists as its own arrow, in the brief's order. Never merge two returns into one.
+  - Keep the place the brief gives for a value, such as \`ids in body.meta\`.
 - Draw one arrow for each call. Never join two calls in one label with "then", because a reply then seems to answer both.
 - Draw a return only where the brief lists one or the reader must see the reply.
   - A waited-on call with no listed return stays \`>\` with no return.

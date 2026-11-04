@@ -89,7 +89,7 @@ describe("layoutSequence", () => {
       FRAG_NESTED_BOTTOM: 20,
       FRAG_NESTED_TOP: 8,
       FRAG_DIVIDER_GAP: 10,
-      FRAG_GUARD_H: 22,
+      FRAG_GUARD_H: 30,
       GUARD_SHIFT_MAX: 120,
       NOTE_MARGIN_Y: 8,
       NOTE_W: 160,

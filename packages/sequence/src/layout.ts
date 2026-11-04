@@ -62,7 +62,7 @@ export const SEQUENCE_LAYOUT = {
   /** Clearance above and below each dashed operand divider. */
   FRAG_DIVIDER_GAP: 10,
   /** Reserved row for an operand guard label rendered below a divider. */
-  FRAG_GUARD_H: 22,
+  FRAG_GUARD_H: 30,
   /** Furthest a guard moves right from its place to clear a lifeline. */
   GUARD_SHIFT_MAX: 120,
   /** Extra clearance above and below note boxes. */

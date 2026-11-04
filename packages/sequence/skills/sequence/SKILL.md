@@ -93,7 +93,7 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - Copy each detail the brief lists. Never rename, merge or drop one.
   - Copy each argument the brief names into the call label, such as `getOrder(orderId, userId)`. When the brief lists a tool's parameters, write the required ones by name.
   - Never write an argument the brief does not give for that call. A guessed argument, such as `read(childThreadId)` for a tool that takes `requestId`, misstates the tool.
-  - Write a guard in the brief's words. Keep every condition and remark the brief puts in it, such as `(this part is proposed)` or `the last entry of models`.
+  - Write a guard in the brief's words, in prose with no code operator such as `!=`. Keep every condition and remark the brief puts in it, such as `(this part is proposed)` or `the last entry of models`.
   - Draw each return the brief lists as its own arrow, in the brief's order. Never merge two returns into one.
   - Keep the place the brief gives for a value, such as `ids in body.meta`.
 - Draw one arrow for each call. Never join two calls in one label with "then", because a reply then seems to answer both.
@@ -107,6 +107,7 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - Keep a diagram to about 5 participants and 20 messages. Split a larger flow into two blocks.
 - Use a note for one fact a message cannot carry. Keep it short.
   - Keep each condition that the brief gives for that fact.
+  - Start every note with a capital letter, and every prose label with a lowercase letter, so each kind of text has one look.
 - When a `docs_sequence_set_program` result lists a `long-label`, `long-guard`, `joined-calls` or `leftward-call` finding, fix it.
 
 ## References

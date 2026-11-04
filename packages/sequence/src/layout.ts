@@ -67,6 +67,11 @@ export const SEQUENCE_LAYOUT = {
   FRAG_GUARD_BASELINE: 18,
   /** Furthest a guard moves right from its place to clear a lifeline. */
   GUARD_SHIFT_MAX: 120,
+  /**
+   * Clear space between a guard, a frame tab or a moved message label and
+   * the nearest lifeline or activation bar.
+   */
+  LABEL_CLEARANCE: 12,
   /** Extra clearance above and below note boxes. */
   NOTE_MARGIN_Y: 8,
   NOTE_W: 160,
@@ -580,7 +585,7 @@ function computeLayout(
   };
   // Guards sit near their frame's left edge. The gap right of the frame's
   // leftmost lifeline holds the widest guard, so no lifeline runs through it.
-  const guardClearance = unit(LABEL_BOX_PAD.x + SEQUENCE_LAYOUT.GRID / 2);
+  const guardClearance = unit(SEQUENCE_LAYOUT.LABEL_CLEARANCE);
   const reserveGuardRoom = (fragment: SequenceFragment): void => {
     const columns = [...frameColumns(fragment.operands.flatMap((operand) => operand.items), new Set())];
     if (columns.length < 2) return;
@@ -1009,7 +1014,13 @@ function computeLayout(
       // activation pass below widens it to cover bars.
       const involvedRight = involvedXs.length > 0 ? Math.max(...involvedXs) : fallbackCenter;
       const tabWidth = safeMeasure(item.op, fragmentOpFont) + unit(30);
-      const outerLeft = Math.min(involvedLeft, childBounds?.left ?? involvedLeft) - fragmentPad;
+      let outerLeft = Math.min(involvedLeft, childBounds?.left ?? involvedLeft) - fragmentPad;
+      if (involvedXs.length > 0) {
+        // The tab ends clear of the leftmost lifeline's bar, so neither the
+        // tab's slanted edge nor the guard's first glyph touches the bar.
+        const barLeft = Math.min(...involvedXs) - unit(activationW / 2);
+        outerLeft = Math.min(outerLeft, barLeft - unit(SEQUENCE_LAYOUT.LABEL_CLEARANCE) - tabWidth);
+      }
       let outerRight = Math.max(involvedRight, childBounds?.right ?? involvedRight) + fragmentPad;
       outerRight = Math.max(outerRight, outerLeft + tabWidth + fragmentPad);
       fragmentRow.outer = {
@@ -1453,7 +1464,7 @@ function computeLayout(
   // A label centered on a long arrow sits on the lifelines and bars the
   // arrow passes. When one stretch of the arrow between those obstacles
   // holds the whole label, the label moves there, nearest the sender first.
-  const labelClearance = unit(LABEL_BOX_PAD.x + SEQUENCE_LAYOUT.GRID / 2);
+  const labelClearance = unit(SEQUENCE_LAYOUT.LABEL_CLEARANCE);
   for (const message of messages) {
     if (message.selfLoop) continue;
     const left = Math.min(message.x1, message.x2);

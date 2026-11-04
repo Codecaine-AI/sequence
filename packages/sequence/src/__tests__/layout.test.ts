@@ -95,6 +95,7 @@ describe("layoutSequence", () => {
       FRAG_GUARD_H: 40,
       FRAG_GUARD_BASELINE: 18,
       GUARD_SHIFT_MAX: 120,
+      LABEL_CLEARANCE: 12,
       NOTE_MARGIN_Y: 8,
       NOTE_W: 160,
       MARGIN: 24,
@@ -797,6 +798,32 @@ describe("layoutSequence", () => {
     expect(bar.y).toBeLessThan(guard.box.y);
     expect(guard.box.x).toBeGreaterThanOrEqual(bar.x + bar.width);
     expect(guard.box.x + guard.box.width).toBeLessThanOrEqual(fragment.outer.x + fragment.outer.width);
+  });
+
+  test("a guard moved past a bar keeps LABEL_CLEARANCE from it, and a tab ends clear of the first lifeline's bar", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "call" },
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "alt",
+        operands: [
+          { guard: "the thread reads done or missing", items: [{ kind: "message", id: "m1", from: "p2", to: "p3", line: "async", text: "work" }] },
+          { guard: "the thread reads open again", items: [{ kind: "message", id: "m2", from: "p2", to: "p3", line: "async", text: "more" }] },
+        ],
+      },
+      { kind: "message", id: "back", from: "p2", to: "p1", line: "return", text: "done" },
+    ]));
+    const bar = layout.activations.find(({ participantId }) => participantId === "p2")!.rect;
+    const fragment = layout.fragments[0]!;
+    const clearance = SEQUENCE_LAYOUT.LABEL_CLEARANCE;
+
+    // p2 is the frame's leftmost lifeline: the tab stops short of its bar.
+    expect(fragment.tab.x + fragment.tab.width).toBeLessThanOrEqual(bar.x - clearance);
+    // Both guards would run through the bar from the frame's inset, so they move past it.
+    for (const guard of fragment.guardLabels) {
+      expect(guard.anchor.x).toBeGreaterThanOrEqual(bar.x + bar.width + clearance);
+    }
   });
 
   test("a guard moves off a lifeline when a clear stretch of its frame holds it", () => {

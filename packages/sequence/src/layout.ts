@@ -1022,6 +1022,14 @@ function computeLayout(
     return end === undefined ? undefined : Math.min(end, operand.endY);
   };
 
+  /** Whether a scope, or a frame inside it, holds a return for this bar. */
+  const returns = (scope: LayoutScope, activation: MutableActivation): boolean => scope.events.some((event) =>
+    event.type === "fragment"
+      ? event.operands.some((operand) => returns(operand, activation))
+      : event.row.line === "return"
+        && event.row.from === activation.participantId
+        && event.row.to === activation.callerId);
+
   const walkScope = (
     scope: LayoutScope,
     inherited: MutableActivation[],
@@ -1045,7 +1053,16 @@ function computeLayout(
         // branch-local until they are merged here, which prevents one sibling
         // from changing the state observed by another sibling.
         const visible = [...inherited, ...local].filter((activation) => isOpen(activation, closedHere));
-        const perOperand = event.operands.map((operand) => walkScope(operand, visible));
+        // A bar that some operand returns stops at this frame. An operand
+        // that neither returns it nor opens on its lifeline does not see it,
+        // so calls there dock on the bare lifeline and get bars of their own.
+        const cut = visible.filter((activation) => event.operands.some((operand) => returns(operand, activation)));
+        const perOperand = event.operands.map((operand) => walkScope(
+          operand,
+          visible.filter((activation) => !cut.includes(activation)
+            || returns(operand, activation)
+            || involvedRowsEnd(operand, activation.participantId) !== undefined),
+        ));
         const mergedClosures = new Map<MutableActivation, ActivationClosure>();
         for (const closures of perOperand) {
           for (const [activation, closure] of closures) {
@@ -1187,7 +1204,15 @@ function computeLayout(
         if (above > segment.top) next.push({ top: segment.top, bottom: above });
       }
       if (entered) {
-        for (const piece of cut.pieces) {
+        // The first operand's piece continues the bar across the frame's
+        // top edge; later operands restart below their divider.
+        const [first, ...rest] = cut.pieces;
+        if (first && first.bottom > first.top) {
+          const above = [...next].reverse().find((segment) => segment.bottom <= cut.top && segment.bottom >= cut.top - barFrameGap);
+          if (above) above.bottom = first.bottom;
+          else next.push(first);
+        }
+        for (const piece of rest) {
           if (piece.bottom > piece.top) next.push(piece);
         }
       }

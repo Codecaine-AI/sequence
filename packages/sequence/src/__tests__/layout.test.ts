@@ -334,15 +334,41 @@ describe("layoutSequence", () => {
     const activation = pieces[pieces.length - 1]!;
     const nestedReturn = layout.messages.find(({ id }) => id === "nested-return")!;
 
+    const call = layout.messages.find(({ id }) => id === "call")!;
+
     expect(activation.endMessageId).toBe(nestedReturn.id);
     expect(activation.rect.y + activation.rect.height).toBe(nestedReturn.y);
-    // The bar stops above each frame it ends inside, and no piece crosses
-    // a frame's top edge.
-    for (const fragment of layout.fragments) {
-      for (const { rect } of pieces) {
-        expect(rect.y < fragment.outer.y && rect.y + rect.height > fragment.outer.y).toBe(false);
-      }
-    }
+    // The return sits in the first operand of each frame, so the bar runs
+    // as one piece from its call across both frames' top edges.
+    expect(pieces).toHaveLength(1);
+    expect(activation.rect.y).toBe(call.y);
+  });
+
+  test("an operand that does not return an outer bar gives its own calls their bars", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "check" },
+      {
+        kind: "fragment",
+        id: "branches",
+        op: "alt",
+        operands: [
+          { guard: "stale", items: [{ kind: "message", id: "refuse", from: "p2", to: "p1", line: "return", text: "409" }] },
+          {
+            guard: "fresh",
+            items: [
+              { kind: "message", id: "tell", from: "p1", to: "p3", line: "async", text: "tell" },
+              { kind: "message", id: "ask", from: "p1", to: "p2", line: "sync", text: "ask" },
+            ],
+          },
+        ],
+      },
+    ]));
+    const ask = layout.messages.find(({ id }) => id === "ask")!;
+    const askBar = layout.activations.find(({ startMessageId }) => startMessageId === "ask");
+
+    expect(askBar?.rect.y).toBe(ask.y);
+    // The arrow docks on its own bar.
+    expect(ask.x2).toBe(askBar!.rect.x);
   });
 
   test("does not let a return in one operand close an activation opened in a sibling operand", () => {
@@ -505,14 +531,13 @@ describe("layoutSequence", () => {
     const cancelReturn = layout.messages.find(({ id }) => id === "cancel-return")!;
     const crosses = (y: number) => pieces.some(({ rect }) => rect.y < y && rect.y + rect.height > y);
 
-    // Above the frame, in the first operand, in the second; none in the
-    // third operand, which does not open with a row on this lifeline.
-    expect(pieces).toHaveLength(3);
-    expect(crosses(fragment.outer.y)).toBe(false);
+    // From the call through the first operand, then in the second; none in
+    // the third operand, which does not open with a row on this lifeline.
+    expect(pieces).toHaveLength(2);
+    expect(crosses(fragment.outer.y)).toBe(true);
     for (const dividerY of fragment.dividerYs) expect(crosses(dividerY)).toBe(false);
-    expect(pieces[0]!.rect.y + pieces[0]!.rect.height).toBeLessThan(fragment.outer.y);
-    expect(pieces[1]!.rect.y + pieces[1]!.rect.height).toBe(okReturn.y);
-    expect(pieces[2]!.rect.y + pieces[2]!.rect.height).toBe(cancelReturn.y);
+    expect(pieces[0]!.rect.y + pieces[0]!.rect.height).toBe(okReturn.y);
+    expect(pieces[1]!.rect.y + pieces[1]!.rect.height).toBe(cancelReturn.y);
   });
 
   test("a bar that returns after a frame runs whole through it", () => {

@@ -269,11 +269,12 @@ describe("sequence SVG rendering", () => {
       "--seq-fragment-accent": flat.dark["color.blue.solid"],
       "--seq-participant-fill": flat.dark["color.surface.panel"],
       "--seq-text": flat.dark["color.text.body"],
-      "--seq-activation-fill": flat.dark["color.gray.solid"],
+      "--seq-activation-fill": flat.dark["color.code.gutter-fg"],
       "--seq-activation-stroke": flat.dark["color.border.default"],
       "--seq-note-stroke": flat.dark["color.gray.solid"],
-      // color-mix tokens, worked out to the hex a standalone SVG can paint.
-      "--seq-lifeline": "#3d444d",
+      "--seq-lifeline": flat.dark["color.text.muted"],
+      "--seq-participant-stroke": flat.dark["color.text.muted"],
+      // color-mix token, worked out to the hex a standalone SVG can paint.
       "--seq-note-fill": "#2e2b23",
       "--seq-bg": flat.dark["color.surface.page"],
     });
@@ -281,9 +282,15 @@ describe("sequence SVG rendering", () => {
 
   test("lifelines and notes default to their own colors, not the accent", () => {
     const colors = resolveSequenceColors({});
-    expect(colors.lifelineStroke).toBe(`var(--seq-lifeline, var(--ds-color-gray-line, ${SEQUENCE_THEME_DEFAULTS.lifeline}))`);
+    expect(colors.lifelineStroke).toBe(`var(--seq-lifeline, var(--ds-color-text-muted, ${SEQUENCE_THEME_DEFAULTS.lifeline}))`);
     expect(colors.noteFill).toBe(`var(--seq-note-fill, var(--ds-color-yellow-soft, ${SEQUENCE_THEME_DEFAULTS.noteFill}))`);
     expect(colors.noteStroke).toBe(`var(--seq-note-stroke, var(--ds-color-gray-solid, ${SEQUENCE_THEME_DEFAULTS.noteStroke}))`);
+  });
+
+  test("participant boxes default to gray while messages keep the accent", () => {
+    const colors = resolveSequenceColors({});
+    expect(colors.participantStroke).toBe(`var(--seq-participant-stroke, var(--ds-color-text-muted, ${SEQUENCE_THEME_DEFAULTS.participantStroke}))`);
+    expect(colors.messageStroke).toContain("--seq-accent");
   });
 
   test("shortcuts still color elements that have no per-element override", () => {

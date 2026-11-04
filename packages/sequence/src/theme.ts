@@ -26,13 +26,14 @@ export const SEQUENCE_CSS_VARIABLES = {
 
 /**
  * The `@codecaine-ai/design-system` token behind each default color. Each
- * color marks one kind of thing: orange the flow (participants and
- * messages), blue the fragments, gray the scaffolding (lifelines and
- * activation bars), yellow the notes, which comment on the flow. Each takes
- * the role it paints: `.solid` for strokes and fills, `.line` for the
- * lifelines, `.soft` for the note fill, `.text` for fragment labels.
- * Activation outlines take a border role; everything else takes a neutral
- * role.
+ * color marks one kind of thing: orange the messages, blue the fragments,
+ * gray the scaffolding (participant boxes, lifelines and activation bars),
+ * yellow the notes, which comment on the flow. Participant boxes and
+ * lifelines take `color.text.muted` (5.73:1 on the page). Activation bars
+ * take `color.code.gutter-fg`, the nearest gray that reaches 3:1 on the page
+ * (3.53:1) and stays lighter than the lifeline. `.soft` paints the note
+ * fill and `.text` the fragment labels. Activation outlines take a border
+ * role; everything else takes a neutral role.
  *
  * `muted` is kept for compatibility. `--seq-muted` has no default of its own
  * (a host that sets it colors both activation fill and stroke), and its value
@@ -44,10 +45,11 @@ export const SEQUENCE_THEME_TOKENS = {
   fragmentLabelText: "color.blue.text",
   participantFill: "color.surface.panel",
   text: "color.text.body",
-  muted: "color.gray.solid",
-  activationFill: "color.gray.solid",
+  muted: "color.code.gutter-fg",
+  activationFill: "color.code.gutter-fg",
   activationStroke: "color.border.default",
-  lifeline: "color.gray.line",
+  lifeline: "color.text.muted",
+  participantStroke: "color.text.muted",
   noteFill: "color.yellow.soft",
   noteStroke: "color.gray.solid",
   background: "color.surface.page",
@@ -117,6 +119,7 @@ const PINNED_COLORS = [
   "activationFill",
   "activationStroke",
   "lifeline",
+  "participantStroke",
   "noteFill",
   "noteStroke",
   "background",
@@ -214,7 +217,7 @@ export function resolveSequenceColors(style: SequenceStyle): SequenceResolvedCol
       vars.participantFill,
       defaults.participantFill,
     ),
-    participantStroke: pick(style.participant?.stroke, style.accent, vars.participantStroke, accentChain),
+    participantStroke: pick(style.participant?.stroke, style.accent, vars.participantStroke, defaults.participantStroke),
     participantText: pick(style.participant?.text, undefined, vars.participantText, textChain),
     lifelineStroke: pick(style.lifeline?.stroke, style.accent, vars.lifeline, defaults.lifeline),
     messageStroke: pick(style.message?.stroke, style.accent, vars.message, accentChain),

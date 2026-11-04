@@ -1,5 +1,6 @@
 import type {
   SeqPoint,
+  SeqRect,
   SeqTextAnchor,
   SequenceFragmentLayout,
   SequenceLayout,
@@ -58,6 +59,12 @@ function pointsPath(points: SeqPoint[], close = false): string {
 /** Escaped single-line label text: the collapsed string layout measured. */
 function labelText(value: string): string {
   return escapeXml(singleLineText(value));
+}
+
+/** An opaque background box behind a label, so no line shows through its text. */
+function labelBackground(box: SeqRect, colors: SequenceResolvedColors, className: string): string {
+  if (box.width <= 0 || box.height <= 0) return "";
+  return `<rect class="${className}" x="${number(box.x)}" y="${number(box.y)}" width="${number(box.width)}" height="${number(box.height)}" fill="${colors.background}" />`;
 }
 
 function textAnchor(anchor: SeqTextAnchor): string {
@@ -181,7 +188,8 @@ function renderMessage(
   return [
     `<g class="seq-message seq-message--${message.line}" data-item-id="${escapeXml(message.id)}"${opacityAttr(style.message?.opacity)}>`,
     geometry,
-    `<text ${textAnchor(message.label)} class="seq-message-label" fill="${colors.messageText}" stroke="${colors.background}" stroke-width="${number(4 * scale)}" stroke-linejoin="round" paint-order="stroke" ${fontAttrs("message", scale)}>${labelText(message.text)}</text>`,
+    labelBackground(message.labelBox, colors, "seq-label-box"),
+    `<text ${textAnchor(message.label)} class="seq-message-label" fill="${colors.messageText}" ${fontAttrs("message", scale)}>${labelText(message.text)}</text>`,
     "</g>",
   ].join("");
 }
@@ -220,7 +228,8 @@ function renderFragmentLabels(fragment: SequenceFragmentLayout, scale: number, c
   return [
     `<text class="seq-fragment-op" x="${number(fragment.tab.x + 6 * scale)}" y="${number(fragment.tab.y + 14 * scale)}" fill="${colors.fragmentLabelText}" stroke="${colors.fragmentLabelFill}" stroke-width="${number(4 * scale)}" paint-order="stroke" ${fontAttrs("fragmentOp", scale)}>${labelText(fragment.op)}</text>`,
     ...fragment.guardLabels.map((guard) => guard.label
-      ? `<text ${textAnchor(guard.anchor)} class="seq-fragment-guard" data-operand="${guard.operand}" fill="${colors.text}" stroke="${colors.background}" stroke-width="${number(4 * scale)}" stroke-linejoin="round" paint-order="stroke" ${fontAttrs("guard", scale)}>${labelText(bracketed(guard.label))}</text>`
+      ? labelBackground(guard.box, colors, "seq-label-box")
+        + `<text ${textAnchor(guard.anchor)} class="seq-fragment-guard" data-operand="${guard.operand}" fill="${colors.text}" ${fontAttrs("guard", scale)}>${labelText(bracketed(guard.label))}</text>`
       : ""),
   ].join("");
 }

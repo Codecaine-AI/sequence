@@ -358,8 +358,13 @@ test("renders matching top and bottom participants, including actors", () => {
   }
 });
 
-test("paints branch labels above activation bars with a background halo", () => {
+test("paints an opaque background box behind every message label and guard, above lines and bars", () => {
   const svg = renderSequenceSvgString(combinedFragments);
   expect(svg.indexOf('class="seq-fragment-labels"')).toBeGreaterThan(svg.indexOf('class="seq-activations"'));
-  expect(svg).toMatch(/class="seq-fragment-guard"[^>]*paint-order="stroke"/);
+  expect(svg.indexOf('class="seq-messages"')).toBeGreaterThan(svg.indexOf('class="seq-activations"'));
+  const background = /class="seq-background"[^>]*fill="([^"]+)"/.exec(svg)![1];
+  const labels = svg.match(/<text[^>]*class="seq-(?:message-label|fragment-guard)"/g) ?? [];
+  const boxed = svg.match(new RegExp(`<rect class="seq-label-box"[^>]*fill="${background!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}" /><text[^>]*class="seq-(?:message-label|fragment-guard)"`, "g")) ?? [];
+  expect(labels.length).toBeGreaterThan(0);
+  expect(boxed.length).toBe(labels.length);
 });

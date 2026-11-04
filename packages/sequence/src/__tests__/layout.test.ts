@@ -805,7 +805,7 @@ describe("layoutSequence", () => {
 
   test("a message label below a note clears the box at the smallest row gap", () => {
     // Inter's ascender (2728 / 2816 em) reaches the top of accented capitals;
-    // the label's 4px halo adds 2px around the glyphs.
+    // the label's background box covers it.
     const ascent = (2728 / 2816) * SEQUENCE_TYPOGRAPHY.message.size;
     for (const text of ["Label", "Émile"]) {
       const layout = layoutSequence(documentWith([
@@ -814,7 +814,8 @@ describe("layoutSequence", () => {
       ], { surface: { rowGap: 16 } }));
       const note = layout.notes[0]!;
       const message = layout.messages[0]!;
-      expect(message.label.y - ascent - 2).toBeGreaterThanOrEqual(note.box.y + note.box.height);
+      expect(message.labelBox.y).toBeLessThanOrEqual(message.label.y - ascent);
+      expect(message.labelBox.y + 1e-9).toBeGreaterThanOrEqual(note.box.y + note.box.height);
     }
   });
 

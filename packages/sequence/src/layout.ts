@@ -12,6 +12,7 @@ import type {
 import {
   resolveSequenceTextMetrics,
   sequenceFont,
+  singleLineText,
   type ResolvedSequenceTextMetrics,
   type SeqFont,
   type SequenceMeasureInput,
@@ -112,6 +113,11 @@ export interface SequenceMessageLayout extends SequenceRowBase {
   y2: number;
   selfLoop?: SeqPoint[];
   label: SeqTextAnchor;
+  /**
+   * The label's measured text box plus {@link LABEL_BOX_PAD}. The renderer
+   * fills it with the background so no line shows through the text.
+   */
+  labelBox: SeqRect;
 }
 
 export interface SequenceFragmentGuardLayout {
@@ -120,6 +126,8 @@ export interface SequenceFragmentGuardLayout {
   /** Already bracketed for direct SVG rendering. */
   label: string;
   anchor: SeqTextAnchor;
+  /** The guard's text box plus {@link LABEL_BOX_PAD}; empty when there is no label. */
+  box: SeqRect;
 }
 
 export interface SequenceFragmentLayout extends SequenceRowBase {
@@ -234,8 +242,10 @@ interface ActivationClosure {
 const DESCENT_EM = 0.25;
 /** Inter's ascender (0.969 em): the tallest glyph, accents included. */
 const ASCENT_EM = 0.97;
-/** Base px a label's halo (a 4 px background stroke) reaches past its glyphs. */
-const LABEL_HALO = 2;
+/** Base px a label's background box reaches past its glyphs, per side. */
+export const LABEL_BOX_PAD = { x: 3, y: 1 } as const;
+/** Base px a label's background box reaches above its glyphs. */
+const LABEL_HALO = LABEL_BOX_PAD.y;
 /** Base px from the top margin to the title's first baseline. */
 const TITLE_BASELINE = 18;
 
@@ -592,6 +602,7 @@ function computeLayout(
         y: y - unit(labelGap),
         anchor: self ? "start" : "middle",
       },
+      labelBox: { x: 0, y: 0, width: 0, height: 0 },
       depth,
     };
     if (self) {
@@ -782,6 +793,7 @@ function computeLayout(
               : operandStarts[operandIndex]! + unit(14),
             anchor: "start",
           },
+          box: { x: 0, y: 0, width: 0, height: 0 },
         };
       });
       for (const guard of fragmentRow.guardLabels) {
@@ -1052,6 +1064,27 @@ function computeLayout(
     }
     fragment.outer.x = nextLeft;
     fragment.outer.width = nextRight - nextLeft;
+  }
+
+  // Label boxes, from the final anchors: the renderer paints each one with
+  // the background behind its text, so lifelines, bars and dividers stop at
+  // the box edge instead of cutting through the glyphs.
+  const labelBox = (anchor: SeqTextAnchor, text: string, font: SeqFont): SeqRect => {
+    if (singleLineText(text) === "") return { x: anchor.x, y: anchor.y, width: 0, height: 0 };
+    const { left, right } = horizontalTextBounds(anchor, safeMeasure(text, font));
+    const padX = unit(LABEL_BOX_PAD.x);
+    const padY = unit(LABEL_BOX_PAD.y);
+    const top = anchor.y - font.size * ASCENT_EM - padY;
+    return {
+      x: left - padX,
+      y: top,
+      width: right - left + padX * 2,
+      height: anchor.y + font.size * DESCENT_EM + padY - top,
+    };
+  };
+  for (const message of messages) message.labelBox = labelBox(message.label, message.text, messageFont);
+  for (const fragment of fragments) {
+    for (const guard of fragment.guardLabels) guard.box = labelBox(guard.anchor, guard.label, guardFont);
   }
 
   let rightEdge = participants.reduce(

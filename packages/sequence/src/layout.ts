@@ -998,6 +998,48 @@ function computeLayout(
   };
   walkScope(documentScope, []);
 
+  // A label centered on a long arrow sits on the lifelines and bars the
+  // arrow passes. When one stretch of the arrow between those obstacles
+  // holds the whole label, the label moves there, nearest the sender first.
+  const labelClearance = unit(LABEL_BOX_PAD.x + SEQUENCE_LAYOUT.GRID / 2);
+  for (const message of messages) {
+    if (message.selfLoop) continue;
+    const left = Math.min(message.x1, message.x2);
+    const right = Math.max(message.x1, message.x2);
+    const top = message.label.y - messageFont.size * ASCENT_EM;
+    const bottom = message.label.y + messageFont.size * DESCENT_EM;
+    const obstacles: { left: number; right: number }[] = [];
+    for (const participant of participants) {
+      if (participant.id === message.from || participant.id === message.to) continue;
+      if (participant.centerX <= left || participant.centerX >= right) continue;
+      const obstacle = { left: participant.centerX - unit(0.5), right: participant.centerX + unit(0.5) };
+      for (const activation of activations) {
+        if (activation.participantId !== participant.id) continue;
+        if (activation.rect.y > bottom || activation.rect.y + activation.rect.height < top) continue;
+        obstacle.left = Math.min(obstacle.left, activation.rect.x);
+        obstacle.right = Math.max(obstacle.right, activation.rect.x + activation.rect.width);
+      }
+      obstacles.push(obstacle);
+    }
+    if (obstacles.length === 0) continue;
+    const textWidth = safeMeasure(message.text, messageFont);
+    const centered = horizontalTextBounds(message.label, textWidth);
+    const clear = obstacles.every((obstacle) =>
+      obstacle.right + labelClearance <= centered.left || obstacle.left - labelClearance >= centered.right);
+    if (clear) continue;
+    obstacles.sort((a, b) => a.left - b.left);
+    const slots: { left: number; right: number }[] = [];
+    let slotLeft = left;
+    for (const obstacle of obstacles) {
+      slots.push({ left: slotLeft, right: obstacle.left });
+      slotLeft = obstacle.right;
+    }
+    slots.push({ left: slotLeft, right });
+    if (message.x1 > message.x2) slots.reverse();
+    const slot = slots.find((candidate) => candidate.right - candidate.left - labelClearance * 2 >= textWidth);
+    if (slot) message.label.x = (slot.left + slot.right) / 2;
+  }
+
   // Activation docking recalculates message anchors, so enforce the left
   // diagram inset after the activation pass as well as during initial layout.
   for (const message of messages) {

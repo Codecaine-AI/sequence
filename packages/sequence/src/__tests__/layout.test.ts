@@ -581,6 +581,23 @@ describe("layoutSequence", () => {
     visit(layout);
   });
 
+  test("a label on an arrow that passes an activation bar moves into a clear stretch of the arrow", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "call" },
+      { kind: "message", id: "past", from: "p1", to: "p3", line: "async", text: "passes the bar" },
+      { kind: "message", id: "back", from: "p2", to: "p1", line: "return", text: "done" },
+    ]));
+    const past = layout.messages.find(({ id }) => id === "past")!;
+    const bar = layout.activations.find(({ participantId }) => participantId === "p2")!.rect;
+    const box = past.labelBox;
+
+    expect(bar.y).toBeLessThan(box.y);
+    expect(bar.y + bar.height).toBeGreaterThan(box.y + box.height);
+    // Clear of the bar, on the arrow, on the sender's side.
+    expect(box.x + box.width).toBeLessThanOrEqual(bar.x);
+    expect(box.x).toBeGreaterThanOrEqual(past.x1);
+  });
+
   test("frames keep vertical clearance from neighboring rows and sibling frames", () => {
     const optOperand = (id: string) => ({
       guard: "ready",

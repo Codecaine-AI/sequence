@@ -541,6 +541,30 @@ describe("layoutSequence", () => {
     expect(pieces[1]!.rect.y + pieces[1]!.rect.height).toBe(cancelReturn.y);
   });
 
+  test("a guard wider than a column gap runs through no lifeline", () => {
+    const guard = "every reviewer passes in the latest round";
+    const layout = layoutSequence(documentWith([
+      {
+        kind: "fragment",
+        id: "branches",
+        op: "alt",
+        operands: [
+          { guard, items: [{ kind: "message", id: "ok", from: "p1", to: "p3", line: "async", text: "ok" }] },
+          { guard: "check or goal fails in rounds 1 to 3", items: [{ kind: "message", id: "fix", from: "p1", to: "p2", line: "async", text: "fix" }] },
+        ],
+      },
+    ]));
+    const fragment = layout.fragments[0]!;
+    const [first, second] = layout.participants;
+
+    expect(second!.centerX - first!.centerX).toBeGreaterThan(SEQUENCE_LAYOUT.COLUMN_GAP);
+    for (const { box } of fragment.guardLabels) {
+      for (const { centerX } of layout.participants) {
+        expect(centerX > box.x && centerX < box.x + box.width).toBe(false);
+      }
+    }
+  });
+
   test("in a later operand, a bar opened above the frame shows again at its lifeline's first row there", () => {
     const layout = layoutSequence(documentWith([
       { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "run" },

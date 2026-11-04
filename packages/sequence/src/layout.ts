@@ -462,9 +462,38 @@ function computeLayout(
   // bars reach further right than left.
   const nestedBarReach = (index: number): number =>
     unit(activationW / 3) * (activationDepth.get(doc.participants[index]!.id) ?? 0);
+  const frameColumns = (items: SequenceItem[], found: Set<number>): Set<number> => {
+    for (const item of items) {
+      if (item.kind === "message") {
+        found.add(participantIndex(item.from));
+        found.add(participantIndex(item.to));
+      } else if (item.kind === "note") {
+        found.add(participantIndex(item.anchor));
+      } else {
+        for (const operand of item.operands) frameColumns(operand.items, found);
+      }
+    }
+    found.delete(-1);
+    return found;
+  };
+  // Guards sit near their frame's left edge. The gap right of the frame's
+  // leftmost lifeline holds the widest guard, so no lifeline runs through it.
+  const guardClearance = unit(LABEL_BOX_PAD.x + SEQUENCE_LAYOUT.GRID / 2);
+  const reserveGuardRoom = (fragment: SequenceFragment): void => {
+    const columns = [...frameColumns(fragment.operands.flatMap((operand) => operand.items), new Set())];
+    if (columns.length < 2) return;
+    const left = Math.min(...columns);
+    const widest = Math.max(...fragment.operands.map((operand, index) => {
+      const label = operand.guard ? `[${operand.guard}]` : fragment.op === "alt" && index > 0 ? "[else]" : "";
+      return label ? safeMeasure(label, guardFont) : 0;
+    }));
+    if (widest === 0) return;
+    widenSpan(left, left + 1, widest + unit(activationW) + guardClearance * 2 + nestedBarReach(left));
+  };
   const reserveColumnWidths = (items: SequenceItem[], fragmentDepth: number): void => {
     for (const item of items) {
       if (item.kind === "fragment") {
+        reserveGuardRoom(item);
         for (const operand of item.operands) reserveColumnWidths(operand.items, fragmentDepth + 1);
       } else if (item.kind === "message") {
         if (item.from === item.to) {
@@ -1389,7 +1418,6 @@ function computeLayout(
   // past it, while it still fits inside its frame and stays within
   // GUARD_SHIFT_MAX of where it started, near its tab. Otherwise it only
   // moves past bars; lifelines stop at its box.
-  const guardClearance = unit(LABEL_BOX_PAD.x + SEQUENCE_LAYOUT.GRID / 2);
   const clearX = (start: number, width: number, obstacles: { left: number; right: number }[]): number => {
     let x = start;
     for (let step = 0; step <= obstacles.length; step += 1) {

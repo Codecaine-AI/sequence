@@ -88,11 +88,11 @@ names its line. Fix every listed line, because a failed parse changes nothing.
   - Put a code name the brief gives, such as `buildLead(threads)`, in `stereotype=`. Leave any other detail about a participant out of the diagram: never move it into a note.
 - Order the columns with the steps in "Order the Columns Before You Write Them".
 - Write a message label as the call or event the reader knows, such as `fetch(user)` or `200 OK`.
-  - Keep a label to 40 characters or fewer. Keep each argument the brief names, and drop the others.
+  - Keep a plain-words label to 40 characters or fewer, and a code call to 56. Keep each argument the brief names, and drop the others.
   - Use one label style in a diagram: a code call for a tool or API call, plain words for an event. Never add a prefix such as `publish:`.
 - Copy each detail the brief lists. Never rename, merge or drop one.
   - Copy each argument the brief names into the call label, such as `getOrder(orderId, userId)`. When the brief lists a tool's parameters, write the required ones by name.
-  - Shorten an argument name before you drop one, such as `session_update(id, thread, phase, links)`. Never write an ellipsis, and never move a dropped argument into a note.
+  - Never abbreviate a name the brief uses, such as `baseRevision` to `baseRev`. A code call that lists the brief's arguments can run to 56 characters; shorten plain words first, such as `session_update(id, thread, phase, links)`. Never write an ellipsis, and never move a dropped argument into a note.
   - Never write an argument the brief does not give for that call. A guessed argument, such as `read(childThreadId)` for a tool that takes `requestId`, misstates the tool.
   - Write a guard in the brief's words, in prose with no code operator such as `!=`. Keep every condition and remark the brief puts in it, such as `(this part is proposed)` or `the last entry of models`.
   - Draw each return the brief lists as its own arrow, in the brief's order. Never merge two returns into one.
@@ -104,7 +104,7 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - When an `alt` branches on a call's reply, put each reply inside the branch it starts, as that branch's first step.
   - Never merge two outcomes into one reply before the `alt`, such as `200 or 409`.
   - Let each guard name the condition, and draw only the replies the brief lists.
-- Keep a guard to 60 characters or fewer by cutting filler words, never a condition. A note cannot restrict a branch, so a condition never moves to a note. A reason the brief gives with `because` can be cut.
+- Keep a guard to 60 characters or fewer by cutting filler words, never a condition. A note cannot restrict a branch, so a condition never moves to a note. Keep a reason the brief gives with `because` in the guard, in a few words, such as `after a replan`.
 - Keep a diagram to about 5 participants and 20 messages. Split a larger flow into two blocks.
 - Use a note only where the brief lists one. Keep it short, one fact a message cannot carry.
   - Keep each condition that the brief gives for that fact.

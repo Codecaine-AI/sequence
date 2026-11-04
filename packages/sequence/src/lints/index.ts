@@ -16,6 +16,16 @@ export const CROSSED_COLUMNS_LIMIT = 2;
 export const LABEL_LENGTH_LIMIT = 40;
 
 /**
+ * A code-call label, `name(arguments)`, longer than this many characters is
+ * reported. It lists the brief's argument names, which are never cut or
+ * abbreviated, so it gets more room than plain words.
+ */
+export const CALL_LABEL_LENGTH_LIMIT = 56;
+
+/** A label that is one call with its arguments, such as `progress_add(accepted, baseRevision)`. */
+const CALL_LABEL = /^[A-Za-z_][\w.]*\(.*\)$/;
+
+/**
  * A guard longer than this many characters is reported. A guard copies
  * every condition the brief gives it, so it gets more room than a label.
  */
@@ -48,18 +58,20 @@ function guardsOf(items: readonly SequenceItem[]): { id: string; guard: string }
  *   left, when the flow reaches the receiver after the sender. One finding
  *   per sender and receiver pair.
  * - `long-label`: a message label longer than {@link LABEL_LENGTH_LIMIT}
- *   characters. `long-guard`: a guard longer than {@link GUARD_LENGTH_LIMIT}.
+ *   characters, or a code call longer than {@link CALL_LABEL_LENGTH_LIMIT}.
+ *   `long-guard`: a guard longer than {@link GUARD_LENGTH_LIMIT}.
  * - `joined-calls`: one arrow whose label joins two calls with "then".
  */
 export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
   const results = [...crossedColumns(document), ...leftwardCalls(document)];
   const messages = messagesOf(document.items);
   for (const message of messages) {
-    if (message.text.length > LABEL_LENGTH_LIMIT) {
+    const limit = CALL_LABEL.test(message.text) ? CALL_LABEL_LENGTH_LIMIT : LABEL_LENGTH_LIMIT;
+    if (message.text.length > limit) {
       results.push({
         rule: "long-label",
         severity: "info",
-        message: `"${message.text}" has ${message.text.length} characters. Keep a label to ${LABEL_LENGTH_LIMIT} or fewer: name the call and only the arguments the reader needs.`,
+        message: `"${message.text}" has ${message.text.length} characters. Keep a label to ${limit} or fewer: name the call and only the arguments the brief names, with the brief's names unabbreviated.`,
         target: message.id,
       });
     }

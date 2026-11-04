@@ -30,7 +30,7 @@ test("crossed-columns reports a message that crosses 2 or more other lifelines, 
 });
 
 test("long-label reports a label over 40 characters, long-guard a guard over 60", () => {
-  const long = "session_update(sessionId, threadId, phase, addLinks)";
+  const long = "session_update(sessionId, threadId, phase, addLinks, agentId)";
   const results = lintSequence(documentWith([
     {
       kind: "fragment",
@@ -47,7 +47,17 @@ test("long-label reports a label over 40 characters, long-guard a guard over 60"
   ]));
 
   expect(results.map(({ rule, target }) => [rule, target])).toEqual([["long-label", "long"], ["long-guard", "f1"]]);
+  expect(results[0]!.message).toContain("Keep a label to 56 or fewer");
   expect(results[1]!.message).toContain("Keep every condition and remark the brief gives");
+  // A code call with the brief's argument names gets 56 characters; plain words still get 40.
+  const call = "progress_add(accepted, by verifier, baseRevision)";
+  const prose = "records the accepted event with its base revision";
+  const mixed = lintSequence(documentWith([
+    { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: call },
+    { kind: "message", id: "prose", from: "p1", to: "p2", line: "async", text: prose },
+  ]));
+  expect(call.length).toBeLessThanOrEqual(56);
+  expect(mixed.map(({ rule, target }) => [rule, target])).toEqual([["long-label", "prose"]]);
   // A guard between 40 and 60 characters keeps every condition and passes.
   const kept = lintSequence(documentWith([
     { kind: "fragment", id: "f2", op: "opt", operands: [{ guard: "T3 signed in, Session done, paused or cancelled, Thread live", items: [] }] },

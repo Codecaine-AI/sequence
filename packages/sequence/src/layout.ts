@@ -62,6 +62,8 @@ export const SEQUENCE_LAYOUT = {
   FRAG_DIVIDER_GAP: 10,
   /** Reserved row for an operand guard label rendered below a divider. */
   FRAG_GUARD_H: 22,
+  /** Furthest a guard moves right from its place to clear a lifeline. */
+  GUARD_SHIFT_MAX: 120,
   /** Extra clearance above and below note boxes. */
   NOTE_MARGIN_Y: 8,
   NOTE_W: 160,
@@ -1315,8 +1317,9 @@ function computeLayout(
   }
 
   // A guard that a lifeline or an activation bar runs through moves right,
-  // past it, while it still fits inside its frame. When no clear stretch
-  // holds the guard, it only moves past bars; lifelines stop at its box.
+  // past it, while it still fits inside its frame and stays within
+  // GUARD_SHIFT_MAX of where it started, near its tab. Otherwise it only
+  // moves past bars; lifelines stop at its box.
   const guardClearance = unit(LABEL_BOX_PAD.x + SEQUENCE_LAYOUT.GRID / 2);
   const clearX = (start: number, width: number, obstacles: { left: number; right: number }[]): number => {
     let x = start;
@@ -1342,7 +1345,8 @@ function computeLayout(
         .filter(({ centerX }) => centerX > fragment.outer.x && centerX < frameRight)
         .map(({ centerX }) => ({ left: centerX - unit(0.5), right: centerX + unit(0.5) }));
       const x = [clearX(guard.anchor.x, width, [...bars, ...lifelines]), clearX(guard.anchor.x, width, bars)]
-        .find((candidate) => candidate + width <= frameRight);
+        .find((candidate, index) => candidate + width <= frameRight
+          && (index > 0 || candidate - guard.anchor.x <= unit(SEQUENCE_LAYOUT.GUARD_SHIFT_MAX)));
       if (x !== undefined) guard.anchor.x = x;
     }
   }

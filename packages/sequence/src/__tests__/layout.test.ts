@@ -89,6 +89,7 @@ describe("layoutSequence", () => {
       FRAG_NESTED_TOP: 8,
       FRAG_DIVIDER_GAP: 10,
       FRAG_GUARD_H: 22,
+      GUARD_SHIFT_MAX: 120,
       NOTE_MARGIN_Y: 8,
       NOTE_W: 160,
       MARGIN: 24,
@@ -639,7 +640,7 @@ describe("layoutSequence", () => {
           ],
         }],
       },
-    ]), measure);
+    ], { surface: { columnGap: 120 } }), measure);
     const guard = layout.fragments[0]!.guardLabels[0]!;
 
     for (const { centerX } of layout.participants) {

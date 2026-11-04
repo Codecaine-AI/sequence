@@ -86,6 +86,7 @@ describe("layoutSequence", () => {
       FRAG_MARGIN_Y: 24,
       FRAG_INNER_TOP: 14,
       FRAG_INNER_BOTTOM: 12,
+      FRAG_NESTED_BOTTOM: 20,
       FRAG_NESTED_TOP: 8,
       FRAG_DIVIDER_GAP: 10,
       FRAG_GUARD_H: 22,
@@ -876,7 +877,7 @@ describe("layoutSequence", () => {
       .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
   });
 
-  test("nested frames that close together step their bottom edges by the inner inset, with no stacked margins", () => {
+  test("nested frames that close together step their bottom edges by the nested inset, with no stacked margins", () => {
     const opt = (id: string, items: SequenceItem[]): SequenceItem => ({
       kind: "fragment", id, op: "opt", operands: [{ guard: id, items }],
     });
@@ -900,8 +901,8 @@ describe("layoutSequence", () => {
     const after = layout.messages.find(({ id }) => id === "after")!;
 
     expect(bottom("inner") - last.y2).toBe(SEQUENCE_LAYOUT.ROW_H / 2 + SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
-    expect(bottom("middle") - bottom("inner")).toBe(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
-    expect(bottom("outer") - bottom("middle")).toBe(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+    expect(bottom("middle") - bottom("inner")).toBe(SEQUENCE_LAYOUT.FRAG_NESTED_BOTTOM);
+    expect(bottom("outer") - bottom("middle")).toBe(SEQUENCE_LAYOUT.FRAG_NESTED_BOTTOM);
     // The outermost frame still keeps one margin before the next row.
     expect(after.y - SEQUENCE_LAYOUT.ROW_H / 2 - bottom("outer")).toBe(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
   });
@@ -936,7 +937,7 @@ describe("layoutSequence", () => {
     expect(inner.outer.y - (outer.outer.y + SEQUENCE_LAYOUT.FRAG_TAB_H))
       .toBe(SEQUENCE_LAYOUT.FRAG_INNER_TOP + SEQUENCE_LAYOUT.FRAG_NESTED_TOP);
     expect((outer.outer.y + outer.outer.height) - (inner.outer.y + inner.outer.height))
-      .toBe(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+      .toBe(SEQUENCE_LAYOUT.FRAG_NESTED_BOTTOM);
   });
 
   test("operand dividers keep clearance from surrounding operand contents", () => {

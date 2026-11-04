@@ -51,11 +51,12 @@ export const SEQUENCE_LAYOUT = {
   FRAG_INNER_TOP: 14,
   /**
    * Air between a fragment's last item and its bottom edge. A nested frame
-   * that closes its operand adds no margin of its own, so nested frames that
-   * close together step their bottom edges by this much, as FRAG_PAD steps
-   * their sides.
+   * that closes its operand adds no margin of its own; its parent's bottom
+   * edge sits FRAG_NESTED_BOTTOM below it instead.
    */
   FRAG_INNER_BOTTOM: 12,
+  /** Air below a nested frame that closes its parent's last operand. */
+  FRAG_NESTED_BOTTOM: 20,
   /** Air above a nested frame that opens its operand, below the tab or guard row. */
   FRAG_NESTED_TOP: 8,
   /** Clearance above and below each dashed operand divider. */
@@ -552,6 +553,7 @@ function computeLayout(
   const fragmentMarginY = unit(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
   const fragmentInnerTop = unit(SEQUENCE_LAYOUT.FRAG_INNER_TOP);
   const fragmentInnerBottom = unit(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+  const fragmentNestedBottom = unit(SEQUENCE_LAYOUT.FRAG_NESTED_BOTTOM);
   const fragmentNestedTop = unit(SEQUENCE_LAYOUT.FRAG_NESTED_TOP);
   const fragmentDividerGap = unit(SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP);
   const fragmentGuardHeight = unit(SEQUENCE_LAYOUT.FRAG_GUARD_H);
@@ -833,7 +835,10 @@ function computeLayout(
         operandScopes.push(operandScope);
         cursor = operandScope.endY;
       }
-      cursor += fragmentInnerBottom;
+      // A nested frame that closes the last operand steps this frame's
+      // bottom edge further out, so the two edges never read as one line.
+      const lastItems = item.operands[item.operands.length - 1]!.items;
+      cursor += lastItems[lastItems.length - 1]?.kind === "fragment" ? fragmentNestedBottom : fragmentInnerBottom;
       const childRows = rows.slice(firstChildRow);
       fragmentChildren.set(fragmentRow, childRows);
       const childBounds = xBoundsForRows(childRows);

@@ -90,7 +90,8 @@ names its line. Fix every listed line, because a failed parse changes nothing.
   - Keep a label to 40 characters or fewer. Keep each argument the brief names, and drop the others.
   - Use one label style in a diagram: a code call for a tool or API call, plain words for an event. Never add a prefix such as `publish:`.
 - Copy each detail the brief lists. Never rename, merge or drop one.
-  - Copy each argument the brief names into the call label, such as `getOrder(orderId, userId)`.
+  - Copy each argument the brief names into the call label, such as `getOrder(orderId, userId)`. When the brief lists a tool's parameters, write the required ones by name.
+  - Never write an argument the brief does not give for that call. A guessed argument, such as `read(childThreadId)` for a tool that takes `requestId`, misstates the tool.
   - Write a guard in the brief's words. Keep every condition and remark the brief puts in it, such as `(this part is proposed)` or `the last entry of models`.
   - Draw each return the brief lists as its own arrow, in the brief's order. Never merge two returns into one.
   - Keep the place the brief gives for a value, such as `ids in body.meta`.

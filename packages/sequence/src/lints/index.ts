@@ -12,8 +12,14 @@ export interface SequenceLintResult {
 /** A message that crosses this many other lifelines or more is reported. */
 export const CROSSED_COLUMNS_LIMIT = 2;
 
-/** A message label or guard longer than this many characters is reported. */
+/** A message label longer than this many characters is reported. */
 export const LABEL_LENGTH_LIMIT = 40;
+
+/**
+ * A guard longer than this many characters is reported. A guard copies
+ * every condition the brief gives it, so it gets more room than a label.
+ */
+export const GUARD_LENGTH_LIMIT = 60;
 
 function messagesOf(items: readonly SequenceItem[]): SequenceMessage[] {
   return items.flatMap((item) =>
@@ -41,8 +47,8 @@ function guardsOf(items: readonly SequenceItem[]): { id: string; guard: string }
  * - `leftward-call`: a call or async message to a column on the sender's
  *   left, when the flow reaches the receiver after the sender. One finding
  *   per sender and receiver pair.
- * - `long-label`, `long-guard`: a message label or a guard longer than
- *   {@link LABEL_LENGTH_LIMIT} characters.
+ * - `long-label`: a message label longer than {@link LABEL_LENGTH_LIMIT}
+ *   characters. `long-guard`: a guard longer than {@link GUARD_LENGTH_LIMIT}.
  * - `joined-calls`: one arrow whose label joins two calls with "then".
  */
 export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
@@ -67,11 +73,11 @@ export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
     }
   }
   for (const { id, guard } of guardsOf(document.items)) {
-    if (guard.length <= LABEL_LENGTH_LIMIT) continue;
+    if (guard.length <= GUARD_LENGTH_LIMIT) continue;
     results.push({
       rule: "long-guard",
       severity: "info",
-      message: `The guard "${guard}" has ${guard.length} characters. Cut it to ${LABEL_LENGTH_LIMIT} or fewer: keep only the condition, and move a reason or a remark such as "(proposed)" into a note.`,
+      message: `The guard "${guard}" has ${guard.length} characters. Cut it to ${GUARD_LENGTH_LIMIT} or fewer by dropping filler words. Keep every condition and remark the brief gives; only a reason given with "because" moves to a note.`,
       target: id,
     });
   }

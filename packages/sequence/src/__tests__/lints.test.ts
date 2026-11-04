@@ -29,7 +29,7 @@ test("crossed-columns reports a message that crosses 2 or more other lifelines, 
   expect(crossed[0]!.message).toContain("crosses 2 other columns (b, c)");
 });
 
-test("long-label and long-guard report text over 40 characters", () => {
+test("long-label reports a label over 40 characters, long-guard a guard over 60", () => {
   const long = "session_update(sessionId, threadId, phase, addLinks)";
   const results = lintSequence(documentWith([
     {
@@ -37,7 +37,7 @@ test("long-label and long-guard report text over 40 characters", () => {
       id: "f1",
       op: "opt",
       operands: [{
-        guard: "T3 answered and modelSelection differs from the last entry",
+        guard: "T3 is signed in, the Session is done, paused or cancelled, and a Thread still reads live",
         items: [
           { kind: "message", id: "long", from: "p1", to: "p2", line: "async", text: long },
           { kind: "message", id: "short", from: "p1", to: "p2", line: "async", text: "session_update(phase)" },
@@ -47,6 +47,12 @@ test("long-label and long-guard report text over 40 characters", () => {
   ]));
 
   expect(results.map(({ rule, target }) => [rule, target])).toEqual([["long-label", "long"], ["long-guard", "f1"]]);
+  expect(results[1]!.message).toContain("Keep every condition and remark the brief gives");
+  // A guard between 40 and 60 characters keeps every condition and passes.
+  const kept = lintSequence(documentWith([
+    { kind: "fragment", id: "f2", op: "opt", operands: [{ guard: "T3 signed in, Session done, paused or cancelled, Thread live", items: [] }] },
+  ]));
+  expect(kept).toEqual([]);
 });
 
 test("joined-calls reports one arrow that carries two calls", () => {

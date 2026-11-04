@@ -91,7 +91,7 @@ names its line. Fix every listed line, because a failed parse changes nothing.
   - Use one label style in a diagram: a code call for a tool or API call, plain words for an event. Never add a prefix such as `publish:`.
 - Copy each detail the brief lists. Never rename, merge or drop one.
   - Copy each argument the brief names into the call label, such as `getOrder(orderId, userId)`.
-  - Copy each condition into its guard or note. A guard the brief gives two conditions keeps both.
+  - Write a guard in the brief's words. Keep every condition and remark the brief puts in it, such as `(this part is proposed)` or `the last entry of models`.
   - Draw each return the brief lists as its own arrow, in the brief's order. Never merge two returns into one.
   - Keep the place the brief gives for a value, such as `ids in body.meta`.
 - Draw one arrow for each call. Never join two calls in one label with "then", because a reply then seems to answer both.
@@ -101,7 +101,7 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - When an `alt` branches on a call's reply, put each reply inside the branch it starts, as that branch's first step.
   - Never merge two outcomes into one reply before the `alt`, such as `200 or 409`.
   - Let each guard name the condition, and draw only the replies the brief lists.
-- Keep a guard to 40 characters or fewer. State the condition only, and put a reason in a note.
+- Keep a guard to 60 characters or fewer by cutting filler words, never a condition. A note cannot restrict a branch, so only a reason the brief gives with `because` moves to a note.
 - Keep a diagram to about 5 participants and 20 messages. Split a larger flow into two blocks.
 - Use a note for one fact a message cannot carry. Keep it short.
   - Keep each condition that the brief gives for that fact.

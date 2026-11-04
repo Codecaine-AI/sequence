@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatorVersion": 1,
-  "snapshotId": "sha256:b783d15a04797647ab106c5541241302cc40ee6b21cb1eeab4b95164a2610e82",
+  "snapshotId": "sha256:2984eb1f5335f0128defb0c6934f850735f72dcdbe9f97aa6c7a7f35633df15e",
   "sources": [
     {
       "path": "docs/10-language/doc.json",
@@ -15,7 +15,7 @@
     },
     {
       "path": "packages/sequence/src/skill/generate-skill.ts",
-      "sha256": "900302bceabc5d304b939d95f521906a0282d94f01edc517492b585e75c7ad13",
+      "sha256": "399bfa0b6c6142511ac3ef26e235a1d29ed6ee146c4fd387c244ec296cc11515",
       "kind": "generator"
     }
   ]

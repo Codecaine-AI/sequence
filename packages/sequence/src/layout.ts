@@ -74,6 +74,8 @@ export const SEQUENCE_LAYOUT = {
   LABEL_CLEARANCE: 12,
   /** Extra clearance above and below note boxes. */
   NOTE_MARGIN_Y: 8,
+  /** Clear space between a note box and a frame edge or divider below it. */
+  NOTE_EDGE_GAP: 16,
   /**
    * Clear space between a frame edge or divider and the end of a bar that
    * fills the band of the row next to it: a sync call's callee bar, or a
@@ -821,13 +823,15 @@ function computeLayout(
   /**
    * How far a frame edge or divider sits from the content of the row next
    * to it. A sync call leaves a bar that fills its band, so the edge keeps
-   * BAR_EDGE_GAP below the band. Any other row keeps `pad` from its arrow
-   * or note box, or from a nested frame's edge.
+   * BAR_EDGE_GAP below the band. A note box keeps NOTE_EDGE_GAP. Any other
+   * row keeps `pad` from its arrow, or from a nested frame's edge.
    */
   const edgeGap = (item: SequenceItem | undefined, pad: number): number =>
     item?.kind === "message" && item.line === "sync"
       ? rowHeight / 2 + unit(SEQUENCE_LAYOUT.BAR_EDGE_GAP)
-      : pad;
+      : item?.kind === "note"
+        ? unit(SEQUENCE_LAYOUT.NOTE_EDGE_GAP)
+        : pad;
   /** Space a frame edge or divider adds below an operand's last row. */
   const closingPad = (items: SequenceItem[]): number => {
     const last = items[items.length - 1];

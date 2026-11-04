@@ -99,6 +99,7 @@ describe("layoutSequence", () => {
       LABEL_CLEARANCE: 12,
       NOTE_MARGIN_Y: 8,
       BAR_EDGE_GAP: 12,
+      NOTE_EDGE_GAP: 16,
       NOTE_W: 220,
       MARGIN: 24,
       SELF_LOOP_W: 40,
@@ -1222,6 +1223,28 @@ describe("layoutSequence", () => {
     expect(frame("f1").dividerYs[0]! - barBottom("inner")).toBe(SEQUENCE_LAYOUT.BAR_EDGE_GAP);
     // A return leaves no bar below its arrow: that edge keeps the inner pad from the arrow, as before.
     expect(frame("f2").outer.y + frame("f2").outer.height - layout.messages.find(({ id }) => id === "last")!.y2).toBe(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
+  });
+
+  test("a frame edge or divider keeps NOTE_EDGE_GAP below a note box", () => {
+    const layout = layoutSequence(documentWith([
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "alt",
+        operands: [
+          { guard: "a", items: [{ kind: "note", id: "n1", anchor: "p1", side: "over", text: "first branch" }] },
+          { items: [{ kind: "note", id: "n2", anchor: "p1", side: "over", text: "last branch" }] },
+        ],
+      },
+      { kind: "note", id: "n3", anchor: "p1", side: "over", text: "before a frame" },
+      { kind: "fragment", id: "f2", op: "opt", operands: [{ guard: "b", items: [{ kind: "message", id: "last", from: "p1", to: "p2", line: "async", text: "last" }] }] },
+    ]));
+    const frame = (id: string) => layout.fragments.find((fragment) => fragment.id === id)!;
+    const boxBottom = (id: string) => { const { box } = layout.notes.find((row) => row.id === id)!; return box.y + box.height; };
+
+    expect(frame("f1").dividerYs[0]! - boxBottom("n1")).toBe(SEQUENCE_LAYOUT.NOTE_EDGE_GAP);
+    expect(frame("f1").outer.y + frame("f1").outer.height - boxBottom("n2")).toBe(SEQUENCE_LAYOUT.NOTE_EDGE_GAP);
+    expect(frame("f2").outer.y - boxBottom("n3")).toBe(SEQUENCE_LAYOUT.NOTE_EDGE_GAP);
   });
 
   test("nested frames that close together step their bottom edges by the inner pad, with no stacked margins", () => {

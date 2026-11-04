@@ -2,16 +2,20 @@
 import { runDraw } from "./draw.ts";
 import { JUDGE_IDS, runJudge } from "./judge.ts";
 import { runRender } from "./render.ts";
-import { BRIEF_SETS, describeFailure, runScore, type BriefSet } from "./score.ts";
+import { runRound } from "./run-round.ts";
+import { BRIEF_SETS, describeFailure, GATE, runScore, type BriefSet } from "./score.ts";
 import { runSetup } from "./setup.ts";
 
 const USAGE = `climb: sequence-diagram quality climb
 
+  climb round  --briefs <dir> --run <runDir> --judges <sol,opus,...> [--draws 3] [--concurrency 4] [--judge-concurrency 6] [--timeout-min 20]
   climb setup  --briefs <dir> --run <runDir>
   climb draw   --run <runDir> [--concurrency 4] [--timeout-min 20] [--only a,b]
   climb render --run <runDir> [--only a,b]
   climb judge  --run <runDir> --judges <sol,opus,...> --out <scoresDir> [--concurrency 6] [--only a,b]
-  climb score  --scores <dir> [--scores <dir> ...] --set <climb|held-out> --judges <a,b,...> --out <dir> [--briefs <dir>]
+  climb score  --scores <round> [--scores <round> ...] --set <climb|held-out> --judges <a,b,...> --out <dir> [--briefs <dir>] [--draws 3]
+
+A <round> for score is a climb round folder, a comma list of score folders (one per draw), or one score folder.
 
 See packages/climb/README.md.`;
 
@@ -63,6 +67,28 @@ async function main(argv: readonly string[]): Promise<number> {
   }
   const flags = parseFlags(rest);
   switch (command) {
+    case "round": {
+      allow(flags, ["--briefs", "--run", "--judges", "--draws", "--concurrency", "--judge-concurrency", "--timeout-min"]);
+      const judges = list(one(flags, "--judges")) ?? [];
+      if (judges.length === 0) throw new Error(`--judges needs at least one of ${JUDGE_IDS.join(", ")}`);
+      for (const judge of judges) if (!JUDGE_IDS.includes(judge)) throw new Error(`Unknown judge ${judge}; known: ${JUDGE_IDS.join(", ")}`);
+      const runDir = one(flags, "--run");
+      const reports = await runRound({
+        briefsDir: one(flags, "--briefs"),
+        runDir,
+        draws: positiveInteger(optional(flags, "--draws") ?? String(GATE.draws), "--draws"),
+        judges,
+        concurrency: positiveInteger(optional(flags, "--concurrency") ?? "4", "--concurrency"),
+        judgeConcurrency: positiveInteger(optional(flags, "--judge-concurrency") ?? "6", "--judge-concurrency"),
+        timeoutMs: positiveInteger(optional(flags, "--timeout-min") ?? "20", "--timeout-min") * 60_000,
+      });
+      for (const report of reports) {
+        console.log(`${report.dir}: ${report.problems.length === 0 ? "every brief drawn, rendered and judged" : `${report.problems.length} problems`}`);
+        for (const problem of report.problems) console.log(`  ${problem}`);
+      }
+      console.log(`next: climb score --scores ${runDir} --set <climb|held-out> --judges ${judges.join(",")} --out ${runDir}/score`);
+      return reports.every((report) => report.problems.length === 0) ? 0 : 1;
+    }
     case "setup": {
       allow(flags, ["--briefs", "--run"]);
       const round = await runSetup({ briefsDir: one(flags, "--briefs"), runDir: one(flags, "--run") });
@@ -106,15 +132,16 @@ async function main(argv: readonly string[]): Promise<number> {
       return failed.length === 0 ? 0 : 1;
     }
     case "score": {
-      allow(flags, ["--scores", "--set", "--judges", "--out", "--briefs"]);
+      allow(flags, ["--scores", "--set", "--judges", "--out", "--briefs", "--draws"]);
       const set = one(flags, "--set");
       if (!isBriefSet(set)) throw new Error(`--set must be one of ${BRIEF_SETS.join(", ")}`);
       const judges = list(one(flags, "--judges")) ?? [];
       if (judges.length === 0) throw new Error("--judges needs at least one judge");
-      const scoreDirs = flags.get("--scores") ?? [];
-      if (scoreDirs.length === 0) throw new Error("--scores is required");
-      const { gate, briefs } = await runScore({ scoreDirs, set, judges, out: one(flags, "--out"), briefsDir: optional(flags, "--briefs") });
-      console.log(`${gate.pass ? "PASS" : "FAIL"}: set ${set}, ${judges.length} judges, ${briefs.length} briefs, newest round ${scoreDirs.at(-1)}`);
+      const rounds = flags.get("--scores") ?? [];
+      if (rounds.length === 0) throw new Error("--scores is required");
+      const draws = positiveInteger(optional(flags, "--draws") ?? String(GATE.draws), "--draws");
+      const { gate, briefs } = await runScore({ rounds, set, judges, out: one(flags, "--out"), briefsDir: optional(flags, "--briefs"), draws });
+      console.log(`${gate.pass ? "PASS" : "FAIL"}: set ${set}, ${judges.length} judges, ${briefs.length} briefs, ${draws} draws, newest round ${rounds.at(-1)}`);
       for (const failure of gate.failures) console.log(`  ${describeFailure(failure)}`);
       return gate.pass ? 0 : 1;
     }

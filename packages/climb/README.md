@@ -1,6 +1,6 @@
 # @codecaine-ai/climb
 
-Tools for a sequence-diagram quality climb. One round runs a set of briefs
+Tools for a sequence-diagram quality climb. One draw runs a set of briefs
 through four steps:
 
 1. `climb setup` makes a scratch docs project with one empty sequence block
@@ -9,8 +9,11 @@ through four steps:
    docs-system MCP only.
 3. `climb render` turns each drawn sidecar into a PNG, an SVG, a program and
    metrics.
-4. Judges score each PNG with `judge-brief.md`. `climb score` turns their
-   score files into a gate verdict and a table.
+4. `climb judge` has each judge score each PNG with `judge-brief.md`.
+
+One round is 3 draws of the same code: drawer noise is too large for one
+draw. Two draws of the same code moved a category mean by up to 1.17.
+`climb score` turns a round's score files into a gate verdict and a table.
 
 Run it from the repo root as `bun run climb <command>` or
 `bun packages/climb/src/cli.ts <command>`. It runs raw TypeScript with Bun.
@@ -18,11 +21,38 @@ Run it from the repo root as `bun run climb <command>` or
 ## Commands
 
 ```
+climb round  --briefs <dir> --run <runDir> --judges <sol,opus,...> [--draws 3] [--concurrency 4] [--judge-concurrency 6] [--timeout-min 20]
 climb setup  --briefs <dir> --run <runDir>
 climb draw   --run <runDir> [--concurrency 4] [--timeout-min 20] [--only a,b]
 climb render --run <runDir> [--only a,b]
-climb score  --scores <dir> [--scores <dir> ...] --set <climb|held-out> --judges <a,b,...> --out <dir> [--briefs <dir>]
+climb judge  --run <runDir> --judges <sol,opus,...> --out <scoresDir> [--concurrency 6] [--only a,b]
+climb score  --scores <round> [--scores <round> ...] --set <climb|held-out> --judges <a,b,...> --out <dir> [--briefs <dir>] [--draws 3]
 ```
+
+### One round of 3 draws
+
+1. Run the round:
+
+   ```
+   bun run climb round --briefs <dir> --run packages/climb/runs/<name> --draws 3 --judges sol,opus
+   ```
+
+2. Score it:
+
+   ```
+   bun run climb score --scores packages/climb/runs/<name> --set climb --judges sol,opus --out packages/climb/runs/<name>/score
+   ```
+
+`climb round` runs setup, draw, render and judge for `draw-1`, then
+`draw-2`, then `draw-3`. Each `<runDir>/draw-<n>` has the single-draw
+layout below, with scores in `draw-<n>/scores`. A failed drawer or judge
+does not stop the round. Round lists each problem and exits 1. To repair one
+draw, run the single-draw commands on its folder, for example
+`climb judge --run <runDir>/draw-2 --judges sol --out <runDir>/draw-2/scores --only build-loop`.
+
+Cost: a round costs about 3 times one draw, in drawer and judge tokens and
+in time. The draws run one after another. For 6 briefs and 2 judges, a round
+is 18 drawer runs and 36 judge runs.
 
 Put round folders under `packages/climb/runs/`. Git ignores that folder.
 Briefs come in by `--briefs`. Keep brief sets outside this repo, except the
@@ -91,19 +121,31 @@ Until then the list is empty and `lintsAvailable` is false.
 ### score
 
 Score files live at `<scores>/<judge>/<slug>.json` and must match
-`src/score-schema.ts`. `--set` names the brief set for the report. The set's
-briefs are the folders of `--briefs` when given, else every brief a judge
-scored in the newest round.
+`src/score-schema.ts`. Each `--scores` value is one round and one table
+column. A round is one of these:
 
-The gate checks the newest `--scores` folder. For each judge and category:
+- a `climb round` folder: its `draw-<n>/scores` folders are the draws.
+- a comma list of score folders, one per draw, such as
+  `runs/r4-climb/scores,runs/r4b-climb/scores`.
+- one score folder: a round of one draw.
+
+`--set` names the brief set for the report. The set's briefs are the folders
+of `--briefs` when given, else every brief a judge scored in the newest
+round.
+
+A judge's score for a brief in a category is the mean of its scores over the
+round's draws. The gate checks the newest round. For each judge and category:
 
 - the mean over the set's briefs must be at least 9.5, and
-- no single diagram may score below 9.
+- no brief's draw mean may be below 9.
 
-A judge with no score for one of the set's briefs fails. Score prints PASS
-or FAIL with every failing judge, category and brief, exits 0 on PASS and 1
-on FAIL, and writes `table.md` (one row per judge and category, one column
-per `--scores` folder) and `gate.json` to `--out`.
+The round must have `--draws` draws (default 3), or it fails. A judge with no
+score for a brief in one draw fails. That brief is left out of the means. It
+is never averaged over the other draws. Score prints PASS or FAIL with every
+failure, exits 0 on PASS and 1 on FAIL, and writes `table.md` and `gate.json`
+to `--out`. The table has one row per judge and category and one column per
+round. A cell shows the set mean, the lowest brief mean and the spread. The
+spread is max minus min over draws, averaged over briefs.
 
 ## How the docs server runs this checkout's sequence package
 
@@ -143,6 +185,7 @@ Requirements:
 ## Files
 
 - `src/cli.ts`: the `climb` command.
+- `src/run-round.ts`: `climb round`, every step for each draw.
 - `src/setup.ts`, `src/draw.ts`, `src/render.ts`, `src/score.ts`: one per
   command.
 - `src/score-schema.ts`: the judge score schema (TypeBox).

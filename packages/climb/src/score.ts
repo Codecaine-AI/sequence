@@ -1,25 +1,34 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 
 import { parseJudgeScore, SCORE_CATEGORIES, type JudgeScore, type ScoreCategory } from "./score-schema.ts";
 
-/** The gate: per judge and category, the set's mean is at least MIN_MEAN and no diagram is below MIN_SCORE. */
-export const GATE = { minMean: 9.5, minScore: 9 } as const;
+/**
+ * The gate, per judge and category. A brief's score is the mean over the round's draws.
+ * The set's mean must be at least minMean, no brief may be below minScore,
+ * and the round must have exactly `draws` draws.
+ */
+export const GATE = { minMean: 9.5, minScore: 9, draws: 3 } as const;
 
 export const BRIEF_SETS = ["climb", "held-out"] as const;
 export type BriefSet = (typeof BRIEF_SETS)[number];
 
 export type GateFailure =
-  | { kind: "missing"; judge: string; brief: string }
+  | { kind: "draws"; expected: number; actual: number }
+  | { kind: "missing"; judge: string; brief: string; draw: string }
   | { kind: "mean"; judge: string; category: ScoreCategory; mean: number }
-  | { kind: "low"; judge: string; category: ScoreCategory; brief: string; score: number };
+  | { kind: "low"; judge: string; category: ScoreCategory; brief: string; mean: number; scores: number[] };
 
 export interface CategoryStats {
   judge: string;
   category: ScoreCategory;
-  /** Undefined when the judge scored none of the set's briefs. */
+  /** Mean over briefs of each brief's draw mean. Undefined when no brief has a score in every draw. */
   mean: number | undefined;
+  /** The lowest brief's draw mean. */
   min: number | undefined;
+  /** Max minus min over draws, averaged over briefs. */
+  spread: number | undefined;
+  /** Briefs with a score in every draw. */
   count: number;
 }
 
@@ -29,40 +38,75 @@ export interface GateResult {
   stats: CategoryStats[];
 }
 
-/** Apply the gate to one round of scores for the given judges and briefs. */
-export function applyGate({ judges, briefs, scores }: { judges: readonly string[]; briefs: readonly string[]; scores: readonly JudgeScore[] }): GateResult {
+/** One draw of a round: every brief drawn once, and each judge's scores for those diagrams. */
+export interface Draw {
+  label: string;
+  scores: readonly JudgeScore[];
+}
+
+const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0);
+
+/**
+ * Apply the gate to one round. A brief counts only when the judge scored it in every draw;
+ * a missing draw is a failure, never a mean over the draws that remain.
+ */
+export function applyGate({ judges, briefs, draws, requiredDraws = GATE.draws }: { judges: readonly string[]; briefs: readonly string[]; draws: readonly Draw[]; requiredDraws?: number }): GateResult {
   const failures: GateFailure[] = [];
   const stats: CategoryStats[] = [];
-  const inSet = new Set(briefs);
+  if (draws.length !== requiredDraws) failures.push({ kind: "draws", expected: requiredDraws, actual: draws.length });
   for (const judge of judges) {
-    const byBrief = new Map(scores.filter((score) => score.judge === judge && inSet.has(score.brief)).map((score) => [score.brief, score]));
+    const byDraw = draws.map((draw) => new Map(draw.scores.filter((score) => score.judge === judge).map((score) => [score.brief, score])));
+    // brief -> its score file in each draw, kept only when every draw has one.
+    const complete = new Map<string, JudgeScore[]>();
     for (const brief of briefs) {
-      if (!byBrief.has(brief)) failures.push({ kind: "missing", judge, brief });
+      const perDraw = byDraw.map((scores) => scores.get(brief));
+      perDraw.forEach((score, index) => {
+        if (score === undefined) failures.push({ kind: "missing", judge, brief, draw: draws[index]!.label });
+      });
+      if (perDraw.length > 0 && perDraw.every((score) => score !== undefined)) complete.set(brief, perDraw as JudgeScore[]);
     }
-    const judged = [...byBrief.values()];
     for (const category of SCORE_CATEGORIES) {
-      const values = judged.map((score) => score.scores[category]);
-      const mean = values.length === 0 ? undefined : values.reduce((sum, value) => sum + value, 0) / values.length;
-      const min = values.length === 0 ? undefined : Math.min(...values);
-      stats.push({ judge, category, mean, min, count: values.length });
-      if (mean !== undefined && mean < GATE.minMean) failures.push({ kind: "mean", judge, category, mean });
-      for (const score of judged) {
-        const value = score.scores[category];
-        if (value < GATE.minScore) failures.push({ kind: "low", judge, category, brief: score.brief, score: value });
+      const perBrief = [...complete].map(([brief, scores]) => ({ brief, values: scores.map((score) => score.scores[category]) }));
+      const total = sum(perBrief.flatMap((entry) => entry.values));
+      const count = perBrief.length * draws.length;
+      const briefMeans = perBrief.map((entry) => sum(entry.values) / entry.values.length);
+      const mean = count === 0 ? undefined : total / count;
+      stats.push({
+        judge,
+        category,
+        mean,
+        min: briefMeans.length === 0 ? undefined : Math.min(...briefMeans),
+        spread: perBrief.length === 0 ? undefined : sum(perBrief.map((entry) => Math.max(...entry.values) - Math.min(...entry.values))) / perBrief.length,
+        count: perBrief.length,
+      });
+      // Every brief has the same number of draws, so the mean of brief means is total / count.
+      // Compare integer sums so a mean of exactly 9.5 or 9 never loses to rounding.
+      if (mean !== undefined && total < GATE.minMean * count) failures.push({ kind: "mean", judge, category, mean });
+      for (const entry of perBrief) {
+        if (sum(entry.values) < GATE.minScore * entry.values.length) {
+          failures.push({ kind: "low", judge, category, brief: entry.brief, mean: sum(entry.values) / entry.values.length, scores: entry.values });
+        }
       }
     }
   }
   return { pass: failures.length === 0, failures, stats };
 }
 
+/** A whole number as is, anything else with two decimals. */
+const formatNumber = (value: number): string => (Number.isInteger(value) ? String(value) : value.toFixed(2));
+
 export function describeFailure(failure: GateFailure): string {
   switch (failure.kind) {
+    case "draws":
+      return `the round has ${failure.actual} draw${failure.actual === 1 ? "" : "s"}, the gate needs ${failure.expected}`;
     case "missing":
-      return `${failure.judge}: no score for brief ${failure.brief}`;
+      return `${failure.judge}: no score for brief ${failure.brief} in ${failure.draw}`;
     case "mean":
       return `${failure.judge} / ${failure.category}: mean ${failure.mean.toFixed(2)} is below ${GATE.minMean}`;
     case "low":
-      return `${failure.judge} / ${failure.category} / ${failure.brief}: score ${failure.score} is below ${GATE.minScore}`;
+      return failure.scores.length === 1
+        ? `${failure.judge} / ${failure.category} / ${failure.brief}: score ${failure.mean} is below ${GATE.minScore}`
+        : `${failure.judge} / ${failure.category} / ${failure.brief}: mean ${formatNumber(failure.mean)} of draws ${failure.scores.join(", ")} is below ${GATE.minScore}`;
     default: {
       const _exhaustive: never = failure;
       return _exhaustive;
@@ -70,15 +114,17 @@ export function describeFailure(failure: GateFailure): string {
   }
 }
 
-/** One --scores folder, read and validated. */
+/** One table column: a round of one or more draws, read and validated. */
 export interface ScoreRound {
   label: string;
-  dir: string;
-  scores: JudgeScore[];
+  draws: (Draw & { dir: string })[];
 }
 
+/** Rounds usually keep scores in <round>/scores: name a scores folder after its round. */
+const folderLabel = (dir: string): string => (basename(dir) === "scores" ? basename(dirname(dir)) : basename(dir));
+
 /** Read `<dir>/<judge>/<brief>.json` for every judge. Any invalid file throws with every problem listed. */
-export async function loadScoreRound({ dir, judges }: { dir: string; judges: readonly string[] }): Promise<ScoreRound> {
+export async function loadDraw({ dir, judges }: { dir: string; judges: readonly string[] }): Promise<Draw & { dir: string }> {
   const root = resolve(dir);
   const scores: JudgeScore[] = [];
   const problems: string[] = [];
@@ -112,29 +158,67 @@ export async function loadScoreRound({ dir, judges }: { dir: string; judges: rea
     }
   }
   if (problems.length > 0) throw new Error(`Invalid score files:\n${problems.join("\n")}`);
-  // Rounds usually keep scores in <round>/scores: name the column after the round.
-  const label = basename(root) === "scores" ? basename(dirname(root)) : basename(root);
-  return { label, dir: root, scores };
+  return { label: folderLabel(root), dir: root, scores };
 }
 
-const formatCell = (stats: CategoryStats | undefined): string =>
-  stats?.mean === undefined || stats.min === undefined ? "–" : `${stats.mean.toFixed(2)} (min ${stats.min})`;
+/** `draw-<n>` folders, the layout `climb round` writes. */
+const DRAW_FOLDER = /^draw-(\d+)$/;
+
+/** The score folders of a `climb round` folder, in draw order. Empty when `dir` is not one. */
+async function roundDrawDirs(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+  const draws = entries
+    .filter((entry) => entry.isDirectory() && DRAW_FOLDER.test(entry.name))
+    .map((entry) => ({ name: entry.name, n: Number(DRAW_FOLDER.exec(entry.name)![1]) }))
+    .sort((a, b) => a.n - b.n);
+  const dirs: string[] = [];
+  for (const draw of draws) {
+    const scores = join(dir, draw.name, "scores");
+    if (!(await stat(scores).catch(() => undefined))?.isDirectory()) throw new Error(`${join(dir, draw.name)} has no scores folder. Run climb judge for that draw.`);
+    dirs.push(scores);
+  }
+  return dirs;
+}
+
+/**
+ * One `--scores` value is one round. It is a `climb round` folder (its draw-<n>/scores folders are the draws),
+ * a comma list of score folders (one draw each), or one score folder (a round of one draw).
+ */
+export async function loadScoreRound({ spec, judges }: { spec: string; judges: readonly string[] }): Promise<ScoreRound> {
+  const parts = spec.split(",").map((part) => resolve(part.trim())).filter((part) => part.length > 0);
+  if (parts.length === 1) {
+    const drawDirs = await roundDrawDirs(parts[0]!);
+    if (drawDirs.length > 0) {
+      const draws = await Promise.all(drawDirs.map((dir) => loadDraw({ dir, judges })));
+      return { label: basename(parts[0]!), draws: draws.map((draw, index) => ({ ...draw, label: basename(dirname(drawDirs[index]!)) })) };
+    }
+  }
+  const draws = await Promise.all(parts.map((dir) => loadDraw({ dir, judges })));
+  return { label: draws.map((draw) => draw.label).join(" + "), draws };
+}
+
+const formatCell = (stats: CategoryStats | undefined, draws: number): string => {
+  if (stats?.mean === undefined || stats.min === undefined || stats.spread === undefined) return "–";
+  const base = `${stats.mean.toFixed(2)} (min ${formatNumber(stats.min)}`;
+  return draws > 1 ? `${base}, spread ${stats.spread.toFixed(2)})` : `${base})`;
+};
 
 /** Markdown table: one row per judge and category, one column per round, then a gate row. */
-export function renderTable({ set, judges, rounds }: { set: BriefSet; judges: readonly string[]; rounds: readonly { label: string; gate: GateResult }[] }): string {
-  const header = `| Judge | Category | ${rounds.map((round) => round.label).join(" | ")} |`;
+export function renderTable({ set, judges, rounds }: { set: BriefSet; judges: readonly string[]; rounds: readonly { label: string; draws: number; gate: GateResult }[] }): string {
+  const header = `| Judge | Category | ${rounds.map((round) => `${round.label} (${round.draws} draw${round.draws === 1 ? "" : "s"})`).join(" | ")} |`;
   const divider = `|---|---|${rounds.map(() => "---|").join("")}`;
   const rows: string[] = [];
   for (const judge of judges) {
     for (const category of SCORE_CATEGORIES) {
-      const cells = rounds.map((round) => formatCell(round.gate.stats.find((stats) => stats.judge === judge && stats.category === category)));
+      const cells = rounds.map((round) => formatCell(round.gate.stats.find((stats) => stats.judge === judge && stats.category === category), round.draws));
       rows.push(`| ${judge} | ${category} | ${cells.join(" | ")} |`);
     }
   }
   rows.push(`| **Gate** | | ${rounds.map((round) => (round.gate.pass ? "**PASS**" : `**FAIL** (${round.gate.failures.length})`)).join(" | ")} |`);
   return [
-    `Set: \`${set}\`. Cells show the mean over the set's briefs, then the lowest single score.`,
-    `Gate: every judge and category has a mean of at least ${GATE.minMean}, and no diagram scores below ${GATE.minScore}.`,
+    `Set: \`${set}\`. A brief's score is its mean over the round's draws.`,
+    "Cells show the mean over the set's briefs, then the lowest brief, then the spread (max minus min over draws, averaged over briefs).",
+    `Gate: every judge and category has a mean of at least ${GATE.minMean}, and no brief is below ${GATE.minScore}.`,
     "",
     header,
     divider,
@@ -145,42 +229,52 @@ export function renderTable({ set, judges, rounds }: { set: BriefSet; judges: re
 
 /** The set's briefs: the folders of --briefs when given, else every brief any judge scored in the newest round. */
 async function setBriefs({ briefsDir, round }: { briefsDir: string | undefined; round: ScoreRound }): Promise<string[]> {
-  if (briefsDir === undefined) return [...new Set(round.scores.map((score) => score.brief))].sort();
+  if (briefsDir === undefined) return [...new Set(round.draws.flatMap((draw) => draw.scores.map((score) => score.brief)))].sort();
   const entries = await readdir(resolve(briefsDir), { withFileTypes: true });
   return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
 }
 
 export interface ScoreCommandInput {
-  scoreDirs: readonly string[];
+  /** One entry per round, oldest first. See loadScoreRound. */
+  rounds: readonly string[];
   set: BriefSet;
   judges: readonly string[];
   out: string;
   briefsDir?: string;
+  /** Draws the newest round must have. Defaults to GATE.draws. */
+  draws?: number;
 }
 
-/** Gate the newest --scores round, write table.md and gate.json, and return the newest verdict. */
+/** Gate every round, write table.md and gate.json, and return the newest round's verdict. */
 export async function runScore(input: ScoreCommandInput): Promise<{ gate: GateResult; table: string; briefs: string[] }> {
-  const loaded = await Promise.all(input.scoreDirs.map((dir) => loadScoreRound({ dir, judges: input.judges })));
+  const loaded = await Promise.all(input.rounds.map((spec) => loadScoreRound({ spec, judges: input.judges })));
   const labels = loaded.map((round) => round.label);
   const rounds = loaded.map((round, index) => ({
     ...round,
     label: labels.indexOf(round.label) === index && labels.lastIndexOf(round.label) === index ? round.label : `${index + 1}: ${round.label}`,
   }));
   const newest = rounds.at(-1);
-  if (newest === undefined) throw new Error("Give at least one --scores folder.");
+  if (newest === undefined) throw new Error("Give at least one --scores round.");
   const briefs = await setBriefs({ briefsDir: input.briefsDir, round: newest });
   if (briefs.length === 0) throw new Error("The set has no briefs.");
-  const gated = rounds.map((round) => ({ label: round.label, gate: applyGate({ judges: input.judges, briefs, scores: round.scores }) }));
+  const requiredDraws = input.draws ?? GATE.draws;
+  const gated = rounds.map((round) => ({
+    label: round.label,
+    draws: round.draws.length,
+    gate: applyGate({ judges: input.judges, briefs, draws: round.draws, requiredDraws }),
+  }));
   const table = renderTable({ set: input.set, judges: input.judges, rounds: gated });
-  const last = gated.at(-1);
-  if (last === undefined) throw new Error("Give at least one --scores folder.");
-  const gate = last.gate;
+  const gate = gated.at(-1)!.gate;
   const out = resolve(input.out);
   await mkdir(out, { recursive: true });
   await writeFile(join(out, "table.md"), table);
   await writeFile(
     join(out, "gate.json"),
-    `${JSON.stringify({ set: input.set, judges: input.judges, briefs, round: newest.dir, pass: gate.pass, failures: gate.failures.map(describeFailure) }, null, 2)}\n`,
+    `${JSON.stringify(
+      { set: input.set, judges: input.judges, briefs, round: newest.label, draws: newest.draws.map((draw) => draw.dir), pass: gate.pass, failures: gate.failures.map(describeFailure) },
+      null,
+      2,
+    )}\n`,
   );
   return { gate, table, briefs };
 }

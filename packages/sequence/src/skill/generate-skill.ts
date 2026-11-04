@@ -223,11 +223,12 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - Draw one arrow for each call. Never join two calls in one label with "then", because a reply then seems to answer both.
 - Show the return for each sync call that the reader needs to see answered.
   - If no reply comes back and the receiver goes on to message others, use \`->\`.
+- When an \`alt\` branches on a call's result, draw the call and its reply before the \`alt\`. Let the guards name the result, such as \`guard="409 stale revision"\`.
 - Keep a guard to 40 characters or fewer. State the condition only, and put a reason in a note.
 - Keep a diagram to about 5 participants and 20 messages. Split a larger flow into two blocks.
 - Use a note for one fact a message cannot carry. Keep it short.
   - Keep each condition that the brief gives for that fact.
-- When a \`docs_sequence_set_program\` result lists a \`long-label\`, \`long-guard\`, \`joined-calls\`, \`sync-without-return\` or \`leftward-call\` finding, fix it.
+- When a \`docs_sequence_set_program\` result lists a \`long-label\`, \`long-guard\`, \`joined-calls\`, \`sync-without-return\`, \`reply-inside-branch\` or \`leftward-call\` finding, fix it.
 
 ## References
 

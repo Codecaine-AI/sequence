@@ -46,6 +46,9 @@ function guardsOf(items: readonly SequenceItem[]): { id: string; guard: string }
  * - `joined-calls`: one arrow whose label joins two calls with "then".
  * - `sync-without-return`: a sync call with no later return from the
  *   receiver to the caller, whose receiver next messages someone else.
+ * - `reply-inside-branch`: a sync call outside a fragment whose matching
+ *   return is inside it. The receiver's bar then runs through the frame's
+ *   top edge.
  */
 export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
   const results = [...crossedColumns(document), ...leftwardCalls(document)];
@@ -83,6 +86,7 @@ export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
       target: message.id,
     });
   });
+  results.push(...repliesInsideBranches(document.items));
   for (const { id, guard } of guardsOf(document.items)) {
     if (guard.length <= LABEL_LENGTH_LIMIT) continue;
     results.push({
@@ -90,6 +94,60 @@ export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
       severity: "info",
       message: `The guard "${guard}" has ${guard.length} characters. Cut it to ${LABEL_LENGTH_LIMIT} or fewer: keep only the condition, and move a reason or a remark such as "(proposed)" into a note.`,
       target: id,
+    });
+  }
+  return results;
+}
+
+/** Every message in document order, with the fragments that enclose it, outermost first. */
+function framedMessages(
+  items: readonly SequenceItem[],
+  frames: readonly { id: string; op: string }[] = [],
+): { message: SequenceMessage; frames: readonly { id: string; op: string }[] }[] {
+  return items.flatMap((item) =>
+    item.kind === "message"
+      ? [{ message: item, frames }]
+      : item.kind === "fragment"
+        ? item.operands.flatMap((operand) => framedMessages(operand.items, [...frames, { id: item.id, op: item.op }]))
+        : []);
+}
+
+function repliesInsideBranches(items: readonly SequenceItem[]): SequenceLintResult[] {
+  const flow = framedMessages(items);
+  // A return answers the latest open call of its pair, as activation bars do.
+  const replyOf = new Map<number, number>();
+  const open = new Map<string, number[]>();
+  flow.forEach(({ message }, index) => {
+    if (message.from === message.to) return;
+    if (message.line === "sync") {
+      const pair = `${message.from}>${message.to}`;
+      open.set(pair, [...(open.get(pair) ?? []), index]);
+    } else if (message.line === "return") {
+      const calls = open.get(`${message.to}>${message.from}`);
+      const call = calls?.pop();
+      if (call !== undefined) replyOf.set(call, index);
+    }
+  });
+  const results: SequenceLintResult[] = [];
+  for (const [callIndex, replyIndex] of replyOf) {
+    const { message: call, frames } = flow[callIndex]!;
+    const { message: reply, frames: replyFrames } = flow[replyIndex]!;
+    if (replyFrames.length <= frames.length) continue;
+    if (!frames.every((frame, depth) => replyFrames[depth]!.id === frame.id)) continue;
+    const branch = replyFrames[frames.length]!;
+    // Reported when the fragment branches on this call's result: until the
+    // fragment opens, the receiver only answers the caller, and no other
+    // fragment comes between them.
+    const between = flow.slice(callIndex + 1);
+    const fragmentStart = between.findIndex(({ frames: inner }) => inner.length > frames.length);
+    if (between[fragmentStart]!.frames[frames.length]!.id !== branch.id) continue;
+    const busy = between.slice(0, fragmentStart).some(({ message }) => message.from === call.to && message.to !== call.from);
+    if (busy) continue;
+    results.push({
+      rule: "reply-inside-branch",
+      severity: "info",
+      message: `The reply "${reply.text}" to "${call.text}" is inside the ${branch.op} that follows the call, so the receiver's bar runs through the frame's top edge. Draw the call and its reply before the ${branch.op}, and let the guards name the result.`,
+      target: call.id,
     });
   }
   return results;

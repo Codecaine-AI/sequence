@@ -4,13 +4,17 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "test": "bun test packages/sequence/src",
-    "typecheck": "bun run typecheck:sequence && bun run typecheck:studio",
+    "test": "bun test packages/sequence/src packages/climb/src",
+    "typecheck": "bun run typecheck:sequence && bun run typecheck:studio && bun run typecheck:climb",
     "typecheck:sequence": "bunx --bun tsc -p packages/sequence/tsconfig.json --noEmit",
     "typecheck:studio": "bunx --bun tsc -p packages/studio/tsconfig.json --noEmit",
-    "dev:studio": "bun run --cwd packages/studio dev"
+    "typecheck:climb": "bunx --bun tsc -p packages/climb/tsconfig.json --noEmit",
+    "dev:studio": "bun run --cwd packages/studio dev",
+    "climb": "bun packages/climb/src/cli.ts"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.9.0",

@@ -5,3 +5,6 @@ dist
 # Derived Codecaine docs state (rebuildable)
 docs/.index/
 docs/.changesets/
+
+# Climb round output (scratch projects, transcripts, renders)
+packages/climb/runs/

@@ -1,0 +1,19 @@
+{
+  "judge": "judge-b",
+  "brief": "hello",
+  "scores": {
+    "systemFidelity": 10,
+    "requirementCoverage": 10,
+    "scopeDiscipline": 10,
+    "readability": 10,
+    "participantOrder": 10,
+    "rhythmAndFragments": 10,
+    "colorAndContrast": 9,
+    "typographyAndLabels": 10,
+    "craft": 8
+  },
+  "findings": [
+    { "category": "colorAndContrast", "severity": "low", "text": "The gray activation bar carries no meaning the orange lines do not already carry." },
+    { "category": "craft", "severity": "medium", "text": "The canvas is twice as wide as the two columns, so the diagram floats in empty space." }
+  ]
+}

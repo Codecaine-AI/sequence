@@ -220,7 +220,10 @@ interface ScopeMessageEvent {
 
 interface ScopeFragmentEvent {
   type: "fragment";
+  frame: SequenceFragmentLayout;
   operands: LayoutScope[];
+  /** Top of each operand's content band, just below the tab or divider. */
+  operandTops: number[];
 }
 
 type ScopeEvent = ScopeMessageEvent | ScopeFragmentEvent;
@@ -238,6 +241,24 @@ interface MutableActivation {
   rect: SeqRect;
   startMessageId: string;
   endMessageId?: string;
+  /**
+   * Set on a bar for a sync call with no matching return: where the bar ends
+   * if no later row of its lifeline extends it.
+   */
+  shortEnd?: number;
+  /** Frames this bar enters and ends inside, outermost last-recorded. */
+  cuts: ActivationCut[];
+}
+
+/**
+ * A frame that a bar enters from above and ends inside. The bar stops above
+ * the frame and continues as one piece per operand, so it never crosses a
+ * frame edge or divider that its call does not enclose.
+ */
+interface ActivationCut {
+  top: number;
+  bottom: number;
+  pieces: { top: number; bottom: number }[];
 }
 
 interface ActivationClosure {
@@ -853,7 +874,12 @@ function computeLayout(
       fragmentRow.outer.width = outerRight - outerLeft;
       // Trailing clearance below the frame before the next row begins.
       if (!closesOperand) cursor += fragmentMarginY;
-      scope.events.push({ type: "fragment", operands: operandScopes });
+      scope.events.push({
+        type: "fragment",
+        frame: fragmentRow,
+        operands: operandScopes,
+        operandTops: operandStarts,
+      });
     }
     scope.endY = cursor;
     return scope;
@@ -864,9 +890,16 @@ function computeLayout(
   if (documentScope.endY === sequenceTop) documentScope.endY += rowHeight;
   const contentEnd = documentScope.endY;
 
-  const activations: MutableActivation[] = [];
+  const bars: MutableActivation[] = [];
   const activationWidth = unit(activationW);
   const activationOffset = activationWidth / 3;
+  /** Air between a bar that stops for a frame and the frame's top edge. */
+  const barFrameGap = unit(SEQUENCE_LAYOUT.GRID / 2);
+  /** Ids of sync calls that the previous walk found no return for. */
+  let unmatchedCalls: ReadonlySet<string> = new Set();
+
+  const isOpen = (activation: MutableActivation, closedHere: Set<MutableActivation>): boolean =>
+    activation.rect.height < 0 && !closedHere.has(activation);
 
   const activeFor = (
     participantId: string,
@@ -875,9 +908,7 @@ function computeLayout(
     closedHere: Set<MutableActivation>,
   ): MutableActivation | undefined => {
     const active = [...inherited, ...local].filter(
-      (activation) => activation.participantId === participantId
-        && activation.rect.height < 0
-        && !closedHere.has(activation),
+      (activation) => activation.participantId === participantId && isOpen(activation, closedHere),
     );
     return active[active.length - 1];
   };
@@ -941,6 +972,25 @@ function computeLayout(
     activation.endMessageId = endMessageId;
   };
 
+  /** Bottom of a message's own row band. */
+  const rowBandEnd = (row: SequenceMessageLayout): number =>
+    row.y + (row.from === row.to ? rowHeight : rowHeight / 2);
+
+  /**
+   * In an operand that does not return a bar opened above its frame, the bar
+   * shows only over the operand's first rows that its lifeline takes part
+   * in. Undefined when the operand does not open with such a row.
+   */
+  const involvedRowsEnd = (operand: LayoutScope, participantId: string): number | undefined => {
+    let end: number | undefined;
+    for (const event of operand.events) {
+      if (event.type === "fragment") break;
+      if (event.row.from !== participantId && event.row.to !== participantId) break;
+      end = rowBandEnd(event.row);
+    }
+    return end === undefined ? undefined : Math.min(end, operand.endY);
+  };
+
   const walkScope = (
     scope: LayoutScope,
     inherited: MutableActivation[],
@@ -948,24 +998,46 @@ function computeLayout(
     const local: MutableActivation[] = [];
     const inheritedClosures = new Map<MutableActivation, ActivationClosure>();
     const closedHere = new Set<MutableActivation>();
+    // A bar for a call with no return covers its own row and the rows right
+    // after it that its lifeline takes part in. It ends at the first row
+    // without that lifeline, at a frame, or at the end of its scope.
+    const closeShortBars = (keep: (activation: MutableActivation) => boolean): void => {
+      for (const activation of local) {
+        if (activation.shortEnd === undefined || !isOpen(activation, closedHere) || keep(activation)) continue;
+        closeActivation(activation, Math.min(activation.shortEnd, scope.endY));
+      }
+    };
     for (const event of scope.events) {
       if (event.type === "fragment") {
+        closeShortBars(() => false);
         // Each operand starts from the same activation state. Its returns are
         // branch-local until they are merged here, which prevents one sibling
         // from changing the state observed by another sibling.
-        const visible = [...inherited, ...local].filter(
-          (activation) => activation.rect.height < 0 && !closedHere.has(activation),
-        );
+        const visible = [...inherited, ...local].filter((activation) => isOpen(activation, closedHere));
+        const perOperand = event.operands.map((operand) => walkScope(operand, visible));
         const mergedClosures = new Map<MutableActivation, ActivationClosure>();
-        for (const operand of event.operands) {
-          for (const [activation, closure] of walkScope(operand, visible)) {
+        for (const closures of perOperand) {
+          for (const [activation, closure] of closures) {
             const previous = mergedClosures.get(activation);
             if (!previous || closure.endY > previous.endY) {
               mergedClosures.set(activation, closure);
             }
           }
         }
+        const frameTop = event.frame.outer.y;
         for (const [activation, closure] of mergedClosures) {
+          // The bar ends inside this frame: it stops above the frame and
+          // shows in each operand until that operand's return.
+          activation.cuts.push({
+            top: frameTop,
+            bottom: frameTop + event.frame.outer.height,
+            pieces: event.operands.map((operand, index) => ({
+              top: event.operandTops[index]!,
+              bottom: perOperand[index]!.get(activation)?.endY
+                ?? involvedRowsEnd(operand, activation.participantId)
+                ?? event.operandTops[index]!,
+            })),
+          });
           if (local.includes(activation)) {
             closeActivation(activation, closure.endY, closure.endMessageId);
           } else {
@@ -976,6 +1048,14 @@ function computeLayout(
         continue;
       }
       const row = event.row;
+      // A new sync call from the same caller means the earlier call is over.
+      closeShortBars((activation) => (activation.participantId === row.from || activation.participantId === row.to)
+        && !(row.line === "sync" && activation.participantId === row.to && activation.callerId === row.from));
+      for (const activation of local) {
+        if (activation.shortEnd !== undefined && isOpen(activation, closedHere)) {
+          activation.shortEnd = Math.max(activation.shortEnd, rowBandEnd(row));
+        }
+      }
       if (row.line === "sync") {
         // The caller docks before receipt; the callee docks on the bar beginning
         // at this row, which matches UML activation-bar arrow docking.
@@ -986,26 +1066,34 @@ function computeLayout(
           local,
           closedHere,
         );
-        const level = [...inherited, ...local].filter(
-          (activation) => activation.participantId === row.to
-            && activation.rect.height < 0
-            && !closedHere.has(activation),
-        ).length;
-        const center = participantX(row.to) + level * activationOffset;
-        const activation: MutableActivation = {
-          participantId: row.to,
-          callerId: row.from,
-          level,
-          rect: {
-            x: center - activationWidth / 2,
-            y: row.y,
-            width: activationWidth,
-            height: -1,
-          },
-          startMessageId: row.id,
-        };
-        local.push(activation);
-        activations.push(activation);
+        const unmatched = unmatchedCalls.has(row.id);
+        // A call with no return onto a lifeline that is already active adds
+        // no bar: the open bar covers it. Self-calls still nest.
+        const covering = unmatched && row.from !== row.to
+          ? activeFor(row.to, inherited, local, closedHere)
+          : undefined;
+        if (!covering) {
+          const level = [...inherited, ...local].filter(
+            (activation) => activation.participantId === row.to && isOpen(activation, closedHere),
+          ).length;
+          const center = participantX(row.to) + level * activationOffset;
+          const activation: MutableActivation = {
+            participantId: row.to,
+            callerId: row.from,
+            level,
+            rect: {
+              x: center - activationWidth / 2,
+              y: row.y,
+              width: activationWidth,
+              height: -1,
+            },
+            startMessageId: row.id,
+            shortEnd: unmatched ? rowBandEnd(row) : undefined,
+            cuts: [],
+          };
+          local.push(activation);
+          bars.push(activation);
+        }
         setMessageGeometry(row, inherited, local, closedHere);
         row.x1 = sourceX;
         if (row.selfLoop) row.selfLoop[0] = { x: sourceX, y: row.y1 };
@@ -1016,8 +1104,7 @@ function computeLayout(
         for (let index = candidates.length - 1; index >= 0; index -= 1) {
           const activation = candidates[index]!;
           if (
-            activation.rect.height < 0
-            && !closedHere.has(activation)
+            isOpen(activation, closedHere)
             && activation.participantId === row.from
             && activation.callerId === row.to
           ) {
@@ -1037,12 +1124,54 @@ function computeLayout(
         setMessageGeometry(row, inherited, local, closedHere);
       }
     }
+    closeShortBars(() => false);
     for (const activation of local) {
       if (activation.rect.height < 0) closeActivation(activation, scope.endY);
     }
     return inheritedClosures;
   };
+  // The first walk finds the calls with no return; the second draws their
+  // bars short, so they neither run to the end of their scope nor stack.
   walkScope(documentScope, []);
+  unmatchedCalls = new Set(bars.filter((bar) => bar.endMessageId === undefined).map((bar) => bar.startMessageId));
+  bars.length = 0;
+  walkScope(documentScope, []);
+
+  // One rect per visible piece of each bar: a bar that ends inside a frame
+  // stops above the frame and continues inside each operand.
+  const activations: SequenceActivationLayout[] = [];
+  for (const bar of bars) {
+    let segments = [{ top: bar.rect.y, bottom: bar.rect.y + bar.rect.height }];
+    const cuts = [...bar.cuts].sort((a, b) => a.top - b.top || (b.bottom - b.top) - (a.bottom - a.top));
+    for (const cut of cuts) {
+      const next: { top: number; bottom: number }[] = [];
+      let entered = false;
+      for (const segment of segments) {
+        if (segment.bottom <= cut.top || segment.top >= cut.bottom) {
+          next.push(segment);
+          continue;
+        }
+        entered = true;
+        const above = Math.min(segment.bottom, cut.top - barFrameGap);
+        if (above > segment.top) next.push({ top: segment.top, bottom: above });
+      }
+      if (entered) {
+        for (const piece of cut.pieces) {
+          if (piece.bottom > piece.top) next.push(piece);
+        }
+      }
+      segments = next.sort((a, b) => a.top - b.top);
+    }
+    for (const segment of segments) {
+      activations.push({
+        participantId: bar.participantId,
+        level: bar.level,
+        rect: { x: bar.rect.x, y: segment.top, width: bar.rect.width, height: segment.bottom - segment.top },
+        startMessageId: bar.startMessageId,
+        endMessageId: bar.endMessageId,
+      });
+    }
+  }
 
   // A label centered on a long arrow sits on the lifelines and bars the
   // arrow passes. When one stretch of the arrow between those obstacles

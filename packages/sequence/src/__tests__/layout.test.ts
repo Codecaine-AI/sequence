@@ -329,11 +329,19 @@ describe("layoutSequence", () => {
         ],
       },
     ]));
-    const activation = layout.activations.find(({ startMessageId }) => startMessageId === "call")!;
+    const pieces = layout.activations.filter(({ startMessageId }) => startMessageId === "call");
+    const activation = pieces[pieces.length - 1]!;
     const nestedReturn = layout.messages.find(({ id }) => id === "nested-return")!;
 
     expect(activation.endMessageId).toBe(nestedReturn.id);
     expect(activation.rect.y + activation.rect.height).toBe(nestedReturn.y);
+    // The bar stops above each frame it ends inside, and no piece crosses
+    // a frame's top edge.
+    for (const fragment of layout.fragments) {
+      for (const { rect } of pieces) {
+        expect(rect.y < fragment.outer.y && rect.y + rect.height > fragment.outer.y).toBe(false);
+      }
+    }
   });
 
   test("does not let a return in one operand close an activation opened in a sibling operand", () => {
@@ -392,13 +400,138 @@ describe("layoutSequence", () => {
         ],
       },
     ]));
-    const activation = layout.activations.find(({ startMessageId }) => startMessageId === "outer-call")!;
+    const activation = layout.activations.findLast(({ startMessageId }) => startMessageId === "outer-call")!;
     const firstReturn = layout.messages.find(({ id }) => id === "first-return")!;
     const secondReturn = layout.messages.find(({ id }) => id === "second-return")!;
 
     expect(secondReturn.y).toBeGreaterThan(firstReturn.y);
     expect(activation.endMessageId).toBe(secondReturn.id);
     expect(activation.rect.y + activation.rect.height).toBe(secondReturn.y);
+  });
+
+  test("a call with no return gets a short bar over its own row, not one to the end", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "fire" },
+      { kind: "message", id: "later", from: "p1", to: "p3", line: "async", text: "later" },
+      { kind: "message", id: "last", from: "p3", to: "p1", line: "async", text: "last" },
+    ]));
+    const call = layout.messages.find(({ id }) => id === "call")!;
+    const later = layout.messages.find(({ id }) => id === "later")!;
+    const bar = layout.activations[0]!;
+
+    expect(layout.activations).toHaveLength(1);
+    expect(bar.rect.y).toBe(call.y);
+    expect(bar.rect.y + bar.rect.height).toBe(call.y + SEQUENCE_LAYOUT.ROW_H / 2);
+    expect(bar.rect.y + bar.rect.height).toBeLessThan(later.y);
+  });
+
+  test("a short bar covers the receiver's next rows and stops at the first row without it", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "start" },
+      { kind: "message", id: "onward", from: "p2", to: "p3", line: "async", text: "onward" },
+      { kind: "message", id: "back", from: "p3", to: "p2", line: "async", text: "back" },
+      { kind: "message", id: "elsewhere", from: "p1", to: "p3", line: "async", text: "elsewhere" },
+    ]));
+    const back = layout.messages.find(({ id }) => id === "back")!;
+    const elsewhere = layout.messages.find(({ id }) => id === "elsewhere")!;
+    const bar = layout.activations[0]!;
+
+    expect(bar.rect.y + bar.rect.height).toBe(back.y + SEQUENCE_LAYOUT.ROW_H / 2);
+    expect(bar.rect.y + bar.rect.height).toBeLessThan(elsewhere.y);
+  });
+
+  test("a call with no return onto an active lifeline adds no stacked bar", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "outer", from: "p1", to: "p2", line: "sync", text: "outer" },
+      { kind: "message", id: "fire", from: "p3", to: "p2", line: "sync", text: "fire" },
+      { kind: "message", id: "done", from: "p2", to: "p1", line: "return", text: "done" },
+    ]));
+    const fire = layout.messages.find(({ id }) => id === "fire")!;
+
+    expect(layout.activations).toHaveLength(1);
+    expect(layout.activations[0]!.endMessageId).toBe("done");
+    // The arrow docks on the open bar.
+    expect(fire.x2).toBe(layout.activations[0]!.rect.x + layout.activations[0]!.rect.width);
+  });
+
+  test("a second call from the same caller ends the first call's short bar", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "first", from: "p1", to: "p2", line: "sync", text: "first" },
+      { kind: "message", id: "second", from: "p1", to: "p2", line: "sync", text: "second" },
+      { kind: "message", id: "done", from: "p2", to: "p1", line: "return", text: "done" },
+    ]));
+    const [first, second] = layout.activations;
+    const secondCall = layout.messages.find(({ id }) => id === "second")!;
+
+    expect(layout.activations.map(({ level }) => level)).toEqual([0, 0]);
+    expect(first!.rect.y + first!.rect.height).toBeLessThanOrEqual(secondCall.y);
+    expect(second!.endMessageId).toBe("done");
+  });
+
+  test("a bar returned inside alt operands shows one piece per operand, never crossing a divider", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "begin" },
+      {
+        kind: "fragment",
+        id: "branches",
+        op: "alt",
+        operands: [
+          {
+            guard: "ok",
+            items: [
+              { kind: "message", id: "ok-return", from: "p2", to: "p1", line: "return", text: "ok" },
+            ],
+          },
+          {
+            guard: "cancel",
+            items: [
+              { kind: "message", id: "cancel", from: "p1", to: "p3", line: "async", text: "cancel" },
+              { kind: "message", id: "cancel-return", from: "p2", to: "p1", line: "return", text: "stopped" },
+            ],
+          },
+          {
+            guard: "other",
+            items: [
+              { kind: "message", id: "unrelated", from: "p1", to: "p3", line: "async", text: "unrelated" },
+            ],
+          },
+        ],
+      },
+    ]));
+    const fragment = layout.fragments[0]!;
+    const pieces = layout.activations.filter(({ startMessageId }) => startMessageId === "call");
+    const okReturn = layout.messages.find(({ id }) => id === "ok-return")!;
+    const cancelReturn = layout.messages.find(({ id }) => id === "cancel-return")!;
+    const crosses = (y: number) => pieces.some(({ rect }) => rect.y < y && rect.y + rect.height > y);
+
+    // Above the frame, in the first operand, in the second; none in the
+    // third operand, which does not open with a row on this lifeline.
+    expect(pieces).toHaveLength(3);
+    expect(crosses(fragment.outer.y)).toBe(false);
+    for (const dividerY of fragment.dividerYs) expect(crosses(dividerY)).toBe(false);
+    expect(pieces[0]!.rect.y + pieces[0]!.rect.height).toBeLessThan(fragment.outer.y);
+    expect(pieces[1]!.rect.y + pieces[1]!.rect.height).toBe(okReturn.y);
+    expect(pieces[2]!.rect.y + pieces[2]!.rect.height).toBe(cancelReturn.y);
+  });
+
+  test("a bar that returns after a frame runs whole through it", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "begin" },
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "loop",
+        operands: [{
+          guard: "each",
+          items: [{ kind: "message", id: "work", from: "p2", to: "p3", line: "async", text: "work" }],
+        }],
+      },
+      { kind: "message", id: "done", from: "p2", to: "p1", line: "return", text: "done" },
+    ]));
+    const done = layout.messages.find(({ id }) => id === "done")!;
+
+    expect(layout.activations).toHaveLength(1);
+    expect(layout.activations[0]!.rect.y + layout.activations[0]!.rect.height).toBe(done.y);
   });
 
   test("keeps fragment edges clear of activation bars and moves active over-notes beside the bar", () => {
@@ -409,6 +542,14 @@ describe("layoutSequence", () => {
       to: "p2",
       line: "sync",
       text: `call ${index}`,
+    }));
+    const returns: SequenceItem[] = calls.map((_, index) => ({
+      kind: "message",
+      id: `return-${index}`,
+      from: "p2",
+      to: "p1",
+      line: "return",
+      text: `done ${index}`,
     }));
     const layout = layoutSequence(documentWith([
       ...calls,
@@ -426,6 +567,7 @@ describe("layoutSequence", () => {
         ],
       },
       { kind: "note", id: "note", anchor: "p2", side: "over", text: "active note" },
+      ...returns,
     ]));
     const fragment = layout.fragments[0]!;
     const frameRight = fragment.outer.x + fragment.outer.width;
@@ -829,6 +971,9 @@ describe("layoutSequence", () => {
         { kind: "note", id: "left", anchor: "p3", side: "left", text: "left of the store" },
         { kind: "note", id: "over", anchor: "p2", side: "over", text: "over the active service" },
         framedNote,
+        ...nestedCalls.map((_, index): SequenceItem => ({
+          kind: "message", id: `self-return-${index}`, from: "p2", to: "p2", line: "return", text: "",
+        })),
         { kind: "message", id: "m2", from: "p2", to: "p1", line: "return", text: "done" },
       ], { surface: { columnGap } }));
       expect(Math.max(...layout.activations.map(({ level }) => level))).toBe(3);
@@ -873,6 +1018,9 @@ describe("layoutSequence", () => {
         ...selfCalls,
         { kind: "message", id: "out", from: "p1", to: "p2", line: "async", text },
         { kind: "message", id: "back", from: "p2", to: "p1", line: "async", text },
+        ...selfCalls.map((_, index): SequenceItem => ({
+          kind: "message", id: `r${index}`, from: "p1", to: "p1", line: "return", text: "",
+        })),
       ]));
       expect(Math.max(...layout.activations.map(({ level }) => level))).toBe(calls - 1);
       for (const message of layout.messages.filter(({ text: label }) => label === text)) {

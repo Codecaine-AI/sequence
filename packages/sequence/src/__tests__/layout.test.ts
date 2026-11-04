@@ -541,6 +541,48 @@ describe("layoutSequence", () => {
     expect(pieces[1]!.rect.y + pieces[1]!.rect.height).toBe(cancelReturn.y);
   });
 
+  test("in a later operand, a bar opened above the frame shows again at its lifeline's first row there", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "run" },
+      { kind: "message", id: "inner", from: "p2", to: "p3", line: "sync", text: "work" },
+      {
+        kind: "fragment",
+        id: "branches",
+        op: "alt",
+        operands: [
+          {
+            guard: "ends",
+            items: [
+              { kind: "message", id: "inner-done", from: "p3", to: "p2", line: "return", text: "done" },
+              { kind: "message", id: "done", from: "p2", to: "p1", line: "return", text: "result" },
+            ],
+          },
+          {
+            guard: "cancelled",
+            items: [
+              { kind: "message", id: "abort", from: "p1", to: "p2", line: "async", text: "abort" },
+              { kind: "message", id: "aborted", from: "p3", to: "p2", line: "return", text: "aborted" },
+              { kind: "message", id: "stopped", from: "p2", to: "p1", line: "return", text: "stopped" },
+            ],
+          },
+        ],
+      },
+    ]));
+    const fragment = layout.fragments[0]!;
+    const guardBottom = fragment.guardLabels[1]!.box.y + fragment.guardLabels[1]!.box.height;
+    const message = (id: string) => layout.messages.find((row) => row.id === id)!;
+    const later = (start: string) => layout.activations
+      .filter(({ startMessageId, rect }) => startMessageId === start && rect.y > fragment.dividerYs[0]!);
+
+    // The arrow that reaches p2 starts its piece, below the guard row.
+    expect(later("call").map(({ rect }) => rect.y)).toEqual([message("abort").y]);
+    expect(message("abort").y).toBeGreaterThan(guardBottom);
+    // p3 first sends in this operand: its piece starts at that row's band.
+    const [inner] = later("inner");
+    expect(inner!.rect.y).toBeGreaterThan(message("abort").y);
+    expect(inner!.rect.y + inner!.rect.height).toBe(message("aborted").y);
+  });
+
   test("a bar that returns after a frame runs whole through it", () => {
     const layout = layoutSequence(documentWith([
       { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "begin" },

@@ -1040,6 +1040,28 @@ function computeLayout(
     return end === undefined ? undefined : Math.min(end, operand.endY);
   };
 
+  /**
+   * Where a bar opened above a frame shows again in a later operand: at the
+   * operand's first row on its lifeline, not at the divider. An arrow into
+   * the lifeline starts the piece. A row that the lifeline sends starts it at
+   * the top of that row's band, so the arrow leaves a bar.
+   */
+  const firstInvolvedTop = (scope: LayoutScope, participantId: string): number | undefined => {
+    for (const event of scope.events) {
+      if (event.type === "fragment") {
+        for (const operand of event.operands) {
+          const top = firstInvolvedTop(operand, participantId);
+          if (top !== undefined) return top;
+        }
+        continue;
+      }
+      const { row } = event;
+      if (row.from !== participantId && row.to !== participantId) continue;
+      return row.to === participantId && row.from !== participantId ? row.y : row.y - rowHeight / 2;
+    }
+    return undefined;
+  };
+
   /** Whether a scope, or a frame inside it, holds a return for this bar. */
   const returns = (scope: LayoutScope, activation: MutableActivation): boolean => scope.events.some((event) =>
     event.type === "fragment"
@@ -1097,12 +1119,16 @@ function computeLayout(
           activation.cuts.push({
             top: frameTop,
             bottom: frameTop + event.frame.outer.height,
-            pieces: event.operands.map((operand, index) => ({
-              top: event.operandTops[index]!,
-              bottom: perOperand[index]!.get(activation)?.endY
+            pieces: event.operands.map((operand, index) => {
+              const bottom = perOperand[index]!.get(activation)?.endY
                 ?? involvedRowsEnd(operand, activation.participantId)
-                ?? event.operandTops[index]!,
-            })),
+                ?? event.operandTops[index]!;
+              // The first operand's piece joins the bar above the frame.
+              const top = index === 0
+                ? event.operandTops[0]!
+                : firstInvolvedTop(operand, activation.participantId) ?? bottom;
+              return { top: Math.min(top, bottom), bottom };
+            }),
           });
           if (local.includes(activation)) {
             closeActivation(activation, closure.endY, closure.endMessageId);

@@ -7,6 +7,9 @@ import { join } from "node:path";
 import { docsMcpCli, docsSystemRoot, OVERLAY_PRELOAD, runPaths, SKILL_DIR } from "./paths.ts";
 import { readRound, type RoundBrief } from "./round.ts";
 
+/** The drawer's Claude Code binary. PATH can pick a stale install, so a round always names it. */
+const CLAUDE_BIN = process.env.CLIMB_CLAUDE_BIN ?? `${process.env.HOME}/.local/bin/claude`;
+
 export const DRAWER = { model: "claude-opus-5-5", effort: "medium" } as const;
 const MCP_SERVER = "docs-system";
 /** The three tools a drawer edits a diagram with. */
@@ -119,7 +122,7 @@ async function runDrawer({ entry, runDir, timeoutMs }: { entry: RoundBrief; runD
   const started = Date.now();
   const transcript = Bun.file(join(dir, "transcript.jsonl"));
   const stderr = Bun.file(join(dir, "draw.stderr.log"));
-  const proc = Bun.spawn(["claude", ...args], { cwd: paths.project, env, stdin: "ignore", stdout: transcript, stderr });
+  const proc = Bun.spawn([CLAUDE_BIN, ...args], { cwd: paths.project, env, stdin: "ignore", stdout: transcript, stderr });
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
@@ -137,7 +140,7 @@ async function runDrawer({ entry, runDir, timeoutMs }: { entry: RoundBrief; runD
       durationMs,
       exitCode,
       timedOut,
-      command: ["claude", ...args.map((arg) => (arg === prompt ? "<prompt.md>" : arg))],
+      command: [CLAUDE_BIN, ...args.map((arg) => (arg === prompt ? "<prompt.md>" : arg))],
     }),
   );
   return { slug: entry.slug, exitCode, timedOut, durationMs };

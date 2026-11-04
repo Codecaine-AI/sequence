@@ -233,7 +233,7 @@ The parser collects multiple errors where feasible. Tabs, indentation not in 2-s
   - Numbers provide temporary program identity.
   - Stable ids are regenerated deterministically during parsing.
 - **Activations**
-  - Activation bars come from sync calls and their matching returns within an operand. A sync call with no return gets a short bar over its own row.
+  - Layout derives each activation bar from sync calls, their matching returns and the turns of each caller. A caller that no call holds active gets a bar for each turn in which it waits on a sync call.
   - They are not expressible in the language.
 - **Patch commands**
   - An agent rewrites the whole program.

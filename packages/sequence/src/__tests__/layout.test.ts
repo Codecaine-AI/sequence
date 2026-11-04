@@ -71,6 +71,11 @@ function rowGeometryInside(frame: SeqRect, row: SequenceLayoutRow): boolean {
   return points.every((point) => pointInside(frame, point));
 }
 
+/** Bars on every lifeline but p1's, the first caller's, which gets a caller-side bar. */
+function calleeBars(layout: ReturnType<typeof layoutSequence>) {
+  return layout.activations.filter(({ participantId }) => participantId !== "p1");
+}
+
 describe("layoutSequence", () => {
   test("uses the pinned base constants and assigns strictly increasing item rows", () => {
     expect(SEQUENCE_LAYOUT).toEqual({
@@ -272,7 +277,7 @@ describe("layoutSequence", () => {
       { kind: "message", id: "m2", from: "p1", to: "p2", line: "async", text: "signal" },
       { kind: "message", id: "m3", from: "p2", to: "p1", line: "return", text: "done" },
     ]));
-    const activation = layout.activations[0]!;
+    const activation = calleeBars(layout)[0]!;
     const call = layout.messages[0]!;
     const signal = layout.messages[1]!;
 
@@ -292,10 +297,10 @@ describe("layoutSequence", () => {
       { kind: "message", id: "m5", from: "p2", to: "p1", line: "return", text: "outer done" },
     ]));
 
-    expect(layout.activations.map(({ level }) => level)).toEqual([0, 1]);
-    expect(layout.activations[1]!.rect.x).toBeGreaterThan(layout.activations[0]!.rect.x);
-    expect(layout.activations[1]!.endMessageId).toBe("m4");
-    expect(layout.activations[0]!.endMessageId).toBe("m5");
+    expect(calleeBars(layout).map(({ level }) => level)).toEqual([0, 1]);
+    expect(calleeBars(layout)[1]!.rect.x).toBeGreaterThan(calleeBars(layout)[0]!.rect.x);
+    expect(calleeBars(layout)[1]!.endMessageId).toBe("m4");
+    expect(calleeBars(layout)[0]!.endMessageId).toBe("m5");
   });
 
   test("closes an outer activation from a return inside a nested fragment operand", () => {
@@ -330,7 +335,7 @@ describe("layoutSequence", () => {
         ],
       },
     ]));
-    const pieces = layout.activations.filter(({ startMessageId }) => startMessageId === "call");
+    const pieces = layout.activations.filter(({ startMessageId, participantId }) => startMessageId === "call" && participantId === "p2");
     const activation = pieces[pieces.length - 1]!;
     const nestedReturn = layout.messages.find(({ id }) => id === "nested-return")!;
 
@@ -442,9 +447,9 @@ describe("layoutSequence", () => {
     ]));
     const call = layout.messages.find(({ id }) => id === "call")!;
     const later = layout.messages.find(({ id }) => id === "later")!;
-    const bar = layout.activations[0]!;
+    const bar = calleeBars(layout)[0]!;
 
-    expect(layout.activations).toHaveLength(1);
+    expect(calleeBars(layout)).toHaveLength(1);
     expect(bar.rect.y).toBe(call.y);
     expect(bar.rect.y + bar.rect.height).toBe(call.y + SEQUENCE_LAYOUT.ROW_H / 2);
     expect(bar.rect.y + bar.rect.height).toBeLessThan(later.y);
@@ -459,7 +464,7 @@ describe("layoutSequence", () => {
     ]));
     const back = layout.messages.find(({ id }) => id === "back")!;
     const elsewhere = layout.messages.find(({ id }) => id === "elsewhere")!;
-    const bar = layout.activations[0]!;
+    const bar = calleeBars(layout)[0]!;
 
     expect(bar.rect.y + bar.rect.height).toBe(back.y + SEQUENCE_LAYOUT.ROW_H / 2);
     expect(bar.rect.y + bar.rect.height).toBeLessThan(elsewhere.y);
@@ -473,10 +478,10 @@ describe("layoutSequence", () => {
     ]));
     const fire = layout.messages.find(({ id }) => id === "fire")!;
 
-    expect(layout.activations).toHaveLength(1);
-    expect(layout.activations[0]!.endMessageId).toBe("done");
+    expect(calleeBars(layout)).toHaveLength(1);
+    expect(calleeBars(layout)[0]!.endMessageId).toBe("done");
     // The arrow docks on the open bar.
-    expect(fire.x2).toBe(layout.activations[0]!.rect.x + layout.activations[0]!.rect.width);
+    expect(fire.x2).toBe(calleeBars(layout)[0]!.rect.x + calleeBars(layout)[0]!.rect.width);
   });
 
   test("a second call from the same caller ends the first call's short bar", () => {
@@ -485,10 +490,10 @@ describe("layoutSequence", () => {
       { kind: "message", id: "second", from: "p1", to: "p2", line: "sync", text: "second" },
       { kind: "message", id: "done", from: "p2", to: "p1", line: "return", text: "done" },
     ]));
-    const [first, second] = layout.activations;
+    const [first, second] = calleeBars(layout);
     const secondCall = layout.messages.find(({ id }) => id === "second")!;
 
-    expect(layout.activations.map(({ level }) => level)).toEqual([0, 0]);
+    expect(calleeBars(layout).map(({ level }) => level)).toEqual([0, 0]);
     expect(first!.rect.y + first!.rect.height).toBeLessThanOrEqual(secondCall.y);
     expect(second!.endMessageId).toBe("done");
   });
@@ -524,7 +529,7 @@ describe("layoutSequence", () => {
       },
     ]));
     const fragment = layout.fragments[0]!;
-    const pieces = layout.activations.filter(({ startMessageId }) => startMessageId === "call");
+    const pieces = layout.activations.filter(({ startMessageId, participantId }) => startMessageId === "call" && participantId === "p2");
     const okReturn = layout.messages.find(({ id }) => id === "ok-return")!;
     const cancelReturn = layout.messages.find(({ id }) => id === "cancel-return")!;
     const crosses = (y: number) => pieces.some(({ rect }) => rect.y < y && rect.y + rect.height > y);
@@ -593,7 +598,7 @@ describe("layoutSequence", () => {
     const guardBottom = fragment.guardLabels[1]!.box.y + fragment.guardLabels[1]!.box.height;
     const message = (id: string) => layout.messages.find((row) => row.id === id)!;
     const later = (start: string) => layout.activations
-      .filter(({ startMessageId, rect }) => startMessageId === start && rect.y > fragment.dividerYs[0]!);
+      .filter(({ startMessageId, participantId, rect }) => startMessageId === start && participantId !== "p1" && rect.y > fragment.dividerYs[0]!);
 
     // The arrow that reaches p2 starts its piece, below the guard row.
     expect(later("call").map(({ rect }) => rect.y)).toEqual([message("abort").y]);
@@ -620,8 +625,79 @@ describe("layoutSequence", () => {
     ]));
     const done = layout.messages.find(({ id }) => id === "done")!;
 
-    expect(layout.activations).toHaveLength(1);
-    expect(layout.activations[0]!.rect.y + layout.activations[0]!.rect.height).toBe(done.y);
+    expect(calleeBars(layout)).toHaveLength(1);
+    expect(calleeBars(layout)[0]!.rect.y + calleeBars(layout)[0]!.rect.height).toBe(done.y);
+  });
+
+  test("a caller that waits on sync calls is active for its turn, and an async notification starts a new turn", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "ask", from: "p1", to: "p2", line: "sync", text: "ask" },
+      { kind: "message", id: "read", from: "p2", to: "p3", line: "sync", text: "read" },
+      { kind: "message", id: "row", from: "p3", to: "p2", line: "return", text: "row" },
+      { kind: "message", id: "reply", from: "p2", to: "p1", line: "return", text: "reply" },
+      { kind: "message", id: "notify", from: "p3", to: "p2", line: "async", text: "notify" },
+      { kind: "message", id: "status", from: "p2", to: "p3", line: "sync", text: "status" },
+      { kind: "message", id: "result", from: "p3", to: "p2", line: "return", text: "result" },
+      { kind: "message", id: "report", from: "p2", to: "p1", line: "async", text: "report" },
+    ]));
+    const message = (id: string) => layout.messages.find((row) => row.id === id)!;
+    const span = (participantId: string) => layout.activations
+      .filter((bar) => bar.participantId === participantId)
+      .map(({ rect }) => [rect.y, rect.y + rect.height]);
+
+    // p1 waits from its first send until the reply.
+    expect(span("p1")).toEqual([[message("ask").y, message("reply").y]]);
+    // p2: the bar of the call it got, then a turn from the notification to its last send.
+    expect(span("p2")).toEqual([[message("ask").y, message("reply").y], [message("notify").y, message("report").y]]);
+    // The notification docks on the new bar.
+    expect(message("notify").x2).toBe(layout.activations.find(({ startMessageId }) => startMessageId === "notify")!.rect.x + SEQUENCE_LAYOUT.ACTIVATION_W);
+  });
+
+  test("a caller's turn ends in each alt operand at its last step there, and an answer to its own message continues it", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "start", from: "p1", to: "p2", line: "sync", text: "start" },
+      { kind: "message", id: "started", from: "p2", to: "p1", line: "return", text: "started" },
+      {
+        kind: "fragment",
+        id: "branches",
+        op: "alt",
+        operands: [
+          { guard: "known", items: [{ kind: "message", id: "send", from: "p1", to: "p2", line: "async", text: "send" }] },
+          {
+            items: [
+              { kind: "message", id: "question", from: "p1", to: "p3", line: "async", text: "question" },
+              { kind: "message", id: "answer", from: "p3", to: "p1", line: "async", text: "answer" },
+              { kind: "message", id: "send-answer", from: "p1", to: "p2", line: "async", text: "send" },
+            ],
+          },
+        ],
+      },
+      { kind: "message", id: "relay", from: "p2", to: "p3", line: "async", text: "relay" },
+    ]));
+    const fragment = layout.fragments[0]!;
+    const message = (id: string) => layout.messages.find((row) => row.id === id)!;
+    const pieces = layout.activations.filter(({ participantId }) => participantId === "p1");
+
+    expect(pieces.map(({ rect }) => rect.y + rect.height)).toEqual([message("send").y, message("send-answer").y]);
+    for (const dividerY of fragment.dividerYs) {
+      expect(pieces.some(({ rect }) => rect.y < dividerY && rect.y + rect.height > dividerY)).toBe(false);
+    }
+    // p3 only passes async messages on: it never waits, so it gets no bar.
+    expect(layout.activations.filter(({ participantId }) => participantId === "p3")).toEqual([]);
+  });
+
+  test("a self-call on an active lifeline nests and covers its own row only", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "hook", from: "p2", to: "p1", line: "async", text: "hook" },
+      { kind: "message", id: "check", from: "p1", to: "p1", line: "sync", text: "check" },
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "call" },
+      { kind: "message", id: "back", from: "p2", to: "p1", line: "return", text: "back" },
+    ]));
+    const check = layout.messages.find(({ id }) => id === "check")!;
+    const selfBar = layout.activations.find(({ startMessageId }) => startMessageId === "check")!;
+
+    expect(selfBar.level).toBe(1);
+    expect(selfBar.rect.y + selfBar.rect.height).toBe(check.y + SEQUENCE_LAYOUT.ROW_H);
   });
 
   test("keeps fragment edges clear of activation bars and moves active over-notes beside the bar", () => {

@@ -251,6 +251,11 @@ interface MutableActivation {
    * if no later row of its lifeline extends it.
    */
   shortEnd?: number;
+  /**
+   * Set on a caller-side bar: the rows that end its turn, one per path
+   * through the frames it ends inside.
+   */
+  endIds?: ReadonlySet<string>;
   /** Frames this bar enters and ends inside, outermost last-recorded. */
   cuts: ActivationCut[];
 }
@@ -265,6 +270,23 @@ interface ActivationCut {
   bottom: number;
   pieces: { top: number; bottom: number }[];
 }
+
+/**
+ * A turn of a participant that no call holds active: it starts at an async
+ * message the participant receives, or at its first send, and lasts until
+ * its last send or the last reply it gets. It gets a bar when the
+ * participant waits on a sync call during it.
+ */
+interface CallerTurn {
+  participantId: string;
+  endIds: ReadonlySet<string>;
+}
+
+/** The callerId of a caller-side bar. No return matches it. */
+const TURN_CALLER = "\u0000turn";
+
+/** The frame operands that enclose a row, outermost first. */
+type RowPath = readonly { frame: string; operand: number }[];
 
 interface ActivationClosure {
   endY: number;
@@ -291,6 +313,84 @@ const LABEL_HALO = LABEL_BOX_PAD.y;
 const NOTE_BAR_GAP = 4;
 /** Base px from the top margin to the title's first baseline. */
 const TITLE_BASELINE = 18;
+
+/**
+ * Finds each participant's caller-side turns, UML style: a participant that
+ * no call holds active is active from the message that starts its turn
+ * until its last send or the last reply it gets in that turn. An async
+ * message it receives while idle starts a new turn, unless it answers the
+ * participant's last message. A turn never leaves the
+ * frame operand it starts in, and it needs a sync call the participant
+ * waits on, so a relay that only passes async messages on gets no bar.
+ * `calleeBars` are the bars of a first walk: a matched one holds its
+ * lifeline active, so rows under it belong to no turn.
+ */
+function findCallerTurns(scope: LayoutScope, calleeBars: readonly MutableActivation[]): Map<string, CallerTurn> {
+  const ordered: { row: SequenceMessageLayout; path: RowPath }[] = [];
+  const collect = (inner: LayoutScope, path: RowPath): void => {
+    for (const event of inner.events) {
+      if (event.type === "message") ordered.push({ row: event.row, path });
+      else event.operands.forEach((operand, index) => collect(operand, [...path, { frame: event.frame.id, operand: index }]));
+    }
+  };
+  collect(scope, []);
+  const held = (participantId: string, y: number): boolean => calleeBars.some((bar) =>
+    bar.participantId === participantId
+    && bar.endMessageId !== undefined
+    && bar.rect.y <= y
+    && y <= bar.rect.y + bar.rect.height);
+  const within = (path: RowPath, prefix: RowPath): boolean =>
+    prefix.every((step, index) => path[index]?.frame === step.frame && path[index]?.operand === step.operand);
+  // Two rows lie on one run unless some frame puts them in different operands.
+  const oneRun = (a: RowPath, b: RowPath): boolean => {
+    for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
+      if (a[index]!.frame !== b[index]!.frame) return true;
+      if (a[index]!.operand !== b[index]!.operand) return false;
+    }
+    return true;
+  };
+  const turns = new Map<string, CallerTurn>();
+  const participantIds = new Set(ordered.flatMap(({ row }) => [row.from, row.to]));
+  for (const participantId of participantIds) {
+    let turn: { start: SequenceMessageLayout; path: RowPath; rows: typeof ordered; waits: boolean } | undefined;
+    const finish = (): void => {
+      if (turn?.waits) {
+        const { rows } = turn;
+        const ends = rows.filter(({ path }, index) => !rows.slice(index + 1).some((later) => oneRun(path, later.path)));
+        if (ends.some(({ row }) => row !== turn!.start)) {
+          turns.set(turn.start.id, { participantId, endIds: new Set(ends.map(({ row }) => row.id)) });
+        }
+      }
+      turn = undefined;
+    };
+    for (const entry of ordered) {
+      const { row, path } = entry;
+      if (row.from !== participantId && row.to !== participantId) continue;
+      if (held(participantId, row.y)) continue;
+      if (row.to === participantId && row.from !== participantId && row.line === "async") {
+        // An answer from the participant the turn last messaged continues
+        // the turn: the participant was waiting for it.
+        const last = turn?.rows[turn.rows.length - 1]?.row;
+        if (turn && last?.from === participantId && last.to === row.from && within(path, turn.path)) {
+          turn.rows.push(entry);
+          continue;
+        }
+        finish();
+        turn = { start: row, path, rows: [], waits: false };
+        continue;
+      }
+      const acts = (row.from === participantId && row.line !== "return")
+        || (row.to === participantId && row.from !== participantId && row.line === "return");
+      if (!acts) continue;
+      if (turn && !within(path, turn.path)) finish();
+      turn ??= { start: row, path, rows: [], waits: false };
+      turn.rows.push(entry);
+      if (row.line === "sync" && row.to !== participantId) turn.waits = true;
+    }
+    finish();
+  }
+  return turns;
+}
 
 /**
  * Computes all sequence geometry without consulting the DOM. Text metrics are
@@ -983,6 +1083,8 @@ function computeLayout(
   const barFrameGap = unit(SEQUENCE_LAYOUT.GRID / 2);
   /** Ids of sync calls that the previous walk found no return for. */
   let unmatchedCalls: ReadonlySet<string> = new Set();
+  /** Caller-side turns, by the id of the row that starts each one. */
+  let callerTurns: ReadonlyMap<string, CallerTurn> = new Map();
 
   const isOpen = (activation: MutableActivation, closedHere: Set<MutableActivation>): boolean =>
     activation.rect.height < 0 && !closedHere.has(activation);
@@ -1103,9 +1205,11 @@ function computeLayout(
   const returns = (scope: LayoutScope, activation: MutableActivation): boolean => scope.events.some((event) =>
     event.type === "fragment"
       ? event.operands.some((operand) => returns(operand, activation))
-      : event.row.line === "return"
-        && event.row.from === activation.participantId
-        && event.row.to === activation.callerId);
+      : activation.endIds
+        ? activation.endIds.has(event.row.id)
+        : event.row.line === "return"
+          && event.row.from === activation.participantId
+          && event.row.to === activation.callerId);
 
   const walkScope = (
     scope: LayoutScope,
@@ -1177,13 +1281,36 @@ function computeLayout(
         continue;
       }
       const row = event.row;
+      // A self-call stacked on a bar of its own lifeline covers its own row
+      // only: the bar below it already shows the lifeline busy.
+      const stackedSelf = (activation: MutableActivation): boolean =>
+        activation.level > 0 && activation.callerId === activation.participantId;
       // A new sync call from the same caller means the earlier call is over.
-      closeShortBars((activation) => (activation.participantId === row.from || activation.participantId === row.to)
+      closeShortBars((activation) => !stackedSelf(activation)
+        && (activation.participantId === row.from || activation.participantId === row.to)
         && !(row.line === "sync" && activation.participantId === row.to && activation.callerId === row.from));
       for (const activation of local) {
-        if (activation.shortEnd !== undefined && isOpen(activation, closedHere)) {
+        if (activation.shortEnd !== undefined && isOpen(activation, closedHere) && !stackedSelf(activation)) {
           activation.shortEnd = Math.max(activation.shortEnd, rowBandEnd(row));
         }
+      }
+      const turn = callerTurns.get(row.id);
+      if (turn) {
+        const level = [...inherited, ...local].filter(
+          (activation) => activation.participantId === turn.participantId && isOpen(activation, closedHere),
+        ).length;
+        const center = participantX(turn.participantId) + level * activationOffset;
+        const activation: MutableActivation = {
+          participantId: turn.participantId,
+          callerId: TURN_CALLER,
+          level,
+          rect: { x: center - activationWidth / 2, y: row.y, width: activationWidth, height: -1 },
+          startMessageId: row.id,
+          endIds: turn.endIds,
+          cuts: [],
+        };
+        local.push(activation);
+        bars.push(activation);
       }
       if (row.line === "sync") {
         // The caller docks before receipt; the callee docks on the bar beginning
@@ -1252,6 +1379,15 @@ function computeLayout(
       } else {
         setMessageGeometry(row, inherited, local, closedHere);
       }
+      for (const activation of [...inherited, ...local]) {
+        if (!activation.endIds?.has(row.id) || !isOpen(activation, closedHere)) continue;
+        if (local.includes(activation)) {
+          closeActivation(activation, row.y, row.id);
+        } else {
+          inheritedClosures.set(activation, { endY: row.y, endMessageId: row.id });
+        }
+        closedHere.add(activation);
+      }
     }
     closeShortBars(() => false);
     for (const activation of local) {
@@ -1263,6 +1399,7 @@ function computeLayout(
   // bars short, so they neither run to the end of their scope nor stack.
   walkScope(documentScope, []);
   unmatchedCalls = new Set(bars.filter((bar) => bar.endMessageId === undefined).map((bar) => bar.startMessageId));
+  callerTurns = findCallerTurns(documentScope, bars);
   bars.length = 0;
   walkScope(documentScope, []);
 

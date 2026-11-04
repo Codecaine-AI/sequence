@@ -1997,7 +1997,7 @@
       },
       "text": [
         {
-          "insert": "Activation bars come from sync calls and their matching returns within an operand. A sync call with no return gets a short bar over its own row."
+          "insert": "Layout derives each activation bar from sync calls, their matching returns and the turns of each caller. A caller that no call holds active gets a bar for each turn in which it waits on a sync call."
         }
       ],
       "children": []

@@ -76,6 +76,7 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - A value can be bare only when it holds letters, digits, `_`, `(`, `)` and `-`. Quote all other values, such as `text="Login page"`.
 - Never write coordinates, ids or activation bars. Layout comes from the structure.
   - A sync call activates its receiver until the matching return. Write that return to end the bar.
+  - A caller that waits on a sync call is active for its turn: from the message that starts the turn to its last send or reply.
   - A sync call with no return gets a short bar over its own row.
 
 ## Writing for the Reader

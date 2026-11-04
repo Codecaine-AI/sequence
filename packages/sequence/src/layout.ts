@@ -1248,10 +1248,14 @@ function computeLayout(
         // branch-local until they are merged here, which prevents one sibling
         // from changing the state observed by another sibling.
         const visible = [...inherited, ...local].filter((activation) => isOpen(activation, closedHere));
-        // A bar that some operand returns stops at this frame. An operand
-        // that neither returns it nor opens on its lifeline does not see it,
-        // so calls there dock on the bare lifeline and get bars of their own.
-        const cut = visible.filter((activation) => event.operands.some((operand) => returns(operand, activation)));
+        // A call's bar that some operand returns stops at this frame. An
+        // operand that neither returns it nor opens on its lifeline does not
+        // see it, so calls there dock on the bare lifeline and get bars of
+        // their own. A caller's turn runs whole through the frame instead,
+        // to its last step in any operand: the caller is active throughout.
+        const cut = visible.filter((activation) =>
+          activation.callerId !== TURN_CALLER
+          && event.operands.some((operand) => returns(operand, activation)));
         const perOperand = event.operands.map((operand) => walkScope(
           operand,
           visible.filter((activation) => !cut.includes(activation)
@@ -1271,7 +1275,7 @@ function computeLayout(
         for (const [activation, closure] of mergedClosures) {
           // The bar ends inside this frame: it stops above the frame and
           // shows in each operand until that operand's return.
-          activation.cuts.push({
+          if (cut.includes(activation)) activation.cuts.push({
             top: frameTop,
             bottom: frameTop + event.frame.outer.height,
             pieces: event.operands.map((operand, index) => {
@@ -1395,10 +1399,14 @@ function computeLayout(
       }
       for (const activation of [...inherited, ...local]) {
         if (!activation.endIds?.has(row.id) || !isOpen(activation, closedHere)) continue;
+        // A turn that ends on its own send covers that row's band, like the
+        // callee's bar for a call with no return; one that ends on a reply
+        // ends at that arrow.
+        const endY = row.from === activation.participantId && row.line !== "return" ? rowBandEnd(row) : row.y;
         if (local.includes(activation)) {
-          closeActivation(activation, row.y, row.id);
+          closeActivation(activation, endY, row.id);
         } else {
-          inheritedClosures.set(activation, { endY: row.y, endMessageId: row.id });
+          inheritedClosures.set(activation, { endY, endMessageId: row.id });
         }
         closedHere.add(activation);
       }

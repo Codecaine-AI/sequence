@@ -648,13 +648,14 @@ describe("layoutSequence", () => {
 
     // p1 waits from its first send until the reply.
     expect(span("p1")).toEqual([[message("ask").y, message("reply").y]]);
-    // p2: the bar of the call it got, then a turn from the notification to its last send.
-    expect(span("p2")).toEqual([[message("ask").y, message("reply").y], [message("notify").y, message("report").y]]);
+    // p2: the bar of the call it got, then a turn from the notification to
+    // its last send, which it covers like a call with no return would.
+    expect(span("p2")).toEqual([[message("ask").y, message("reply").y], [message("notify").y, message("report").y + SEQUENCE_LAYOUT.ROW_H / 2]]);
     // The notification docks on the new bar.
     expect(message("notify").x2).toBe(layout.activations.find(({ startMessageId }) => startMessageId === "notify")!.rect.x + SEQUENCE_LAYOUT.ACTIVATION_W);
   });
 
-  test("a caller's turn ends in each alt operand at its last step there, and an answer to its own message continues it", () => {
+  test("a caller's turn runs whole through an alt to its last step in any operand, and an answer to its own message continues it", () => {
     const layout = layoutSequence(documentWith([
       { kind: "message", id: "start", from: "p1", to: "p2", line: "sync", text: "start" },
       { kind: "message", id: "started", from: "p2", to: "p1", line: "return", text: "started" },
@@ -679,9 +680,15 @@ describe("layoutSequence", () => {
     const message = (id: string) => layout.messages.find((row) => row.id === id)!;
     const pieces = layout.activations.filter(({ participantId }) => participantId === "p1");
 
-    expect(pieces.map(({ rect }) => rect.y + rect.height)).toEqual([message("send").y, message("send-answer").y]);
+    // One bar: the caller is active throughout the alt, so the bar crosses
+    // the frame's top edge and its divider, and ends at the last operand's
+    // last send, covering that row's band.
+    expect(pieces).toHaveLength(1);
+    expect([pieces[0]!.rect.y, pieces[0]!.rect.y + pieces[0]!.rect.height])
+      .toEqual([message("start").y, message("send-answer").y + SEQUENCE_LAYOUT.ROW_H / 2]);
+    expect(pieces[0]!.rect.y).toBeLessThan(fragment.outer.y);
     for (const dividerY of fragment.dividerYs) {
-      expect(pieces.some(({ rect }) => rect.y < dividerY && rect.y + rect.height > dividerY)).toBe(false);
+      expect(pieces[0]!.rect.y < dividerY && pieces[0]!.rect.y + pieces[0]!.rect.height > dividerY).toBe(true);
     }
     // p3 only passes async messages on: it never waits, so it gets no bar.
     expect(layout.activations.filter(({ participantId }) => participantId === "p3")).toEqual([]);

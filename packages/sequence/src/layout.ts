@@ -68,10 +68,17 @@ export const SEQUENCE_LAYOUT = {
   /** Furthest a guard moves right from its place to clear a lifeline. */
   GUARD_SHIFT_MAX: 120,
   /**
-   * Clear space between a guard, a frame tab or a moved message label and
-   * the nearest lifeline or activation bar.
+   * Clear space between a frame tab or a moved message label and the
+   * nearest lifeline or activation bar.
    */
   LABEL_CLEARANCE: 12,
+  /**
+   * Clear space between a guard and the nearest lifeline or activation bar
+   * on either side. A guard sits in a frame's header row, where a line
+   * close to its last word reads as crossing it, so it gets more air than
+   * a message label.
+   */
+  GUARD_CLEARANCE: 24,
   /** Extra clearance above and below note boxes. */
   NOTE_MARGIN_Y: 8,
   /** Clear space between a note box and a frame edge or divider below it. */
@@ -597,7 +604,7 @@ function computeLayout(
   };
   // Guards sit near their frame's left edge. The gap right of the frame's
   // leftmost lifeline holds the widest guard, so no lifeline runs through it.
-  const guardClearance = unit(SEQUENCE_LAYOUT.LABEL_CLEARANCE);
+  const guardClearance = unit(SEQUENCE_LAYOUT.GUARD_CLEARANCE);
   const reserveGuardRoom = (fragment: SequenceFragment): void => {
     const columns = [...frameColumns(fragment.operands.flatMap((operand) => operand.items), new Set())];
     if (columns.length < 2) return;

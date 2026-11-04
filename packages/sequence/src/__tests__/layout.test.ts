@@ -97,6 +97,7 @@ describe("layoutSequence", () => {
       FRAG_GUARD_BASELINE: 18,
       GUARD_SHIFT_MAX: 120,
       LABEL_CLEARANCE: 12,
+      GUARD_CLEARANCE: 24,
       NOTE_MARGIN_Y: 8,
       BAR_EDGE_GAP: 12,
       NOTE_EDGE_GAP: 16,

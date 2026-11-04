@@ -700,6 +700,18 @@ describe("layoutSequence", () => {
     expect(selfBar.rect.y + selfBar.rect.height).toBe(check.y + SEQUENCE_LAYOUT.ROW_H);
   });
 
+  test("a self-call's loop starts near the top of its row, where another message's label would sit", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "before", from: "p1", to: "p2", line: "async", text: "before" },
+      { kind: "message", id: "check", from: "p2", to: "p2", line: "sync", text: "check" },
+      { kind: "message", id: "after", from: "p2", to: "p1", line: "async", text: "after" },
+    ]));
+    const [before, check, after] = ["before", "check", "after"].map((id) => layout.messages.find((message) => message.id === id)!);
+
+    expect(check!.y - before!.y).toBe(SEQUENCE_LAYOUT.ROW_H / 2 + SEQUENCE_LAYOUT.GRID);
+    expect(after!.y - check!.y2).toBe(SEQUENCE_LAYOUT.ROW_H);
+  });
+
   test("keeps fragment edges clear of activation bars and moves active over-notes beside the bar", () => {
     const calls: SequenceItem[] = Array.from({ length: 4 }, (_, index) => ({
       kind: "message",

@@ -824,8 +824,11 @@ function computeLayout(
     endY: number;
   } => {
     const self = message.from === message.to;
-    const bandHeight = self ? rowHeight * 1.5 : rowHeight;
-    const y = top + rowHeight / 2;
+    // A self-call's label sits beside its loop, not above it, so the loop
+    // starts near the top of its band instead of half a row down.
+    const loopTop = Math.min(rowHeight / 2, unit(SEQUENCE_LAYOUT.GRID));
+    const bandHeight = self ? loopTop + rowHeight : rowHeight;
+    const y = top + (self ? loopTop : rowHeight / 2);
     const x1 = participantX(message.from);
     const x2 = participantX(message.to);
     const row: SequenceMessageLayout = {

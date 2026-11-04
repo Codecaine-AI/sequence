@@ -26,7 +26,7 @@ climb setup  --briefs <dir> --run <runDir>
 climb draw   --run <runDir> [--concurrency 4] [--timeout-min 20] [--only a,b]
 climb render --run <runDir> [--only a,b]
 climb judge  --run <runDir> --judges <sol,opus,...> --out <scoresDir> [--concurrency 6] [--only a,b]
-climb score  --scores <round> [--scores <round> ...] --set <climb|held-out> --judges <a,b,...> --out <dir> [--briefs <dir>] [--draws 3]
+climb score  --scores <round> [--scores <round> ...] --set <climb|held-out> --judges <a,b,...> --out <dir> [--briefs <dir>] [--draws 3] [--exempt-floor <brief>:<category> ...]
 ```
 
 ### One round of 3 draws
@@ -40,8 +40,11 @@ climb score  --scores <round> [--scores <round> ...] --set <climb|held-out> --ju
 2. Score it:
 
    ```
-   bun run climb score --scores packages/climb/runs/<name> --set climb --judges sol,opus --out packages/climb/runs/<name>/score
+   bun run climb score --scores packages/climb/runs/<name> --set climb --judges sol,opus --exempt-floor status-poll:participantOrder --out packages/climb/runs/<name>/score
    ```
+
+   Ford exempted `status-poll` / `participantOrder` from the floor. The flag
+   is the only record of that: score has no built-in exemptions.
 
 `climb round` runs setup, draw, render and judge for `draw-1`, then
 `draw-2`, then `draw-3`. Each `<runDir>/draw-<n>` has the single-draw
@@ -139,13 +142,19 @@ round's draws. The gate checks the newest round. For each judge and category:
 - the mean over the set's briefs must be at least 9.5, and
 - no brief's draw mean may be below 9.
 
+`--exempt-floor <brief>:<category>` skips the floor for that cell, for every
+judge. The cell still counts in the 9.5 mean. Repeat the flag for more cells.
+The brief must be in the set and the category one of the nine keys.
+
 The round must have `--draws` draws (default 3), or it fails. A judge with no
 score for a brief in one draw fails. That brief is left out of the means. It
 is never averaged over the other draws. Score prints PASS or FAIL with every
 failure, exits 0 on PASS and 1 on FAIL, and writes `table.md` and `gate.json`
 to `--out`. The table has one row per judge and category and one column per
-round. A cell shows the set mean, the lowest brief mean and the spread. The
-spread is max minus min over draws, averaged over briefs.
+round. A cell shows the set mean, the lowest brief mean among the briefs the
+floor checks, the spread, and each exempt brief's mean after `exempt`. The
+spread is max minus min over draws, averaged over briefs. The table's header
+and `gate.json` list the exempt cells.
 
 ## How the docs server runs this checkout's sequence package
 

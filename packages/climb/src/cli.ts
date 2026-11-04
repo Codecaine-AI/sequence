@@ -3,7 +3,7 @@ import { runDraw } from "./draw.ts";
 import { JUDGE_IDS, runJudge } from "./judge.ts";
 import { runRender } from "./render.ts";
 import { runRound } from "./run-round.ts";
-import { BRIEF_SETS, describeFailure, GATE, runScore, type BriefSet } from "./score.ts";
+import { BRIEF_SETS, describeFailure, GATE, parseFloorExemption, runScore, type BriefSet } from "./score.ts";
 import { runSetup } from "./setup.ts";
 
 const USAGE = `climb: sequence-diagram quality climb
@@ -13,9 +13,10 @@ const USAGE = `climb: sequence-diagram quality climb
   climb draw   --run <runDir> [--concurrency 4] [--timeout-min 20] [--only a,b]
   climb render --run <runDir> [--only a,b]
   climb judge  --run <runDir> --judges <sol,opus,...> --out <scoresDir> [--concurrency 6] [--only a,b]
-  climb score  --scores <round> [--scores <round> ...] --set <climb|held-out> --judges <a,b,...> --out <dir> [--briefs <dir>] [--draws 3]
+  climb score  --scores <round> [--scores <round> ...] --set <climb|held-out> --judges <a,b,...> --out <dir> [--briefs <dir>] [--draws 3] [--exempt-floor <brief>:<category> ...]
 
 A <round> for score is a climb round folder, a comma list of score folders (one per draw), or one score folder.
+--exempt-floor skips the floor of ${GATE.minScore} for one brief in one category, for every judge. The cell still counts in the ${GATE.minMean} mean.
 
 See packages/climb/README.md.`;
 
@@ -132,7 +133,7 @@ async function main(argv: readonly string[]): Promise<number> {
       return failed.length === 0 ? 0 : 1;
     }
     case "score": {
-      allow(flags, ["--scores", "--set", "--judges", "--out", "--briefs", "--draws"]);
+      allow(flags, ["--scores", "--set", "--judges", "--out", "--briefs", "--draws", "--exempt-floor"]);
       const set = one(flags, "--set");
       if (!isBriefSet(set)) throw new Error(`--set must be one of ${BRIEF_SETS.join(", ")}`);
       const judges = list(one(flags, "--judges")) ?? [];
@@ -140,8 +141,13 @@ async function main(argv: readonly string[]): Promise<number> {
       const rounds = flags.get("--scores") ?? [];
       if (rounds.length === 0) throw new Error("--scores is required");
       const draws = positiveInteger(optional(flags, "--draws") ?? String(GATE.draws), "--draws");
-      const { gate, briefs } = await runScore({ rounds, set, judges, out: one(flags, "--out"), briefsDir: optional(flags, "--briefs"), draws });
-      console.log(`${gate.pass ? "PASS" : "FAIL"}: set ${set}, ${judges.length} judges, ${briefs.length} briefs, ${draws} draws, newest round ${rounds.at(-1)}`);
+      const exemptFloor = (flags.get("--exempt-floor") ?? []).map(parseFloorExemption);
+      const { gate, briefs } = await runScore({ rounds, set, judges, out: one(flags, "--out"), briefsDir: optional(flags, "--briefs"), draws, exemptFloor });
+      console.log(
+        `${gate.pass ? "PASS" : "FAIL"}: set ${set}, ${judges.length} judges, ${briefs.length} briefs, ${draws} draws, newest round ${rounds.at(-1)}${
+          exemptFloor.length === 0 ? "" : `, floor exempt: ${exemptFloor.map((cell) => `${cell.brief}:${cell.category}`).join(", ")}`
+        }`,
+      );
       for (const failure of gate.failures) console.log(`  ${describeFailure(failure)}`);
       return gate.pass ? 0 : 1;
     }

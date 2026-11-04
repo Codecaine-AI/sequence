@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { applyGate, describeFailure, runScore, type Draw } from "./score.ts";
+import { applyGate, describeFailure, parseFloorExemption, runScore, type Draw } from "./score.ts";
 import { parseJudgeScore, SCORE_CATEGORIES, type JudgeScore, type ScoreCategory } from "./score-schema.ts";
 
 function judgeScore({ judge, brief, all, overrides = {} }: { judge: string; brief: string; all: number; overrides?: Partial<Record<ScoreCategory, number>> }): JudgeScore {
@@ -121,6 +121,50 @@ describe("applyGate over draws", () => {
   });
 });
 
+describe("applyGate with --exempt-floor", () => {
+  test("an exempt cell below 9 does not trip the floor, and the round passes", () => {
+    // Brief d scores 8 in craft in every draw. With a, b, c at 10 the craft mean is exactly 9.5.
+    const draws = threeDraws({ brief: "d", craft: [8, 8, 8] });
+    const without = applyGate({ judges: ["j1"], briefs, draws });
+    expect(without.failures).toEqual([{ kind: "low", judge: "j1", category: "craft", brief: "d", mean: 8, scores: [8, 8, 8] }]);
+    const gate = applyGate({ judges: ["j1"], briefs, draws, exemptFloor: [{ brief: "d", category: "craft" }] });
+    expect(gate.failures).toEqual([]);
+    expect(gate.pass).toBe(true);
+    const craft = gate.stats.find((stats) => stats.category === "craft")!;
+    expect(craft.min).toBe(10);
+    expect(craft.exempt).toEqual([{ brief: "d", mean: 8 }]);
+  });
+
+  test("an exempt cell still counts in the 9.5 mean", () => {
+    // Brief d scores 7 in craft: the craft mean is (10 + 10 + 10 + 7) / 4 = 9.25, so the mean fails even though the floor is exempt.
+    const draws = threeDraws({ brief: "d", craft: [7, 7, 7] });
+    const gate = applyGate({ judges: ["j1"], briefs, draws, exemptFloor: [{ brief: "d", category: "craft" }] });
+    expect(gate.pass).toBe(false);
+    expect(gate.failures).toEqual([{ kind: "mean", judge: "j1", category: "craft", mean: 9.25 }]);
+    expect(gate.stats.find((stats) => stats.category === "craft")?.mean).toBe(9.25);
+    expect(gate.stats.find((stats) => stats.category === "craft")?.count).toBe(4);
+  });
+
+  test("the exemption covers one category of one brief, for every judge", () => {
+    const draws: Draw[] = [1, 2, 3].map((n) => ({
+      label: `draw-${n}`,
+      scores: ["j1", "j2"].flatMap((judge) => briefs.map((brief) => judgeScore({ judge, brief, all: 10, overrides: brief === "d" ? { craft: 8, readability: 8 } : {} }))),
+    }));
+    const gate = applyGate({ judges: ["j1", "j2"], briefs, draws, exemptFloor: [{ brief: "d", category: "craft" }] });
+    // Readability on d still trips the floor for both judges. Craft on d trips it for neither.
+    expect(gate.failures).toEqual([
+      { kind: "low", judge: "j1", category: "readability", brief: "d", mean: 8, scores: [8, 8, 8] },
+      { kind: "low", judge: "j2", category: "readability", brief: "d", mean: 8, scores: [8, 8, 8] },
+    ]);
+  });
+
+  test("parses <brief>:<category> and refuses an unknown category", () => {
+    expect(parseFloorExemption("status-poll:participantOrder")).toEqual({ brief: "status-poll", category: "participantOrder" });
+    expect(() => parseFloorExemption("status-poll:order")).toThrow(/unknown category "order"/);
+    expect(() => parseFloorExemption("status-poll")).toThrow(/<brief>:<category>/);
+  });
+});
+
 describe("parseJudgeScore", () => {
   test("refuses a score outside 1-10, a fractional score and a missing category", () => {
     const base = judgeScore({ judge: "j1", brief: "a", all: 10 });
@@ -165,5 +209,30 @@ describe("runScore", () => {
     expect(table).toContain("| Judge | Category | old-1 + old-2 + old-3 (3 draws) | round (3 draws) |");
     expect(table).toContain("| j1 | craft | 8.67 (min 8.67, spread 1.00) | 9.00 (min 9, spread 3.00) |");
     expect(table).toContain("| **Gate** | | **FAIL** (2) | **FAIL** (1) |");
+  });
+
+  test("prints exempt cells in the table and gate.json, and refuses an exempt brief outside the set", async () => {
+    const root = await mkdtemp(join(tmpdir(), "climb-score-"));
+    const write = async (scoresDir: string, score: JudgeScore) => {
+      await mkdir(join(root, scoresDir, score.judge), { recursive: true });
+      await writeFile(join(root, scoresDir, score.judge, `${score.brief}.json`), JSON.stringify(score));
+    };
+    for (const [index, craft] of [8, 7, 8].entries()) {
+      await write(`round/draw-${index + 1}/scores`, judgeScore({ judge: "j1", brief: "a", all: 10, overrides: { craft } }));
+      await write(`round/draw-${index + 1}/scores`, judgeScore({ judge: "j1", brief: "b", all: 10 }));
+    }
+    const input = { rounds: [join(root, "round")], set: "climb" as const, judges: ["j1"], out: join(root, "out") };
+    const without = await runScore(input);
+    expect(without.gate.failures.map(describeFailure)).toEqual(["j1 / craft: mean 8.83 is below 9.5", "j1 / craft / a: mean 7.67 of draws 8, 7, 8 is below 9"]);
+    const result = await runScore({ ...input, exemptFloor: [{ brief: "a", category: "craft" }] });
+    // The floor failure is gone. The mean still includes a's 7.67 and still fails.
+    expect(result.gate.failures.map(describeFailure)).toEqual(["j1 / craft: mean 8.83 is below 9.5"]);
+    const table = await readFile(join(root, "out/table.md"), "utf8");
+    expect(table).toContain("Exempt from the floor for every judge, still in the mean: a / craft.");
+    expect(table).toContain("| j1 | craft | 8.83 (min 10, spread 0.50, exempt a 7.67) |");
+    expect(table).toContain("| j1 | readability | 10.00 (min 10, spread 0.00) |");
+    const gate = JSON.parse(await readFile(join(root, "out/gate.json"), "utf8"));
+    expect(gate.exemptFloor).toEqual(["a:craft"]);
+    await expect(runScore({ ...input, exemptFloor: [{ brief: "zzz", category: "craft" }] })).rejects.toThrow(/brief "zzz" is not in the set \(a, b\)/);
   });
 });

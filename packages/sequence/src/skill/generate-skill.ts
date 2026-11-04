@@ -232,12 +232,14 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - Draw a return only where the brief lists one or the reader must see the reply.
   - A waited-on call with no listed return stays \`>\` with no return.
   - Never add a return such as \`saved\` or \`ok\` only to close a call.
-- When an \`alt\` branches on a call's result, draw the call and its reply before the \`alt\`. Let the guards name the result, such as \`guard="409 stale revision"\`.
+- When an \`alt\` branches on a call's reply, put each reply inside the branch it starts, as that branch's first step.
+  - Never merge two outcomes into one reply before the \`alt\`, such as \`200 or 409\`.
+  - Let each guard name the condition, and draw only the replies the brief lists.
 - Keep a guard to 40 characters or fewer. State the condition only, and put a reason in a note.
 - Keep a diagram to about 5 participants and 20 messages. Split a larger flow into two blocks.
 - Use a note for one fact a message cannot carry. Keep it short.
   - Keep each condition that the brief gives for that fact.
-- When a \`docs_sequence_set_program\` result lists a \`long-label\`, \`long-guard\`, \`joined-calls\`, \`reply-inside-branch\` or \`leftward-call\` finding, fix it.
+- When a \`docs_sequence_set_program\` result lists a \`long-label\`, \`long-guard\`, \`joined-calls\` or \`leftward-call\` finding, fix it.
 
 ## References
 

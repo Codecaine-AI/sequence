@@ -91,29 +91,3 @@ test("leftward-call stays quiet when a call goes back to the first caller", () =
 
   expect(results.filter(({ rule }) => rule === "leftward-call")).toEqual([]);
 });
-
-test("reply-inside-branch reports a call whose reply opens the alt that branches on it", () => {
-  const reply = (id: string, text: string): SequenceItem => ({ kind: "message", id, from: "p2", to: "p1", line: "return", text });
-  const results = lintSequence(documentWith([
-    { kind: "message", id: "verify", from: "p1", to: "p2", line: "sync", text: "add(verify)" },
-    { kind: "message", id: "note", from: "p1", to: "p2", line: "sync", text: "add(note)" },
-    reply("noted", "note added"),
-    {
-      kind: "fragment",
-      id: "f1",
-      op: "alt",
-      operands: [{ guard: "stale", items: [reply("stale", "409")] }, { items: [reply("ok", "verify added")] }],
-    },
-    // The receiver works on before the alt, so the alt ends the run, not the call.
-    { kind: "message", id: "run", from: "p1", to: "p2", line: "sync", text: "run" },
-    { kind: "message", id: "spawn", from: "p2", to: "p3", line: "async", text: "spawn" },
-    {
-      kind: "fragment",
-      id: "f2",
-      op: "alt",
-      operands: [{ guard: "done", items: [reply("done", "result")] }, { items: [reply("cancelled", "stopped")] }],
-    },
-  ]));
-
-  expect(results.filter(({ rule }) => rule === "reply-inside-branch").map(({ target }) => target)).toEqual(["verify"]);
-});

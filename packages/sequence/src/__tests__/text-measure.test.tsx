@@ -164,7 +164,9 @@ describe("default text metrics (text-measure)", () => {
     expect(note.lines.filter((line) => line !== "").join(" ")).toBe(
       "validates the cart, reserves stock, and charges the card before it replies",
     );
-    expectBrowserLineBreaks(note.lines, noteFont, noteContentWidth);
+    // Notes balance their lines, so they break earlier than a browser
+    // would; every line still fits the content width.
+    for (const line of note.lines) expect(measureWidth(line, noteFont)).toBeLessThanOrEqual(noteContentWidth);
     expect(drawnLines(noteText)).toEqual(note.lines.filter((line) => line !== ""));
 
     const title = layout.title!;

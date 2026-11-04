@@ -1030,6 +1030,22 @@ describe("layoutSequence", () => {
     }
   });
 
+  test("a wrapped note balances its lines instead of leaving one word alone", () => {
+    for (const text of ["statusGroup stays as it is", "verify again on the current plan, from round 1"]) {
+      const layout = layoutSequence(documentWith([
+        { kind: "note", id: "n", anchor: "p2", side: "over", text },
+      ]));
+      const lines = layout.notes[0]!.lines;
+      const font = sequenceFont("note");
+      const widths = lines.map((line) => measureWidth(line, { family: font.family, size: font.size, weight: 400 }));
+
+      expect(lines.length).toBeGreaterThan(1);
+      expect(lines.join(" ")).toBe(text);
+      expect(lines[lines.length - 1]!.includes(" ")).toBe(true);
+      expect(widths[widths.length - 1]!).toBeGreaterThan(Math.max(...widths) / 2);
+    }
+  });
+
   test("a message label below a note clears the box at the smallest row gap", () => {
     // Inter's ascender (2728 / 2816 em) reaches the top of accented capitals;
     // the label's background box covers it.

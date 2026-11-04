@@ -595,11 +595,35 @@ function computeLayout(
     if (bounds.left < minimumLeft) anchor.x += minimumLeft - bounds.left;
   };
 
+  // Breaks a note into as many lines as a greedy wrap at the full width
+  // gives, at the narrowest width that keeps that count, so the last line
+  // is never one word left alone.
+  const wrapBalanced = (text: string, font: SeqFont, maxWidth: number): string[] => {
+    const lines = metrics.wrap(text, font, maxWidth);
+    if (lines.length < 2) return lines;
+    const words = (broken: string[]): string => broken.flatMap((line) => line.split(/\s+/).filter(Boolean)).join(" ");
+    const wholeWords = words(lines);
+    let best = lines;
+    let low = 0;
+    let high = maxWidth;
+    for (let step = 0; step < 12; step += 1) {
+      const width = (low + high) / 2;
+      const trial = metrics.wrap(text, font, width);
+      if (trial.length <= lines.length && words(trial) === wholeWords) {
+        best = trial;
+        high = width;
+      } else {
+        low = width;
+      }
+    }
+    return best;
+  };
+
   const makeNote = (note: SequenceNote, top: number, depth: number): {
     row: SequenceNoteLayout;
     endY: number;
   } => {
-    const lines = metrics.wrap(note.text, noteFont, noteWidth - noteInset * 2);
+    const lines = wrapBalanced(note.text, noteFont, noteWidth - noteInset * 2);
     const height = noteHeight(lines.length);
     // The band keeps NOTE_MARGIN_Y of clearance above the box and at least
     // that below it, so notes never collide with adjacent frames or messages;

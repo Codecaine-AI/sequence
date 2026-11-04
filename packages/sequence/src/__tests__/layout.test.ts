@@ -84,12 +84,11 @@ describe("layoutSequence", () => {
       FRAG_PAD: 12,
       FRAG_TAB_H: 20,
       FRAG_MARGIN_Y: 24,
-      FRAG_INNER_TOP: 14,
-      FRAG_INNER_BOTTOM: 12,
-      FRAG_NESTED_BOTTOM: 20,
-      FRAG_NESTED_TOP: 8,
-      FRAG_DIVIDER_GAP: 10,
-      FRAG_GUARD_H: 30,
+      FRAG_INNER_TOP: 20,
+      FRAG_INNER_PAD: 24,
+      FRAG_NESTED_TOP: 4,
+      FRAG_GUARD_H: 40,
+      FRAG_GUARD_BASELINE: 18,
       GUARD_SHIFT_MAX: 120,
       NOTE_MARGIN_Y: 8,
       NOTE_W: 160,
@@ -399,9 +398,7 @@ describe("layoutSequence", () => {
 
     expect(activation.endMessageId).toBeUndefined();
     // The bar ends at its operand's content boundary, clear of the divider.
-    expect(activation.rect.y + activation.rect.height).toBe(
-      fragment.dividerYs[0]! - SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP,
-    );
+    expect(activation.rect.y + activation.rect.height).toBeLessThan(fragment.dividerYs[0]!);
     expect(activation.rect.y + activation.rect.height).toBeLessThan(siblingReturn.y);
   });
 
@@ -951,11 +948,10 @@ describe("layoutSequence", () => {
     const tabBottom = fragment.outer.y + SEQUENCE_LAYOUT.FRAG_TAB_H;
 
     expect(first.y1 - tabBottom).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_INNER_TOP);
-    expect(fragment.outer.y + fragment.outer.height - last.y2)
-      .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+    expect(fragment.outer.y + fragment.outer.height - last.y2).toBe(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
   });
 
-  test("nested frames that close together step their bottom edges by the nested inset, with no stacked margins", () => {
+  test("nested frames that close together step their bottom edges by the inner pad, with no stacked margins", () => {
     const opt = (id: string, items: SequenceItem[]): SequenceItem => ({
       kind: "fragment", id, op: "opt", operands: [{ guard: id, items }],
     });
@@ -978,9 +974,10 @@ describe("layoutSequence", () => {
     const last = layout.messages.find(({ id }) => id === "m2")!;
     const after = layout.messages.find(({ id }) => id === "after")!;
 
-    expect(bottom("inner") - last.y2).toBe(SEQUENCE_LAYOUT.ROW_H / 2 + SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
-    expect(bottom("middle") - bottom("inner")).toBe(SEQUENCE_LAYOUT.FRAG_NESTED_BOTTOM);
-    expect(bottom("outer") - bottom("middle")).toBe(SEQUENCE_LAYOUT.FRAG_NESTED_BOTTOM);
+    // Every frame keeps the same pad below its last content, a frame included.
+    expect(bottom("inner") - last.y2).toBe(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
+    expect(bottom("middle") - bottom("inner")).toBe(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
+    expect(bottom("outer") - bottom("middle")).toBe(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
     // The outermost frame still keeps one margin before the next row.
     expect(after.y - SEQUENCE_LAYOUT.ROW_H / 2 - bottom("outer")).toBe(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
   });
@@ -1015,7 +1012,26 @@ describe("layoutSequence", () => {
     expect(inner.outer.y - (outer.outer.y + SEQUENCE_LAYOUT.FRAG_TAB_H))
       .toBe(SEQUENCE_LAYOUT.FRAG_INNER_TOP + SEQUENCE_LAYOUT.FRAG_NESTED_TOP);
     expect((outer.outer.y + outer.outer.height) - (inner.outer.y + inner.outer.height))
-      .toBe(SEQUENCE_LAYOUT.FRAG_NESTED_BOTTOM);
+      .toBe(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
+  });
+
+  test("a frame ends just right of the rightmost lifeline its steps use, not at that header's edge", () => {
+    const doc = documentWith([
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "opt",
+        operands: [{ guard: "x", items: [{ kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "go" }] }],
+      },
+    ]);
+    doc.participants = participants.map((participant) =>
+      participant.id === "p2" ? { ...participant, name: "a service with a very long header name" } : participant);
+    const layout = layoutSequence(doc);
+    const frame = layout.fragments[0]!.outer;
+    const service = layout.participants.find(({ id }) => id === "p2")!;
+
+    expect(frame.x + frame.width).toBe(service.centerX + SEQUENCE_LAYOUT.FRAG_PAD);
+    expect(frame.x + frame.width).toBeLessThan(service.header.x + service.header.width);
   });
 
   test("operand dividers keep clearance from surrounding operand contents", () => {
@@ -1045,12 +1061,13 @@ describe("layoutSequence", () => {
     const below = layout.messages.find(({ id }) => id === "m2")!;
     const elseGuard = fragment.guardLabels[1]!;
 
-    expect(dividerY - above.y2).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP);
-    // The [else] guard sits in its own band between the divider and the items.
-    expect(elseGuard.anchor.y).toBeGreaterThan(dividerY);
-    expect(below.y1 - dividerY).toBeGreaterThanOrEqual(
-      SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP + SEQUENCE_LAYOUT.FRAG_GUARD_H,
-    );
+    // A divider sits as far below its operand's last arrow as a bottom edge.
+    expect(dividerY - above.y2).toBe(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
+    // The [else] guard sits in its own band between the divider and the items,
+    // and the next operand opens as far below the divider as the first one
+    // opens below the frame's top edge.
+    expect(elseGuard.anchor.y).toBe(dividerY + SEQUENCE_LAYOUT.FRAG_GUARD_BASELINE);
+    expect(below.y1 - dividerY).toBe(above.y1 - fragment.outer.y);
   });
 
   test("notes keep vertical clearance from neighboring messages", () => {

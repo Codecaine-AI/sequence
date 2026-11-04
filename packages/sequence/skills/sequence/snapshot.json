@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatorVersion": 1,
-  "snapshotId": "sha256:4208aab07ae0c790cc289db929837eb444fd8fc4c6f8fa36eefe6ef51b71fb0d",
+  "snapshotId": "sha256:f5dc98ef04c83c4fe362cc2e21f3684fa8920836ae8d48130ba096763aad91f3",
   "sources": [
     {
       "path": "docs/10-language/doc.json",
@@ -10,7 +10,7 @@
     },
     {
       "path": "STATE.md",
-      "sha256": "2b17c6695fe06fdc03ea90a2e38b8de82d081c9ee0b31b50139575856d5e3a3f",
+      "sha256": "d11bed0e62acdfec26e490ed40512abc4cda7138896136bc74ce9d28e2e66f90",
       "kind": "decisions"
     },
     {

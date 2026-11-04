@@ -43,26 +43,28 @@ export const SEQUENCE_LAYOUT = {
   FRAG_PAD: 12,
   FRAG_TAB_H: 20,
   /**
-   * Vertical clearance between a fragment frame and a neighboring message or
-   * note. Margins collapse: two sibling frames sit one margin apart, not two.
+   * Clear space between a frame edge and the nearest content outside it: an
+   * arrow, a note box or a sibling frame. Margins collapse: two sibling
+   * frames sit one margin apart, not two.
    */
   FRAG_MARGIN_Y: 24,
-  /** Air between the tab/guard row and a fragment's first item. */
-  FRAG_INNER_TOP: 14,
+  /** Air between the tab row and the band of a fragment's first row. */
+  FRAG_INNER_TOP: 20,
   /**
-   * Air between a fragment's last item and its bottom edge. A nested frame
-   * that closes its operand adds no margin of its own; its parent's bottom
-   * edge sits FRAG_NESTED_BOTTOM below it instead.
+   * Clear space between an operand's last content (an arrow, a note box or a
+   * nested frame's bottom edge) and the divider or bottom edge below it. Every
+   * frame kind uses it, so nested bottom edges sit this far apart too.
    */
-  FRAG_INNER_BOTTOM: 12,
-  /** Air below a nested frame that closes its parent's last operand. */
-  FRAG_NESTED_BOTTOM: 20,
+  FRAG_INNER_PAD: 24,
   /** Air above a nested frame that opens its operand, below the tab or guard row. */
-  FRAG_NESTED_TOP: 8,
-  /** Clearance above and below each dashed operand divider. */
-  FRAG_DIVIDER_GAP: 10,
-  /** Reserved row for an operand guard label rendered below a divider. */
-  FRAG_GUARD_H: 30,
+  FRAG_NESTED_TOP: 4,
+  /**
+   * From a divider to the band of its operand's first row, when the operand
+   * shows a guard: the guard row, as tall as the tab row plus FRAG_INNER_TOP.
+   */
+  FRAG_GUARD_H: 40,
+  /** From a divider to the baseline of the guard below it. */
+  FRAG_GUARD_BASELINE: 18,
   /** Furthest a guard moves right from its place to clear a lifeline. */
   GUARD_SHIFT_MAX: 120,
   /** Extra clearance above and below note boxes. */
@@ -594,10 +596,8 @@ function computeLayout(
   const fragmentTabHeight = unit(SEQUENCE_LAYOUT.FRAG_TAB_H);
   const fragmentMarginY = unit(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
   const fragmentInnerTop = unit(SEQUENCE_LAYOUT.FRAG_INNER_TOP);
-  const fragmentInnerBottom = unit(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
-  const fragmentNestedBottom = unit(SEQUENCE_LAYOUT.FRAG_NESTED_BOTTOM);
+  const fragmentInnerPad = unit(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
   const fragmentNestedTop = unit(SEQUENCE_LAYOUT.FRAG_NESTED_TOP);
-  const fragmentDividerGap = unit(SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP);
   const fragmentGuardHeight = unit(SEQUENCE_LAYOUT.FRAG_GUARD_H);
   const noteMarginY = unit(SEQUENCE_LAYOUT.NOTE_MARGIN_Y);
 
@@ -617,6 +617,16 @@ function computeLayout(
   // row gaps that label's ascent and halo would reach into the note box.
   const messageLabelReach = unit(labelGap + LABEL_HALO) + messageFont.size * ASCENT_EM;
   const noteBottomMargin = Math.max(noteMarginY, messageLabelReach - rowHeight / 2);
+  /**
+   * Empty space a row's band leaves below its content: a message band ends
+   * half a row below its (last) arrow, a note band its bottom margin below
+   * the box. A frame closes its operand with no trailing margin.
+   */
+  const bandBlank = (item: SequenceItem | undefined): number =>
+    item?.kind === "fragment" ? 0 : item?.kind === "note" ? noteBottomMargin : rowHeight / 2;
+  /** Space a frame edge or divider adds below an operand's last row. */
+  const closingPad = (items: SequenceItem[]): number =>
+    Math.max(0, fragmentInnerPad - bandBlank(items[items.length - 1]));
 
   const horizontalTextBounds = (
     anchor: SeqTextAnchor,
@@ -832,9 +842,12 @@ function computeLayout(
       const nested = depth > 0;
       const afterFrame = itemIndex > 0 && items[itemIndex - 1]!.kind === "fragment";
       const closesOperand = nested && itemIndex === items.length - 1;
+      // The row above already leaves its band's blank below its content.
       const leadingMargin = afterFrame
         ? 0
-        : nested && itemIndex === 0 ? fragmentNestedTop : fragmentMarginY;
+        : nested && itemIndex === 0
+          ? fragmentNestedTop
+          : Math.max(0, fragmentMarginY - bandBlank(items[itemIndex - 1]));
       const frameTop = cursor + leadingMargin;
       const participantIds = collectParticipantIds(item);
       const fragmentRow: SequenceFragmentLayout = {
@@ -862,25 +875,22 @@ function computeLayout(
       };
       for (let operandIndex = 0; operandIndex < item.operands.length; operandIndex += 1) {
         if (operandIndex > 0) {
-          // Dashed dividers get breathing room on both sides so operand
-          // contents never crowd them.
-          cursor += fragmentDividerGap;
+          // A divider sits as far below its operand's content as a bottom
+          // edge does, and opens the next operand like a tab row.
+          cursor += closingPad(item.operands[operandIndex - 1]!.items);
           fragmentRow.dividerYs.push(cursor);
-          cursor += fragmentDividerGap;
+          operandStarts.push(cursor);
+          cursor += hasGuardRow(operandIndex) ? fragmentGuardHeight : fragmentInnerTop;
+        } else {
+          operandStarts.push(cursor);
         }
-        operandStarts.push(cursor);
-        // Guard labels below a divider occupy their own band before items.
-        if (operandIndex > 0 && hasGuardRow(operandIndex)) cursor += fragmentGuardHeight;
         const operand = item.operands[operandIndex]!;
         const operandScope = layoutItems(operand.items, cursor, depth + 1);
         if (operandScope.endY === cursor) operandScope.endY += rowHeight;
         operandScopes.push(operandScope);
         cursor = operandScope.endY;
       }
-      // A nested frame that closes the last operand steps this frame's
-      // bottom edge further out, so the two edges never read as one line.
-      const lastItems = item.operands[item.operands.length - 1]!.items;
-      cursor += lastItems[lastItems.length - 1]?.kind === "fragment" ? fragmentNestedBottom : fragmentInnerBottom;
+      cursor += closingPad(item.operands[item.operands.length - 1]!.items);
       const childRows = rows.slice(firstChildRow);
       fragmentChildren.set(fragmentRow, childRows);
       const childBounds = xBoundsForRows(childRows);
@@ -891,12 +901,10 @@ function computeLayout(
       const involvedLeft = involvedXs.length > 0
         ? Math.min(...participantIds.map(id => participantById.get(id)!.header.x))
         : fallbackCenter;
-      const involvedRight = involvedXs.length > 0
-        ? Math.max(...participantIds.map(id => {
-            const header = participantById.get(id)!.header;
-            return header.x + header.width;
-          }))
-        : fallbackCenter;
+      // The right edge follows the rightmost lifeline the frame's steps use,
+      // not that participant's header box, which can reach far past it. The
+      // activation pass below widens it to cover bars.
+      const involvedRight = involvedXs.length > 0 ? Math.max(...involvedXs) : fallbackCenter;
       const tabWidth = safeMeasure(item.op, fragmentOpFont) + unit(30);
       const outerLeft = Math.min(involvedLeft, childBounds?.left ?? involvedLeft) - fragmentPad;
       let outerRight = Math.max(involvedRight, childBounds?.right ?? involvedRight) + fragmentPad;
@@ -935,7 +943,7 @@ function computeLayout(
             x: operandIndex === 0 ? outerLeft + tabWidth + unit(6) : outerLeft + fragmentPad,
             y: operandIndex === 0
               ? frameTop + fragmentTabHeight * 0.72
-              : operandStarts[operandIndex]! + unit(14),
+              : operandStarts[operandIndex]! + unit(SEQUENCE_LAYOUT.FRAG_GUARD_BASELINE),
             anchor: "start",
           },
           box: { x: 0, y: 0, width: 0, height: 0 },

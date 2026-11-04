@@ -20,7 +20,8 @@
     "./language": "./src/language/index.ts",
     "./layout": "./src/layout.ts",
     "./agent-schema": "./src/agent-schema.ts",
-    "./theme": "./src/theme.ts"
+    "./theme": "./src/theme.ts",
+    "./lints": "./src/lints/index.ts"
   },
   "peerDependencies": {
     "react": "^19",

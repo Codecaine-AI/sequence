@@ -7,3 +7,4 @@ export * from "./agent-schema";
 export * from "./actions";
 export * from "./theme";
 export * from "./fixtures";
+export * from "./lints";

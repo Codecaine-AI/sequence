@@ -98,6 +98,7 @@ describe("layoutSequence", () => {
       GUARD_SHIFT_MAX: 120,
       LABEL_CLEARANCE: 12,
       NOTE_MARGIN_Y: 8,
+      BAR_EDGE_GAP: 12,
       NOTE_W: 220,
       MARGIN: 24,
       SELF_LOOP_W: 40,
@@ -1194,6 +1195,33 @@ describe("layoutSequence", () => {
 
     expect(first.y1 - tabBottom).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_INNER_TOP);
     expect(fragment.outer.y + fragment.outer.height - last.y2).toBe(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
+  });
+
+  test("a frame edge keeps BAR_EDGE_GAP below a sync call's short bar", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "call" },
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "alt",
+        operands: [
+          { guard: "a", items: [{ kind: "message", id: "inner", from: "p1", to: "p2", line: "sync", text: "inner" }] },
+          { items: [{ kind: "note", id: "n1", anchor: "p1", side: "over", text: "a note" }] },
+        ],
+      },
+      { kind: "note", id: "n2", anchor: "p1", side: "over", text: "after" },
+      { kind: "fragment", id: "f2", op: "opt", operands: [{ guard: "b", items: [{ kind: "message", id: "last", from: "p1", to: "p2", line: "async", text: "last" }] }] },
+    ]));
+    const frame = (id: string) => layout.fragments.find((fragment) => fragment.id === id)!;
+    const bar = (startMessageId: string) => layout.activations.find((activation) => activation.participantId === "p2" && activation.startMessageId === startMessageId)!.rect;
+    const barBottom = (startMessageId: string) => bar(startMessageId).y + bar(startMessageId).height;
+
+    // The call's short bar fills its band; the frame below starts BAR_EDGE_GAP under it.
+    expect(frame("f1").outer.y - barBottom("call")).toBe(SEQUENCE_LAYOUT.BAR_EDGE_GAP);
+    // The same gap sits between an operand's last short bar and the divider.
+    expect(frame("f1").dividerYs[0]! - barBottom("inner")).toBe(SEQUENCE_LAYOUT.BAR_EDGE_GAP);
+    // A return leaves no bar below its arrow: that edge keeps the inner pad from the arrow, as before.
+    expect(frame("f2").outer.y + frame("f2").outer.height - layout.messages.find(({ id }) => id === "last")!.y2).toBe(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
   });
 
   test("nested frames that close together step their bottom edges by the inner pad, with no stacked margins", () => {

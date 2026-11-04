@@ -75,6 +75,12 @@ export const SEQUENCE_LAYOUT = {
   /** Extra clearance above and below note boxes. */
   NOTE_MARGIN_Y: 8,
   /**
+   * Clear space between a frame edge or divider and the end of a bar that
+   * fills the band of the row next to it: a sync call's callee bar, or a
+   * turn that ends on a send. The edge sits this far below the band.
+   */
+  BAR_EDGE_GAP: 12,
+  /**
    * Width a note's text wraps at. The box hugs the wrapped lines and adds
    * room for its folded corner, so it is at most 10 px wider than this.
    */
@@ -812,9 +818,21 @@ function computeLayout(
    */
   const bandBlank = (item: SequenceItem | undefined): number =>
     item?.kind === "fragment" ? 0 : item?.kind === "note" ? noteBottomMargin : rowHeight / 2;
+  /**
+   * How far a frame edge or divider sits from the content of the row next
+   * to it. A sync call leaves a bar that fills its band, so the edge keeps
+   * BAR_EDGE_GAP below the band. Any other row keeps `pad` from its arrow
+   * or note box, or from a nested frame's edge.
+   */
+  const edgeGap = (item: SequenceItem | undefined, pad: number): number =>
+    item?.kind === "message" && item.line === "sync"
+      ? rowHeight / 2 + unit(SEQUENCE_LAYOUT.BAR_EDGE_GAP)
+      : pad;
   /** Space a frame edge or divider adds below an operand's last row. */
-  const closingPad = (items: SequenceItem[]): number =>
-    Math.max(0, fragmentInnerPad - bandBlank(items[items.length - 1]));
+  const closingPad = (items: SequenceItem[]): number => {
+    const last = items[items.length - 1];
+    return Math.max(0, edgeGap(last, fragmentInnerPad) - bandBlank(last));
+  };
 
   const horizontalTextBounds = (
     anchor: SeqTextAnchor,
@@ -1014,7 +1032,7 @@ function computeLayout(
         ? 0
         : nested && itemIndex === 0
           ? fragmentNestedTop
-          : Math.max(0, fragmentMarginY - bandBlank(items[itemIndex - 1]));
+          : Math.max(0, edgeGap(items[itemIndex - 1], fragmentMarginY) - bandBlank(items[itemIndex - 1]));
       const frameTop = cursor + leadingMargin;
       const participantIds = collectParticipantIds(item);
       const fragmentRow: SequenceFragmentLayout = {

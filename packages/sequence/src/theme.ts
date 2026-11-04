@@ -25,11 +25,14 @@ export const SEQUENCE_CSS_VARIABLES = {
 } as const;
 
 /**
- * The `@codecaine-ai/design-system` token behind each default color. Lines,
- * fragments and activation bars are three element families, so they take
- * categorical hue tokens (orange, blue, gray), each in the role it paints:
- * `.solid` for strokes and fills, `.text` for fragment labels. Activation
- * outlines take a border role; everything else takes a neutral role.
+ * The `@codecaine-ai/design-system` token behind each default color. Each
+ * color marks one kind of thing: orange the flow (participants and
+ * messages), blue the fragments, gray the scaffolding (lifelines and
+ * activation bars), yellow the notes, which comment on the flow. Each takes
+ * the role it paints: `.solid` for strokes and fills, `.line` for the
+ * lifelines, `.soft` for the note fill, `.text` for fragment labels.
+ * Activation outlines take a border role; everything else takes a neutral
+ * role.
  *
  * `muted` is kept for compatibility. `--seq-muted` has no default of its own
  * (a host that sets it colors both activation fill and stroke), and its value
@@ -44,6 +47,9 @@ export const SEQUENCE_THEME_TOKENS = {
   muted: "color.gray.solid",
   activationFill: "color.gray.solid",
   activationStroke: "color.border.default",
+  lifeline: "color.gray.line",
+  noteFill: "color.yellow.soft",
+  noteStroke: "color.gray.solid",
   background: "color.surface.page",
 } as const satisfies Record<string, ThemeTokenPath>;
 
@@ -52,9 +58,29 @@ export type SequenceThemeDefaults = Readonly<Record<SequenceThemeColor, string>>
 
 const THEME_COLORS = Object.keys(SEQUENCE_THEME_TOKENS) as SequenceThemeColor[];
 
+const HEX = /^#[0-9a-f]{6}$/i;
+const SRGB_MIX = /^color-mix\(in srgb, (#[0-9a-f]{6}) (\d+(?:\.\d+)?)%, (#[0-9a-f]{6})(?: (\d+(?:\.\d+)?)%)?\)$/i;
+
+/**
+ * A token value as `#rrggbb`. Some tokens are `color-mix(in srgb, …)` of two
+ * hex colors; the mix is worked out here, so every default stays a plain
+ * hex color that exports and color inputs can read.
+ */
+function hexColor(value: string): string {
+  if (HEX.test(value)) return value;
+  const mix = SRGB_MIX.exec(value);
+  if (!mix) return value;
+  const [, first, firstPercent, second, secondPercent] = mix;
+  const weight = Number(firstPercent) / (Number(firstPercent) + Number(secondPercent ?? 100 - Number(firstPercent)));
+  const channel = (hex: string, index: number): number => Number.parseInt(hex.slice(1 + index * 2, 3 + index * 2), 16);
+  return `#${[0, 1, 2].map((index) =>
+    Math.round(channel(first!, index) * weight + channel(second!, index) * (1 - weight)).toString(16).padStart(2, "0"),
+  ).join("")}`;
+}
+
 function themeDefaults(theme: ThemeName): SequenceThemeDefaults {
   const values = {} as Record<SequenceThemeColor, string>;
-  for (const color of THEME_COLORS) values[color] = flat[theme][SEQUENCE_THEME_TOKENS[color]];
+  for (const color of THEME_COLORS) values[color] = hexColor(flat[theme][SEQUENCE_THEME_TOKENS[color]]);
   return Object.freeze(values);
 }
 
@@ -90,6 +116,9 @@ const PINNED_COLORS = [
   "text",
   "activationFill",
   "activationStroke",
+  "lifeline",
+  "noteFill",
+  "noteStroke",
   "background",
 ] as const satisfies readonly SequenceThemeColor[];
 
@@ -187,7 +216,7 @@ export function resolveSequenceColors(style: SequenceStyle): SequenceResolvedCol
     ),
     participantStroke: pick(style.participant?.stroke, style.accent, vars.participantStroke, accentChain),
     participantText: pick(style.participant?.text, undefined, vars.participantText, textChain),
-    lifelineStroke: pick(style.lifeline?.stroke, style.accent, vars.lifeline, accentChain),
+    lifelineStroke: pick(style.lifeline?.stroke, style.accent, vars.lifeline, defaults.lifeline),
     messageStroke: pick(style.message?.stroke, style.accent, vars.message, accentChain),
     messageText: pick(style.message?.text, undefined, vars.messageText, textChain),
     activationFill: pick(
@@ -209,9 +238,9 @@ export function resolveSequenceColors(style: SequenceStyle): SequenceResolvedCol
       style.note?.fill,
       style.participantFill,
       vars.noteFill,
-      varOr(vars.participantFill, defaults.participantFill),
+      defaults.noteFill,
     ),
-    noteStroke: pick(style.note?.stroke, style.accent, vars.noteStroke, accentChain),
+    noteStroke: pick(style.note?.stroke, style.accent, vars.noteStroke, defaults.noteStroke),
     noteText: pick(style.note?.text, undefined, vars.noteText, textChain),
   };
 }

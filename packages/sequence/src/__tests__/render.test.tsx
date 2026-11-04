@@ -14,6 +14,7 @@ import {
   type SequenceTextMetrics,
 } from "../index";
 import { combinedFragments, loginFlow, minimal } from "../fixtures";
+import { resolveSequenceColors } from "../theme";
 
 afterEach(cleanup);
 
@@ -270,8 +271,19 @@ describe("sequence SVG rendering", () => {
       "--seq-text": flat.dark["color.text.body"],
       "--seq-activation-fill": flat.dark["color.gray.solid"],
       "--seq-activation-stroke": flat.dark["color.border.default"],
+      "--seq-note-stroke": flat.dark["color.gray.solid"],
+      // color-mix tokens, worked out to the hex a standalone SVG can paint.
+      "--seq-lifeline": "#3d444d",
+      "--seq-note-fill": "#2e2b23",
       "--seq-bg": flat.dark["color.surface.page"],
     });
+  });
+
+  test("lifelines and notes default to their own colors, not the accent", () => {
+    const colors = resolveSequenceColors({});
+    expect(colors.lifelineStroke).toBe(`var(--seq-lifeline, var(--ds-color-gray-line, ${SEQUENCE_THEME_DEFAULTS.lifeline}))`);
+    expect(colors.noteFill).toBe(`var(--seq-note-fill, var(--ds-color-yellow-soft, ${SEQUENCE_THEME_DEFAULTS.noteFill}))`);
+    expect(colors.noteStroke).toBe(`var(--seq-note-stroke, var(--ds-color-gray-solid, ${SEQUENCE_THEME_DEFAULTS.noteStroke}))`);
   });
 
   test("shortcuts still color elements that have no per-element override", () => {

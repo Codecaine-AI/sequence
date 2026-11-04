@@ -40,7 +40,7 @@ export const SEQUENCE_LAYOUT = {
   HEADER_PAD_X: 16,
   ROW_H: 40,
   ACTIVATION_W: 12,
-  FRAG_PAD: 12,
+  FRAG_PAD: 18,
   FRAG_TAB_H: 20,
   /**
    * Clear space between a frame edge and the nearest content outside it: an

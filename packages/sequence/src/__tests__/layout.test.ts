@@ -86,7 +86,7 @@ describe("layoutSequence", () => {
       HEADER_PAD_X: 16,
       ROW_H: 40,
       ACTIVATION_W: 12,
-      FRAG_PAD: 12,
+      FRAG_PAD: 18,
       FRAG_TAB_H: 20,
       FRAG_MARGIN_Y: 24,
       FRAG_INNER_TOP: 20,

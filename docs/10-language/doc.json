@@ -27,6 +27,12 @@
         "b-language-field-required-val-19-table",
         "b-language-the-only-explicit-non-de-20",
         "b-language-order-the-columns-87",
+        "b-language-order-step-88",
+        "b-language-order-step-89",
+        "b-language-order-step-90",
+        "b-language-order-step-91",
+        "b-language-order-step-92",
+        "b-language-order-example-93",
         "b-language-the-sequence-21",
         "b-language-the-sequence-block-is-ma-22",
         "b-language-seq-1-2-text-req-23-code",
@@ -549,6 +555,120 @@
       ],
       "children": []
     },
+    "b-language-order-the-columns-87": {
+      "id": "b-language-order-the-columns-87",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Order the columns before you write the participant lines. Each column that an arrow crosses makes the flow harder to follow. Follow these steps:"
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-88": {
+      "id": "b-language-order-step-88",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "List each pair of participants that exchange messages. Count the messages of each pair, in both directions."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-89": {
+      "id": "b-language-order-step-89",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "Put the first caller in column 1. Add the main flow's participants left to right, in the order the flow first calls them."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-90": {
+      "id": "b-language-order-step-90",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "Put each store, database or server in the column next to the participant that sends it the most messages."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-91": {
+      "id": "b-language-order-step-91",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "For each pair with 3 or more messages, check that no other column sits between the two participants."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-92": {
+      "id": "b-language-order-step-92",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "If a column sits between a busy pair, move one of the two next to the other. Then do step 4 again."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-example-93": {
+      "id": "b-language-order-example-93",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "For example, a kernel plugin writes "
+        },
+        {
+          "insert": "trace.db",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " 6 times, and no other participant talks to "
+        },
+        {
+          "insert": "trace.db",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". Put "
+        },
+        {
+          "insert": "trace.db",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " in the column right after the plugin, even when the plugin calls two providers first."
+        }
+      ],
+      "children": []
+    },
     "b-language-the-sequence-21": {
       "id": "b-language-the-sequence-21",
       "type": "heading",
@@ -710,6 +830,44 @@
           ]
         ]
       },
+      "children": []
+    },
+    "b-language-choose-the-arrow-86": {
+      "id": "b-language-choose-the-arrow-86",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Choose the arrow by whether the caller waits. A call whose caller waits for the reply is sync ("
+        },
+        {
+          "insert": ">",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "), and its reply is a return ("
+        },
+        {
+          "insert": "-->",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "), even when the reply is an error. An MCP tool call, an RPC and an HTTP request with its response are all sync. Use async ("
+        },
+        {
+          "insert": "->",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ") only for a message the sender does not wait on."
+        }
+      ],
       "children": []
     },
     "b-language-a-self-message-uses-the-29": {
@@ -1839,7 +1997,7 @@
       },
       "text": [
         {
-          "insert": "Activation bars are derived from sync calls and matching returns within operand scope."
+          "insert": "Activation bars come from sync calls and their matching returns within an operand. A sync call with no return gets a short bar over its own row."
         }
       ],
       "children": []
@@ -1898,55 +2056,6 @@
       "text": [
         {
           "insert": "There is no patch DSL and no incremental edit syntax."
-        }
-      ],
-      "children": []
-    },
-    "b-language-choose-the-arrow-86": {
-      "id": "b-language-choose-the-arrow-86",
-      "type": "paragraph",
-      "props": {},
-      "text": [
-        {
-          "insert": "Choose the arrow by whether the caller waits. A call whose caller waits for the reply is sync ("
-        },
-        {
-          "insert": ">",
-          "attributes": {
-            "code": true
-          }
-        },
-        {
-          "insert": "), and its reply is a return ("
-        },
-        {
-          "insert": "-->",
-          "attributes": {
-            "code": true
-          }
-        },
-        {
-          "insert": "), even when the reply is an error. An MCP tool call, an RPC and an HTTP request with its response are all sync. Use async ("
-        },
-        {
-          "insert": "->",
-          "attributes": {
-            "code": true
-          }
-        },
-        {
-          "insert": ") only for a message the sender does not wait on."
-        }
-      ],
-      "children": []
-    },
-    "b-language-order-the-columns-87": {
-      "id": "b-language-order-the-columns-87",
-      "type": "paragraph",
-      "props": {},
-      "text": [
-        {
-          "insert": "Order the columns for the flow. Put the first caller leftmost, so calls mostly move right and returns move left. Put the two participants that exchange the most messages in adjacent columns, such as a server beside its main caller and a store beside the participant that writes it. Each column an arrow crosses makes the flow harder to follow."
         }
       ],
       "children": []

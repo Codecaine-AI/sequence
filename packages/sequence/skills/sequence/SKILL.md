@@ -15,6 +15,21 @@ That JSON document is the source of truth. You edit it as a short text
 program, and the docs-mcp `docs_sequence_*` tools are the only write path.
 This skill has no MCP server of its own.
 
+## Order the Columns Before You Write Them
+
+Each column that an arrow crosses makes the flow harder to follow. Before
+you write the participant lines, do these steps:
+
+1. List each pair of participants that exchange messages. Count the messages of each pair, in both directions.
+2. Put the first caller in column 1. Add the main flow's participants left to right, in the order the flow first calls them.
+3. Put each store, database or server in the column next to the participant that sends it the most messages.
+4. For each pair with 3 or more messages, check that no other column sits between the two participants.
+5. If a column sits between a busy pair, move one of the two next to the other. Then do step 4 again.
+
+For example, a kernel plugin writes `trace.db` 6 times, and no other
+participant talks to `trace.db`. Put `trace.db` in the column right after
+the plugin, even when the plugin calls two providers first.
+
 ## When to Use a Sequence Block
 
 - Use one when the order of calls and returns between named parts explains the behavior.
@@ -58,11 +73,13 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - A value can be bare only when it holds letters, digits, `_`, `(`, `)` and `-`. Quote all other values, such as `text="Login page"`.
 - Never write coordinates, ids or activation bars. Layout comes from the structure.
   - A sync call activates its receiver until the matching return. Write that return to end the bar.
+  - A sync call with no return gets a short bar over its own row.
 
 ## Writing for the Reader
 
 - Name participants in the reader's words, such as `browser`, `docs server` and `database`.
-- Order the columns so the flow moves left to right. Put the participants that exchange the most messages next to each other.
+  - Use one case style for every participant name, such as `Child agent` next to `Parent agent`.
+- Order the columns with the steps in "Order the Columns Before You Write Them".
 - Write a message label as the call or event the reader knows, such as `fetch(user)` or `200 OK`.
 - Show the return for each sync call that the reader needs to see answered.
 - Keep a diagram to about 5 participants and 20 messages. Split a larger flow into two blocks.

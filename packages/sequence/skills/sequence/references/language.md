@@ -46,7 +46,15 @@ Fields are in fixed order:
 
 The only explicit non-default kind is `kind=actor`. `kind=participant` is the default and is omitted in canonical output. Participant array order is therefore both declaration order and left-to-right column order.
 
-Order the columns for the flow. Put the first caller leftmost, so calls mostly move right and returns move left. Put the two participants that exchange the most messages in adjacent columns, such as a server beside its main caller and a store beside the participant that writes it. Each column an arrow crosses makes the flow harder to follow.
+Order the columns before you write the participant lines. Each column that an arrow crosses makes the flow harder to follow. Follow these steps:
+
+1. List each pair of participants that exchange messages. Count the messages of each pair, in both directions.
+2. Put the first caller in column 1. Add the main flow's participants left to right, in the order the flow first calls them.
+3. Put each store, database or server in the column next to the participant that sends it the most messages.
+4. For each pair with 3 or more messages, check that no other column sits between the two participants.
+5. If a column sits between a busy pair, move one of the two next to the other. Then do step 4 again.
+
+For example, a kernel plugin writes `trace.db` 6 times, and no other participant talks to `trace.db`. Put `trace.db` in the column right after the plugin, even when the plugin calls two providers first.
 
 ## The sequence
 
@@ -225,7 +233,7 @@ The parser collects multiple errors where feasible. Tabs, indentation not in 2-s
   - Numbers provide temporary program identity.
   - Stable ids are regenerated deterministically during parsing.
 - **Activations**
-  - Activation bars are derived from sync calls and matching returns within operand scope.
+  - Activation bars come from sync calls and their matching returns within an operand. A sync call with no return gets a short bar over its own row.
   - They are not expressible in the language.
 - **Patch commands**
   - An agent rewrites the whole program.

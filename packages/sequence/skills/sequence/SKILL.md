@@ -84,7 +84,8 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 ## Writing for the Reader
 
 - Name participants in the reader's words, such as `browser`, `docs server` and `database`.
-  - Use one case style for every participant name, such as `Child agent` next to `Parent agent`.
+  - Keep a header to a name of 1 to 3 words, in one case style for every participant, such as `Child agent` next to `Parent agent`.
+  - Put a code name the brief gives, such as `buildLead(threads)`, in `stereotype=`. Put any other detail about a participant in a note over it, never in the header.
 - Order the columns with the steps in "Order the Columns Before You Write Them".
 - Write a message label as the call or event the reader knows, such as `fetch(user)` or `200 OK`.
   - Keep a label to 40 characters or fewer. Keep each argument the brief names, and drop the others.

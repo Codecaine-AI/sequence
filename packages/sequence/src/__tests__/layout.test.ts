@@ -621,6 +621,32 @@ describe("layoutSequence", () => {
     expect(guard.box.x + guard.box.width).toBeLessThanOrEqual(fragment.outer.x + fragment.outer.width);
   });
 
+  test("a guard moves off a lifeline when a clear stretch of its frame holds it", () => {
+    // The guard starts after the tab, on the p2 lifeline. The long p2-p3
+    // arrow makes that stretch wide enough to hold it.
+    const guardText = "[the cache missed]";
+    const measure = (text: string): number => text === guardText ? 130 : text.length * 7;
+    const layout = layoutSequence(documentWith([
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "opt",
+        operands: [{
+          guard: "the cache missed",
+          items: [
+            { kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "ask" },
+            { kind: "message", id: "m2", from: "p2", to: "p3", line: "async", text: "x".repeat(60) },
+          ],
+        }],
+      },
+    ]), measure);
+    const guard = layout.fragments[0]!.guardLabels[0]!;
+
+    for (const { centerX } of layout.participants) {
+      expect(centerX < guard.box.x || centerX > guard.box.x + guard.box.width).toBe(true);
+    }
+  });
+
   test("surface margin, column gap, and row gap overrides flow into geometry", () => {
     const items: SequenceItem[] = [
       { kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "one" },

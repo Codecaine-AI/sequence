@@ -1314,9 +1314,20 @@ function computeLayout(
     fragment.outer.width = nextRight - nextLeft;
   }
 
-  // A guard that an activation bar runs through moves right, past the bar,
-  // while it still fits inside its frame; lifelines stop at its box.
+  // A guard that a lifeline or an activation bar runs through moves right,
+  // past it, while it still fits inside its frame. When no clear stretch
+  // holds the guard, it only moves past bars; lifelines stop at its box.
   const guardClearance = unit(LABEL_BOX_PAD.x + SEQUENCE_LAYOUT.GRID / 2);
+  const clearX = (start: number, width: number, obstacles: { left: number; right: number }[]): number => {
+    let x = start;
+    for (let step = 0; step <= obstacles.length; step += 1) {
+      const hit = obstacles.filter((obstacle) =>
+        obstacle.left < x + width + guardClearance && obstacle.right + guardClearance > x);
+      if (hit.length === 0) break;
+      x = Math.max(...hit.map((obstacle) => obstacle.right)) + guardClearance;
+    }
+    return x;
+  };
   for (const fragment of fragments) {
     const frameRight = fragment.outer.x + fragment.outer.width - fragmentPad;
     for (const guard of fragment.guardLabels) {
@@ -1324,15 +1335,15 @@ function computeLayout(
       const width = safeMeasure(guard.label, guardFont);
       const top = guard.anchor.y - guardFont.size * ASCENT_EM;
       const bottom = guard.anchor.y + guardFont.size * DESCENT_EM;
-      let x = guard.anchor.x;
-      for (let step = 0; step < activations.length; step += 1) {
-        const hit = activations.filter(({ rect }) =>
-          rect.y < bottom && rect.y + rect.height > top
-          && rect.x < x + width + guardClearance && rect.x + rect.width + guardClearance > x);
-        if (hit.length === 0) break;
-        x = Math.max(...hit.map(({ rect }) => rect.x + rect.width)) + guardClearance;
-      }
-      if (x + width <= frameRight) guard.anchor.x = x;
+      const bars = activations
+        .filter(({ rect }) => rect.y < bottom && rect.y + rect.height > top)
+        .map(({ rect }) => ({ left: rect.x, right: rect.x + rect.width }));
+      const lifelines = participants
+        .filter(({ centerX }) => centerX > fragment.outer.x && centerX < frameRight)
+        .map(({ centerX }) => ({ left: centerX - unit(0.5), right: centerX + unit(0.5) }));
+      const x = [clearX(guard.anchor.x, width, [...bars, ...lifelines]), clearX(guard.anchor.x, width, bars)]
+        .find((candidate) => candidate + width <= frameRight);
+      if (x !== undefined) guard.anchor.x = x;
     }
   }
 

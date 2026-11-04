@@ -183,6 +183,7 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - Write participant fields in this order: \`text=\`, \`kind=actor\`, \`label=\`, \`stereotype=\`. Only \`text=\` is required.
 - Write each message as \`<from> <arrow> <to> text=<value>\`.
   - \`>\` is a sync call. \`->\` is an async message. \`-->\` is a return, drawn dashed.
+  - Use \`>\` when the caller waits for the reply: a tool call, an RPC or an HTTP request. Use \`->\` only when the sender does not wait, such as an event or a notification.
   - A self-message uses one number on both sides, such as \`2 > 2 text=validate\`.
 - The fragments are \`alt\` with \`else\`, \`opt\` and \`loop\`.
   - Each needs \`guard=\`. An \`else\` can omit it.

@@ -34,6 +34,7 @@
         "b-language-1-2-text-input-userna-26-code",
         "b-language-the-form-is-from-arr-27",
         "b-language-arrow-message-line-28-table",
+        "b-language-choose-the-arrow-86",
         "b-language-a-self-message-uses-the-29",
         "b-language-2-2-text-validate-30-code",
         "b-language-combined-fragments-31",
@@ -663,7 +664,8 @@
         "columns": [
           "arrow",
           "message line",
-          "rendering"
+          "rendering",
+          "use it when"
         ],
         "rows": [
           [
@@ -676,7 +678,8 @@
               }
             ],
             "sync",
-            "solid line, filled arrowhead"
+            "solid line, filled arrowhead",
+            "the caller waits for the reply: a tool call, an RPC, an HTTP request"
           ],
           [
             [
@@ -688,7 +691,8 @@
               }
             ],
             "async",
-            "solid line, open arrowhead"
+            "solid line, open arrowhead",
+            "the sender does not wait: an event, a notification, a fire-and-forget job"
           ],
           [
             [
@@ -700,7 +704,8 @@
               }
             ],
             "return",
-            "dashed line, open arrowhead"
+            "dashed line, open arrowhead",
+            "the reply to an earlier sync call comes back"
           ]
         ]
       },
@@ -1892,6 +1897,44 @@
       "text": [
         {
           "insert": "There is no patch DSL and no incremental edit syntax."
+        }
+      ],
+      "children": []
+    },
+    "b-language-choose-the-arrow-86": {
+      "id": "b-language-choose-the-arrow-86",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Choose the arrow by whether the caller waits. A call whose caller waits for the reply is sync ("
+        },
+        {
+          "insert": ">",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "), and its reply is a return ("
+        },
+        {
+          "insert": "-->",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "), even when the reply is an error. An MCP tool call, an RPC and an HTTP request with its response are all sync. Use async ("
+        },
+        {
+          "insert": "->",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ") only for a message the sender does not wait on."
         }
       ],
       "children": []

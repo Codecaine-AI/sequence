@@ -67,11 +67,13 @@ seq
 
 The form is `<from> <arrow> <to> text=<v>`. Both references must name declared participant numbers.
 
-| arrow | message line | rendering |
-| --- | --- | --- |
-| `>` | sync | solid line, filled arrowhead |
-| `->` | async | solid line, open arrowhead |
-| `-->` | return | dashed line, open arrowhead |
+| arrow | message line | rendering | use it when |
+| --- | --- | --- | --- |
+| `>` | sync | solid line, filled arrowhead | the caller waits for the reply: a tool call, an RPC, an HTTP request |
+| `->` | async | solid line, open arrowhead | the sender does not wait: an event, a notification, a fire-and-forget job |
+| `-->` | return | dashed line, open arrowhead | the reply to an earlier sync call comes back |
+
+Choose the arrow by whether the caller waits. A call whose caller waits for the reply is sync (`>`), and its reply is a return (`-->`), even when the reply is an error. An MCP tool call, an RPC and an HTTP request with its response are all sync. Use async (`->`) only for a message the sender does not wait on.
 
 A self-message uses the same number on both sides:
 

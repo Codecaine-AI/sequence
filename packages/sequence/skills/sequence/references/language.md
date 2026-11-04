@@ -46,6 +46,8 @@ Fields are in fixed order:
 
 The only explicit non-default kind is `kind=actor`. `kind=participant` is the default and is omitted in canonical output. Participant array order is therefore both declaration order and left-to-right column order.
 
+Order the columns for the flow. Put the first caller leftmost, so calls mostly move right and returns move left. Put the two participants that exchange the most messages in adjacent columns, such as a server beside its main caller and a store beside the participant that writes it. Each column an arrow crosses makes the flow harder to follow.
+
 ## The sequence
 
 The sequence block is mandatory and appears exactly once:

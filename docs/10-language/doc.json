@@ -26,6 +26,7 @@
         "b-language-fields-are-in-fixed-orde-18",
         "b-language-field-required-val-19-table",
         "b-language-the-only-explicit-non-de-20",
+        "b-language-order-the-columns-87",
         "b-language-the-sequence-21",
         "b-language-the-sequence-block-is-ma-22",
         "b-language-seq-1-2-text-req-23-code",
@@ -1935,6 +1936,17 @@
         },
         {
           "insert": ") only for a message the sender does not wait on."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-the-columns-87": {
+      "id": "b-language-order-the-columns-87",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Order the columns for the flow. Put the first caller leftmost, so calls mostly move right and returns move left. Put the two participants that exchange the most messages in adjacent columns, such as a server beside its main caller and a store beside the participant that writes it. Each column an arrow crosses makes the flow harder to follow."
         }
       ],
       "children": []

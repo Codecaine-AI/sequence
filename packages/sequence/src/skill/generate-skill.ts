@@ -196,6 +196,7 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 ## Writing for the Reader
 
 - Name participants in the reader's words, such as \`browser\`, \`docs server\` and \`database\`.
+- Order the columns so the flow moves left to right. Put the participants that exchange the most messages next to each other.
 - Write a message label as the call or event the reader knows, such as \`fetch(user)\` or \`200 OK\`.
 - Show the return for each sync call that the reader needs to see answered.
 - Keep a diagram to about 5 participants and 20 messages. Split a larger flow into two blocks.

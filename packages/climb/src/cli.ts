@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { runDraw } from "./draw.ts";
+import { JUDGE_IDS, runJudge } from "./judge.ts";
 import { runRender } from "./render.ts";
 import { BRIEF_SETS, describeFailure, runScore, type BriefSet } from "./score.ts";
 import { runSetup } from "./setup.ts";
@@ -9,6 +10,7 @@ const USAGE = `climb: sequence-diagram quality climb
   climb setup  --briefs <dir> --run <runDir>
   climb draw   --run <runDir> [--concurrency 4] [--timeout-min 20] [--only a,b]
   climb render --run <runDir> [--only a,b]
+  climb judge  --run <runDir> --judges <sol,opus,...> --out <scoresDir> [--concurrency 6] [--only a,b]
   climb score  --scores <dir> [--scores <dir> ...] --set <climb|held-out> --judges <a,b,...> --out <dir> [--briefs <dir>]
 
 See packages/climb/README.md.`;
@@ -87,6 +89,21 @@ async function main(argv: readonly string[]): Promise<number> {
         console.log(`render ${result.slug}: ${result.rendered ? "diagram.png" : "not rendered (schema errors)"}, ${result.problems} diagnostics`);
       }
       return results.every((result) => result.rendered) ? 0 : 1;
+    }
+    case "judge": {
+      allow(flags, ["--run", "--judges", "--out", "--concurrency", "--only"]);
+      const judges = list(one(flags, "--judges")) ?? [];
+      if (judges.length === 0) throw new Error(`--judges needs at least one of ${JUDGE_IDS.join(", ")}`);
+      const results = await runJudge({
+        runDir: one(flags, "--run"),
+        judges,
+        out: one(flags, "--out"),
+        concurrency: positiveInteger(optional(flags, "--concurrency") ?? "6", "--concurrency"),
+        only: list(optional(flags, "--only")),
+      });
+      const failed = results.filter((result) => !result.ok);
+      console.log(`judge: ${results.length - failed.length}/${results.length} score files written`);
+      return failed.length === 0 ? 0 : 1;
     }
     case "score": {
       allow(flags, ["--scores", "--set", "--judges", "--out", "--briefs"]);

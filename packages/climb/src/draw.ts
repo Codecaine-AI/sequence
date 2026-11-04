@@ -8,7 +8,7 @@ import { docsMcpCli, docsSystemRoot, OVERLAY_PRELOAD, runPaths, SKILL_DIR } from
 import { readRound, type RoundBrief } from "./round.ts";
 
 /** The drawer's Claude Code binary. PATH can pick a stale install, so a round always names it. */
-const CLAUDE_BIN = process.env.CLIMB_CLAUDE_BIN ?? `${process.env.HOME}/.local/bin/claude`;
+export const CLAUDE_BIN = process.env.CLIMB_CLAUDE_BIN ?? `${process.env.HOME}/.local/bin/claude`;
 
 export const DRAWER = { model: "claude-opus-5-5", effort: "medium" } as const;
 const MCP_SERVER = "docs-system";
@@ -19,7 +19,7 @@ export const SEQUENCE_TOOLS = ["docs_sequence_set_program", "docs_sequence_set_t
  * Variables of the Claude Code session that runs `climb draw`. A drawer is a
  * fresh top-level session, so none of them may leak into it.
  */
-const PARENT_SESSION_VARIABLES = [
+export const PARENT_SESSION_VARIABLES = [
   "CLAUDECODE",
   "CLAUDE_CODE_ENTRYPOINT",
   "CLAUDE_CODE_SESSION_ID",

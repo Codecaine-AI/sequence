@@ -49,7 +49,7 @@ export const SEQUENCE_LAYOUT = {
    */
   FRAG_MARGIN_Y: 24,
   /** Air between the tab row and the band of a fragment's first row. */
-  FRAG_INNER_TOP: 20,
+  FRAG_INNER_TOP: 12,
   /**
    * Clear space between an operand's last content (an arrow, a note box or a
    * nested frame's bottom edge) and the divider or bottom edge below it. Every
@@ -62,7 +62,7 @@ export const SEQUENCE_LAYOUT = {
    * From a divider to the band of its operand's first row, when the operand
    * shows a guard: the guard row, as tall as the tab row plus FRAG_INNER_TOP.
    */
-  FRAG_GUARD_H: 40,
+  FRAG_GUARD_H: 32,
   /** From a divider to the baseline of the guard below it. */
   FRAG_GUARD_BASELINE: 18,
   /** Furthest a guard moves right from its place to clear a lifeline. */
@@ -74,7 +74,11 @@ export const SEQUENCE_LAYOUT = {
   LABEL_CLEARANCE: 12,
   /** Extra clearance above and below note boxes. */
   NOTE_MARGIN_Y: 8,
-  NOTE_W: 160,
+  /**
+   * Width a note's text wraps at. The box hugs the wrapped lines and adds
+   * room for its folded corner, so it is at most 10 px wider than this.
+   */
+  NOTE_W: 220,
   MARGIN: 24,
   SELF_LOOP_W: 40,
 } as const;
@@ -597,6 +601,53 @@ function computeLayout(
     if (widest === 0) return;
     widenSpan(left, left + 1, widest + unit(activationW) + guardClearance * 2 + nestedBarReach(left));
   };
+  // Notes wrap at NOTE_W minus the label inset on each side and grow
+  // downward: each line adds one note line height.
+  const noteWidth = unit(SEQUENCE_LAYOUT.NOTE_W);
+  const noteInset = unit(notePad + 2);
+  const noteLineHeight = noteFont.lineHeight ?? noteFont.size;
+  // Breaks a note into as many lines as a greedy wrap at the full width
+  // gives, at the narrowest width that keeps that count, so the last line
+  // is never one word left alone.
+  const wrapBalanced = (text: string, font: SeqFont, maxWidth: number): string[] => {
+    const lines = metrics.wrap(text, font, maxWidth);
+    if (lines.length < 2) return lines;
+    const words = (broken: string[]): string => broken.flatMap((line) => line.split(/\s+/).filter(Boolean)).join(" ");
+    const wholeWords = words(lines);
+    let best = lines;
+    let low = 0;
+    let high = maxWidth;
+    for (let step = 0; step < 12; step += 1) {
+      const width = (low + high) / 2;
+      const trial = metrics.wrap(text, font, width);
+      if (trial.length <= lines.length && words(trial) === wholeWords) {
+        best = trial;
+        high = width;
+      } else {
+        low = width;
+      }
+    }
+    return best;
+  };
+  const noteLinesById = new Map<string, string[]>();
+  const noteLines = (note: SequenceNote): string[] => {
+    let lines = noteLinesById.get(note.id);
+    if (!lines) {
+      lines = wrapBalanced(note.text, noteFont, noteWidth - noteInset * 2);
+      noteLinesById.set(note.id, lines);
+    }
+    return lines;
+  };
+  const noteFold = unit(10);
+  /**
+   * A note's box hugs its wrapped lines: the widest line plus the inset per
+   * side and room for the folded corner.
+   */
+  const noteBoxWidth = (note: SequenceNote): number => Math.max(
+    unit(72),
+    Math.max(...noteLines(note).map((line) => safeMeasure(line, noteFont))) + noteInset * 2 + noteFold,
+  );
+
   const reserveColumnWidths = (items: SequenceItem[], fragmentDepth: number): void => {
     for (const item of items) {
       if (item.kind === "fragment") {
@@ -636,10 +687,11 @@ function computeLayout(
         // adds one more pad around the box.
         // An over note that a bar runs through sits beside the bar instead.
         const frameReach = unit(fragPad) * fragmentDepth;
-        const sideReach = unit(fragPad + SEQUENCE_LAYOUT.NOTE_W) + frameReach;
-        const overReach = unit(SEQUENCE_LAYOUT.NOTE_W / 2) + frameReach;
+        const boxWidth = noteBoxWidth(item);
+        const sideReach = unit(fragPad) + boxWidth + frameReach;
+        const overReach = boxWidth / 2 + frameReach;
         const besideBar = item.side === "over" && notesBesideBars.has(item.id);
-        const besideReach = unit(activationW / 2 + NOTE_BAR_GAP + SEQUENCE_LAYOUT.NOTE_W)
+        const besideReach = unit(activationW / 2 + NOTE_BAR_GAP) + boxWidth
           + nestedBarReach(index) + frameReach;
         const rightReach = item.side === "right"
           ? sideReach
@@ -657,6 +709,43 @@ function computeLayout(
     }
   };
   reserveColumnWidths(doc.items, 0);
+  {
+    // The first lifeline sits exactly as far from the left margin as the
+    // widest thing that reaches left of it: its header, a frame (one pad
+    // past its leftmost header, or past the tab room left of that
+    // lifeline's bar, plus one pad per frame around it) or a note box.
+    // Each reach is measured left of the first lifeline's center.
+    const leftReachOf = (items: SequenceItem[]): number => {
+      let reach = Number.NEGATIVE_INFINITY;
+      for (const item of items) {
+        if (item.kind === "fragment") {
+          const columns = frameColumns(item.operands.flatMap((operand) => operand.items), new Set());
+          let own = Number.NEGATIVE_INFINITY;
+          if (columns.size > 0) {
+            const left = Math.min(...columns);
+            const leftX = centers[left]! - centers[0]!;
+            const tab = safeMeasure(item.op, fragmentOpFont) + unit(30);
+            own = Math.max(
+              headerWidths[left]! / 2 + unit(fragPad) - leftX,
+              unit(activationW / 2 + SEQUENCE_LAYOUT.LABEL_CLEARANCE) + tab - leftX,
+            );
+          }
+          const inner = Math.max(...item.operands.map((operand) => leftReachOf(operand.items)));
+          reach = Math.max(reach, own, inner + unit(fragPad));
+        } else if (item.kind === "note") {
+          const index = participantIndex(item.anchor);
+          if (index < 0 || item.side === "right") continue;
+          const boxWidth = noteBoxWidth(item);
+          const left = item.side === "left" ? unit(fragPad) + boxWidth : boxWidth / 2;
+          reach = Math.max(reach, left - (centers[index]! - centers[0]!));
+        }
+      }
+      return reach;
+    };
+    const reach = Math.max(headerWidths[0]! / 2, leftReachOf(doc.items));
+    const shift = unit(margin) + reach - centers[0]!;
+    for (let index = 0; index < centers.length; index += 1) centers[index]! += shift;
+  }
 
   const participantById = new Map<string, SequenceParticipantLayout>();
   const participants = doc.participants.map((participant, index): SequenceParticipantLayout => {
@@ -708,12 +797,6 @@ function computeLayout(
 
   const participantX = (id: string): number => participantById.get(id)?.centerX ?? sideGutter;
 
-  // Notes keep the fixed NOTE_W column the side gutters are sized for and
-  // grow downward instead: text wraps at the box width minus the label inset
-  // on each side, and each line adds one note line height.
-  const noteWidth = unit(SEQUENCE_LAYOUT.NOTE_W);
-  const noteInset = unit(notePad + 2);
-  const noteLineHeight = noteFont.lineHeight ?? noteFont.size;
   const noteHeight = (lineCount: number): number => Math.max(
     unit(24 + notePad * 2),
     lineCount * noteLineHeight + unit(notePad * 2),
@@ -756,42 +839,18 @@ function computeLayout(
     if (bounds.left < minimumLeft) anchor.x += minimumLeft - bounds.left;
   };
 
-  // Breaks a note into as many lines as a greedy wrap at the full width
-  // gives, at the narrowest width that keeps that count, so the last line
-  // is never one word left alone.
-  const wrapBalanced = (text: string, font: SeqFont, maxWidth: number): string[] => {
-    const lines = metrics.wrap(text, font, maxWidth);
-    if (lines.length < 2) return lines;
-    const words = (broken: string[]): string => broken.flatMap((line) => line.split(/\s+/).filter(Boolean)).join(" ");
-    const wholeWords = words(lines);
-    let best = lines;
-    let low = 0;
-    let high = maxWidth;
-    for (let step = 0; step < 12; step += 1) {
-      const width = (low + high) / 2;
-      const trial = metrics.wrap(text, font, width);
-      if (trial.length <= lines.length && words(trial) === wholeWords) {
-        best = trial;
-        high = width;
-      } else {
-        low = width;
-      }
-    }
-    return best;
-  };
-
   const makeNote = (note: SequenceNote, top: number, depth: number): {
     row: SequenceNoteLayout;
     endY: number;
   } => {
-    const lines = wrapBalanced(note.text, noteFont, noteWidth - noteInset * 2);
+    const lines = noteLines(note);
     const height = noteHeight(lines.length);
     // The band keeps NOTE_MARGIN_Y of clearance above the box and at least
     // that below it, so notes never collide with adjacent frames or messages;
     // any slack left in a tall row is split evenly.
     const bandHeight = Math.max(rowHeight, height + noteMarginY + noteBottomMargin);
     const y = top + noteMarginY + (bandHeight - noteMarginY - noteBottomMargin) / 2;
-    const width = noteWidth;
+    const width = noteBoxWidth(note);
     const anchorX = participantX(note.anchor);
     let x: number;
     if (note.side === "left") {

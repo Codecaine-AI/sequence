@@ -3,6 +3,7 @@ import { flat } from "@codecaine-ai/design-system";
 import { cleanup, render, screen } from "@testing-library/react";
 
 import {
+  SEQUENCE_LAYOUT,
   SEQUENCE_THEME_DEFAULTS,
   SEQUENCE_THEME_DEFAULTS_DARK,
   SequenceViewer,
@@ -179,7 +180,9 @@ describe("sequence text measurement", () => {
 
     expect(drawnLines(svg.querySelector(".seq-note text")!)).toEqual(["alpha", "beta", "gamma"]);
     expect(drawnLines(svg.querySelector(".seq-title")!)).toEqual(["Two", "words"]);
-    expect(noteRequest.maxWidth).toBe(note.box.width - 2 * (note.label.x - note.box.x));
+    // Notes wrap at NOTE_W; the box then hugs the lines, so it is narrower.
+    expect(noteRequest.maxWidth).toBe(SEQUENCE_LAYOUT.NOTE_W - 2 * (note.label.x - note.box.x));
+    expect(note.box.width).toBeLessThanOrEqual(SEQUENCE_LAYOUT.NOTE_W + 10);
     expect(titleRequest.maxWidth).toBe(layout.width - 2 * layout.title!.anchor.x);
   });
 });

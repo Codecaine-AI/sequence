@@ -89,15 +89,15 @@ describe("layoutSequence", () => {
       FRAG_PAD: 18,
       FRAG_TAB_H: 20,
       FRAG_MARGIN_Y: 24,
-      FRAG_INNER_TOP: 20,
+      FRAG_INNER_TOP: 12,
       FRAG_INNER_PAD: 24,
       FRAG_NESTED_TOP: 4,
-      FRAG_GUARD_H: 40,
+      FRAG_GUARD_H: 32,
       FRAG_GUARD_BASELINE: 18,
       GUARD_SHIFT_MAX: 120,
       LABEL_CLEARANCE: 12,
       NOTE_MARGIN_Y: 8,
-      NOTE_W: 160,
+      NOTE_W: 220,
       MARGIN: 24,
       SELF_LOOP_W: 40,
     });
@@ -850,6 +850,64 @@ describe("layoutSequence", () => {
     expect(message("settled").x1).toBe(bar.rect.x);
   });
 
+  test("the left margin is exact: the leftmost header, note, frame or bar sits at MARGIN", () => {
+    const leftmost = (layout: ReturnType<typeof layoutSequence>): number => Math.min(
+      ...layout.participants.map(({ header }) => header.x),
+      ...layout.notes.map(({ box }) => box.x),
+      ...layout.fragments.map(({ outer }) => outer.x),
+      ...layout.activations.map(({ rect }) => rect.x),
+    );
+    const call: SequenceItem = { kind: "message", id: "m1", from: "p1", to: "p2", line: "sync", text: "call" };
+    const framed: SequenceItem = {
+      kind: "fragment",
+      id: "outer",
+      op: "loop",
+      operands: [{ guard: "each", items: [{
+        kind: "fragment",
+        id: "inner",
+        op: "opt",
+        operands: [{ guard: "ready", items: [call] }],
+      }] }],
+    };
+    for (const items of [
+      [call],
+      [{ kind: "note", id: "n", anchor: "p1", side: "left", text: "a note left of the first lifeline" } as SequenceItem, call],
+      [{ kind: "note", id: "n", anchor: "p1", side: "over", text: "an over note on the first lifeline" } as SequenceItem, call],
+      [framed],
+    ]) {
+      const layout = layoutSequence(documentWith(items));
+      expect(leftmost(layout)).toBeCloseTo(SEQUENCE_LAYOUT.MARGIN, 6);
+      // The right margin matches it.
+      const rightmost = Math.max(
+        ...layout.participants.map(({ header }) => header.x + header.width),
+        ...layout.notes.map(({ box }) => box.x + box.width),
+        ...layout.fragments.map(({ outer }) => outer.x + outer.width),
+      );
+      expect(layout.width - rightmost).toBeCloseTo(SEQUENCE_LAYOUT.MARGIN, 6);
+    }
+  });
+
+  test("a note box hugs its wrapped lines, up to NOTE_W plus the fold, and an over note stays centered on its lifeline", () => {
+    const font = sequenceFont("note");
+    const width = (text: string) => measureWidth(text, { family: font.family, size: font.size, weight: 400 });
+    const short = "writes nothing";
+    const long = "settles again if it succeeded but this poll still reads the Thread live";
+    const layout = layoutSequence(documentWith([
+      { kind: "note", id: "short", anchor: "p2", side: "over", text: short },
+      { kind: "note", id: "long", anchor: "p2", side: "right", text: long },
+    ]));
+    const [shortNote, longNote] = layout.notes as [typeof layout.notes[0], typeof layout.notes[0]];
+    const inset = shortNote.label.x - shortNote.box.x;
+
+    expect(shortNote.lines).toEqual([short]);
+    expect(shortNote.box.width).toBeLessThan(SEQUENCE_LAYOUT.NOTE_W);
+    expect(shortNote.box.width).toBeGreaterThanOrEqual(width(short) + 2 * inset);
+    expect(shortNote.box.x + shortNote.box.width / 2).toBeCloseTo(layout.participants[1]!.centerX, 6);
+    expect(longNote.lines.length).toBeGreaterThan(1);
+    expect(longNote.box.width).toBeLessThanOrEqual(SEQUENCE_LAYOUT.NOTE_W + 10);
+    expect(longNote.box.width).toBeGreaterThanOrEqual(Math.max(...longNote.lines.map(width)) + 2 * inset);
+  });
+
   test("a guard moves off a lifeline when a clear stretch of its frame holds it", () => {
     // The guard starts after the tab, on the p2 lifeline. The long p2-p3
     // arrow makes that stretch wide enough to hold it.
@@ -1346,7 +1404,10 @@ describe("layoutSequence", () => {
   });
 
   test("a wrapped note balances its lines instead of leaving one word alone", () => {
-    for (const text of ["statusGroup stays as it is", "verify again on the current plan, from round 1"]) {
+    for (const text of [
+      "statusGroup stays as it is, whatever this poll reads for the thread",
+      "verify again on the current plan, from round 1, after a replan changed the checkpoint",
+    ]) {
       const layout = layoutSequence(documentWith([
         { kind: "note", id: "n", anchor: "p2", side: "over", text },
       ]));
@@ -1400,15 +1461,15 @@ describe("layoutSequence", () => {
   });
 
   test("wraps note text over a plain measurer and grows the box per line", () => {
-    // 10px per grapheme; the 160px note minus a 10px inset per side leaves
-    // 140px, so 14 graphemes fit on a line.
+    // 10px per grapheme; the 220px note minus a 10px inset per side leaves
+    // 200px, so 20 graphemes fit on a line.
     const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
     const measure = (text: string): number => [...segmenter.segment(text)].length * 10;
     const cases: Array<{ text: string; lines: string[] }> = [
-      { text: "alpha beta gamma delta epsilon", lines: ["alpha beta", "gamma delta", "epsilon"] },
+      { text: "alpha beta gamma delta epsilon zeta eta", lines: ["alpha beta gamma", "delta epsilon", "zeta eta"] },
       { text: "one\n\nthree", lines: ["one", "", "three"] },
       // The over-long word breaks between graphemes: "e" + U+0301 stays whole.
-      { text: "abcdefghijklméxyz", lines: ["abcdefghijklmé", "xyz"] },
+      { text: "abcdefghijklmnopqrsémxyz", lines: ["abcdefghijklmnopqrsé", "mxyz"] },
     ];
     const descent = SEQUENCE_TYPOGRAPHY.note.size * 0.25;
     for (const { text, lines } of cases) {

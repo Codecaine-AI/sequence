@@ -59,25 +59,6 @@ test("joined-calls reports one arrow that carries two calls", () => {
   expect(results.map(({ rule, target }) => [rule, target])).toEqual([["joined-calls", "joined"]]);
 });
 
-test("sync-without-return reports an unanswered call whose receiver goes on to message others", () => {
-  const results = lintSequence(documentWith([
-    { kind: "message", id: "answered", from: "p1", to: "p2", line: "sync", text: "read" },
-    {
-      kind: "fragment",
-      id: "f1",
-      op: "opt",
-      operands: [{ guard: "x", items: [{ kind: "message", id: "reply", from: "p2", to: "p1", line: "return", text: "data" }] }],
-    },
-    { kind: "message", id: "store", from: "p1", to: "p4", line: "sync", text: "write row" },
-    { kind: "message", id: "unanswered", from: "p1", to: "p3", line: "sync", text: "deliver" },
-    { kind: "message", id: "self", from: "p3", to: "p3", line: "sync", text: "check" },
-    { kind: "message", id: "onward", from: "p3", to: "p4", line: "async", text: "resume" },
-  ]));
-
-  const unanswered = results.filter(({ rule }) => rule === "sync-without-return");
-  expect(unanswered.map(({ target }) => target)).toEqual(["unanswered"]);
-});
-
 test("leftward-call reports a call to a column on the left that the flow reaches later, once per pair", () => {
   // p3 sends first, so it belongs in column 1; p1 and p2 sit left of it.
   const results = lintSequence(documentWith([

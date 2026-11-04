@@ -44,8 +44,6 @@ function guardsOf(items: readonly SequenceItem[]): { id: string; guard: string }
  * - `long-label`, `long-guard`: a message label or a guard longer than
  *   {@link LABEL_LENGTH_LIMIT} characters.
  * - `joined-calls`: one arrow whose label joins two calls with "then".
- * - `sync-without-return`: a sync call with no later return from the
- *   receiver to the caller, whose receiver next messages someone else.
  * - `reply-inside-branch`: a sync call outside a fragment whose matching
  *   return is inside it. The receiver's bar then runs through the frame's
  *   top edge.
@@ -71,21 +69,6 @@ export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
       });
     }
   }
-  messages.forEach((message, index) => {
-    if (message.line !== "sync" || message.from === message.to) return;
-    const later = messages.slice(index + 1);
-    if (later.some(({ line, from, to }) => line === "return" && from === message.to && to === message.from)) return;
-    // Reported only when the receiver goes on to call someone else: then
-    // the caller's wait never visibly ends.
-    const next = later.find(({ from, to }) => from !== to && (from === message.to || to === message.to));
-    if (!next || next.from !== message.to || next.to === message.from) return;
-    results.push({
-      rule: "sync-without-return",
-      severity: "info",
-      message: `"${message.text}" is a sync call with no return, and its receiver goes on to message others. Draw the return when the caller waits for it, or use -> when the caller does not wait.`,
-      target: message.id,
-    });
-  });
   results.push(...repliesInsideBranches(document.items));
   for (const { id, guard } of guardsOf(document.items)) {
     if (guard.length <= LABEL_LENGTH_LIMIT) continue;

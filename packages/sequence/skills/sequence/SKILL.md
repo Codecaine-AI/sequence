@@ -67,7 +67,9 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - Write participant fields in this order: `text=`, `kind=actor`, `label=`, `stereotype=`. Only `text=` is required.
 - Write each message as `<from> <arrow> <to> text=<value>`.
   - `>` is a sync call. `->` is an async message. `-->` is a return, drawn dashed.
-  - Use `>` when the caller waits for the reply: a tool call, an RPC or an HTTP request. Use `->` only when the sender does not wait, such as an event or a notification.
+  - Use `>` for every call the caller waits on: a tool call, an RPC, an HTTP request or a write that must finish first.
+  - A waited-on call stays `>` even when the diagram draws no reply for it.
+  - Use `->` only for a message nobody waits on, such as an event, a notification or a chat message.
   - A self-message uses one number on both sides, such as `2 > 2 text=validate`.
 - The fragments are `alt` with `else`, `opt` and `loop`.
   - Each needs `guard=`. An `else` can omit it.
@@ -75,7 +77,7 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - A note is `note over=N text=<value>`. The side can also be `left=N` or `right=N`.
 - A value can be bare only when it holds letters, digits, `_`, `(`, `)` and `-`. Quote all other values, such as `text="Login page"`.
 - Never write coordinates, ids or activation bars. Layout comes from the structure.
-  - A sync call activates its receiver until the matching return. Write that return to end the bar.
+  - A sync call activates its receiver until the matching return.
   - A caller that waits on a sync call is active for its turn: from the message that starts the turn to its last send or reply.
   - A sync call with no return gets a short bar over its own row.
 
@@ -88,14 +90,15 @@ names its line. Fix every listed line, because a failed parse changes nothing.
   - Keep a label to 40 characters or fewer. Keep each argument the brief names, and drop the others.
   - Use one label style in a diagram: a code call for a tool or API call, plain words for an event. Never add a prefix such as `publish:`.
 - Draw one arrow for each call. Never join two calls in one label with "then", because a reply then seems to answer both.
-- Show the return for each sync call that the reader needs to see answered.
-  - If no reply comes back and the receiver goes on to message others, use `->`.
+- Draw a return only where the brief lists one or the reader must see the reply.
+  - A waited-on call with no listed return stays `>` with no return.
+  - Never add a return such as `saved` or `ok` only to close a call.
 - When an `alt` branches on a call's result, draw the call and its reply before the `alt`. Let the guards name the result, such as `guard="409 stale revision"`.
 - Keep a guard to 40 characters or fewer. State the condition only, and put a reason in a note.
 - Keep a diagram to about 5 participants and 20 messages. Split a larger flow into two blocks.
 - Use a note for one fact a message cannot carry. Keep it short.
   - Keep each condition that the brief gives for that fact.
-- When a `docs_sequence_set_program` result lists a `long-label`, `long-guard`, `joined-calls`, `sync-without-return`, `reply-inside-branch` or `leftward-call` finding, fix it.
+- When a `docs_sequence_set_program` result lists a `long-label`, `long-guard`, `joined-calls`, `reply-inside-branch` or `leftward-call` finding, fix it.
 
 ## References
 

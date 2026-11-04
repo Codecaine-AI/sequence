@@ -38,6 +38,9 @@ function guardsOf(items: readonly SequenceItem[]): { id: string; guard: string }
  * Quality lints for a sequence document.
  * - `crossed-columns`: a message that crosses 2 or more other lifelines,
  *   which usually means the column order keeps two busy participants apart.
+ * - `leftward-call`: a call or async message to a column on the sender's
+ *   left, when the flow reaches the receiver after the sender. One finding
+ *   per sender and receiver pair.
  * - `long-label`, `long-guard`: a message label or a guard longer than
  *   {@link LABEL_LENGTH_LIMIT} characters.
  * - `joined-calls`: one arrow whose label joins two calls with "then".
@@ -45,7 +48,7 @@ function guardsOf(items: readonly SequenceItem[]): { id: string; guard: string }
  *   receiver to the caller, whose receiver next messages someone else.
  */
 export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
-  const results = [...crossedColumns(document)];
+  const results = [...crossedColumns(document), ...leftwardCalls(document)];
   const messages = messagesOf(document.items);
   for (const message of messages) {
     if (message.text.length > LABEL_LENGTH_LIMIT) {
@@ -87,6 +90,55 @@ export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
       severity: "info",
       message: `The guard "${guard}" has ${guard.length} characters. Keep a guard to ${LABEL_LENGTH_LIMIT} or fewer: state the condition only, and put a reason in a note.`,
       target: id,
+    });
+  }
+  return results;
+}
+
+/**
+ * The column order the skill's procedure starts from: the sender of the
+ * first message, then each participant in the order it first receives a
+ * message, a return included. A participant that never receives one ranks
+ * by its first send.
+ */
+function flowRanks(messages: readonly SequenceMessage[]): Map<string, number> {
+  const ranks = new Map<string, number>();
+  const first = messages[0];
+  if (first) ranks.set(first.from, -1);
+  messages.forEach(({ to }, index) => {
+    if (!ranks.has(to)) ranks.set(to, index);
+  });
+  messages.forEach(({ from }, index) => {
+    if (!ranks.has(from)) ranks.set(from, index);
+  });
+  return ranks;
+}
+
+function leftwardCalls(document: SequenceDocument): SequenceLintResult[] {
+  const column = new Map(document.participants.map((participant, index) => [participant.id, index]));
+  const name = (id: string): string => {
+    const participant = document.participants[column.get(id)!]!;
+    return participant.label ?? participant.name;
+  };
+  const messages = messagesOf(document.items);
+  const ranks = flowRanks(messages);
+  const reported = new Set<string>();
+  const results: SequenceLintResult[] = [];
+  for (const message of messages) {
+    if (message.line === "return" || message.from === message.to) continue;
+    const from = column.get(message.from);
+    const to = column.get(message.to);
+    if (from === undefined || to === undefined || to > from) continue;
+    // A call back to a participant that the flow reached first is expected.
+    if (ranks.get(message.to)! < ranks.get(message.from)!) continue;
+    const pair = `${message.from}>${message.to}`;
+    if (reported.has(pair)) continue;
+    reported.add(pair);
+    results.push({
+      rule: "leftward-call",
+      severity: "info",
+      message: `"${message.text}" runs right to left, from ${name(message.from)} to ${name(message.to)}. Move ${name(message.to)} right of ${name(message.from)}: put the sender of the first message in column 1, then each participant in the order it first receives a message.`,
+      target: message.id,
     });
   }
   return results;

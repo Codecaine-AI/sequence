@@ -77,3 +77,36 @@ test("sync-without-return reports an unanswered call whose receiver goes on to m
   const unanswered = results.filter(({ rule }) => rule === "sync-without-return");
   expect(unanswered.map(({ target }) => target)).toEqual(["unanswered"]);
 });
+
+test("leftward-call reports a call to a column on the left that the flow reaches later, once per pair", () => {
+  // p3 sends first, so it belongs in column 1; p1 and p2 sit left of it.
+  const results = lintSequence(documentWith([
+    { kind: "message", id: "start", from: "p3", to: "p1", line: "sync", text: "build" },
+    { kind: "message", id: "done", from: "p1", to: "p3", line: "return", text: "done" },
+    { kind: "message", id: "again", from: "p3", to: "p1", line: "sync", text: "fix" },
+    { kind: "message", id: "store", from: "p3", to: "p4", line: "sync", text: "save" },
+    { kind: "message", id: "event", from: "p4", to: "p3", line: "async", text: "saved event" },
+    {
+      kind: "fragment",
+      id: "f1",
+      op: "opt",
+      operands: [{ guard: "x", items: [{ kind: "message", id: "ask", from: "p3", to: "p2", line: "async", text: "ask" }] }],
+    },
+  ]));
+
+  // A message back to a participant the flow reached first ("saved event")
+  // and a return are not reported.
+  const leftward = results.filter(({ rule }) => rule === "leftward-call");
+  expect(leftward.map(({ target }) => target)).toEqual(["start", "ask"]);
+  expect(leftward[0]!.message).toContain("Move a right of c");
+});
+
+test("leftward-call stays quiet when a call goes back to the first caller", () => {
+  const results = lintSequence(documentWith([
+    { kind: "message", id: "start", from: "p1", to: "p2", line: "sync", text: "task" },
+    { kind: "message", id: "ask", from: "p2", to: "p1", line: "sync", text: "ask" },
+    { kind: "message", id: "answer", from: "p1", to: "p2", line: "return", text: "answer" },
+  ]));
+
+  expect(results.filter(({ rule }) => rule === "leftward-call")).toEqual([]);
+});

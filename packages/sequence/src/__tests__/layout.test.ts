@@ -674,6 +674,18 @@ describe("layoutSequence", () => {
     }
   });
 
+  test("a self-call label stops short of the next lifeline", () => {
+    const measure = (text: string): number => text.length * 7;
+    const text = "admit one run (capacity 1, overlap queue)";
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "admit", from: "p2", to: "p2", line: "sync", text },
+    ]), measure);
+    const admit = layout.messages.find(({ id }) => id === "admit")!;
+    const next = layout.participants.find(({ id }) => id === "p3")!;
+
+    expect(admit.label.x + measure(text)).toBeLessThan(next.centerX - SEQUENCE_LAYOUT.ACTIVATION_W / 2);
+  });
+
   test("surface margin, column gap, and row gap overrides flow into geometry", () => {
     const items: SequenceItem[] = [
       { kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "one" },

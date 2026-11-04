@@ -467,7 +467,20 @@ function computeLayout(
       if (item.kind === "fragment") {
         for (const operand of item.operands) reserveColumnWidths(operand.items, fragmentDepth + 1);
       } else if (item.kind === "message") {
-        if (item.from === item.to) continue;
+        if (item.from === item.to) {
+          // A self-call's label starts right of its loop, past the nested
+          // bar, and must stop short of the next lifeline and its bar.
+          const index = participantIndex(item.from);
+          if (index < 0 || index + 1 >= centers.length) continue;
+          widenSpan(
+            index,
+            index + 1,
+            safeMeasure(item.text, messageFont)
+              + unit(activationW * 4 / 3 + SEQUENCE_LAYOUT.SELF_LOOP_W + labelGap + LABEL_BOX_PAD.x + SEQUENCE_LAYOUT.GRID)
+              + nestedBarReach(index),
+          );
+          continue;
+        }
         const from = participantIndex(item.from);
         const to = participantIndex(item.to);
         if (from < 0 || to < 0) continue;

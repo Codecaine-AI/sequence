@@ -61,7 +61,7 @@ export const SEQUENCE_LAYOUT = {
   /** Clearance above and below each dashed operand divider. */
   FRAG_DIVIDER_GAP: 10,
   /** Reserved row for an operand guard label rendered below a divider. */
-  FRAG_GUARD_H: 18,
+  FRAG_GUARD_H: 22,
   /** Extra clearance above and below note boxes. */
   NOTE_MARGIN_Y: 8,
   NOTE_W: 160,
@@ -273,8 +273,13 @@ interface ActivationClosure {
 const DESCENT_EM = 0.25;
 /** Inter's ascender (0.969 em): the tallest glyph, accents included. */
 const ASCENT_EM = 0.97;
-/** Base px a label's background box reaches past its glyphs, per side. */
-export const LABEL_BOX_PAD = { x: 3, y: 1 } as const;
+/**
+ * Base px a label's background box reaches past its glyphs, per side. The
+ * vertical pad keeps a clear gap between a lifeline's end and the glyphs,
+ * so the line reads as stopping at the label, not running through it. A
+ * message label's box also reaches down to its arrow.
+ */
+export const LABEL_BOX_PAD = { x: 3, y: 4 } as const;
 /** Base px a label's background box reaches above its glyphs. */
 const LABEL_HALO = LABEL_BOX_PAD.y;
 /** Base px between an activation bar and an over note moved beside it. */
@@ -1310,22 +1315,41 @@ function computeLayout(
   // Label boxes, from the final anchors: the renderer paints each one with
   // the background behind its text, so lifelines, bars and dividers stop at
   // the box edge instead of cutting through the glyphs.
-  const labelBox = (anchor: SeqTextAnchor, text: string, font: SeqFont): SeqRect => {
+  const labelBox = (
+    anchor: SeqTextAnchor,
+    text: string,
+    font: SeqFont,
+    limits: { minTop?: number; bottom?: number } = {},
+  ): SeqRect => {
     if (singleLineText(text) === "") return { x: anchor.x, y: anchor.y, width: 0, height: 0 };
     const { left, right } = horizontalTextBounds(anchor, safeMeasure(text, font));
     const padX = unit(LABEL_BOX_PAD.x);
     const padY = unit(LABEL_BOX_PAD.y);
-    const top = anchor.y - font.size * ASCENT_EM - padY;
+    const glyphTop = anchor.y - font.size * ASCENT_EM;
+    const glyphBottom = anchor.y + font.size * DESCENT_EM;
+    const top = Math.min(glyphTop, Math.max(glyphTop - padY, limits.minTop ?? Number.NEGATIVE_INFINITY));
+    const bottom = Math.max(glyphBottom, limits.bottom ?? glyphBottom + padY);
     return {
       x: left - padX,
       y: top,
       width: right - left + padX * 2,
-      height: anchor.y + font.size * DESCENT_EM + padY - top,
+      height: bottom - top,
     };
   };
-  for (const message of messages) message.labelBox = labelBox(message.label, message.text, messageFont);
+  // Half the arrow's stroke: a label box stops at the arrow's top edge.
+  const arrowHalfStroke = unit(0.75);
+  for (const message of messages) {
+    message.labelBox = labelBox(message.label, message.text, messageFont, {
+      bottom: message.selfLoop ? undefined : message.y - arrowHalfStroke,
+    });
+  }
+  // A guard box never covers its frame's top edge or the divider above it.
+  const frameStroke = unit(1);
   for (const fragment of fragments) {
-    for (const guard of fragment.guardLabels) guard.box = labelBox(guard.anchor, guard.label, guardFont);
+    for (const guard of fragment.guardLabels) {
+      const edge = guard.operand === 0 ? fragment.outer.y : fragment.dividerYs[guard.operand - 1]!;
+      guard.box = labelBox(guard.anchor, guard.label, guardFont, { minTop: edge + frameStroke });
+    }
   }
 
   let rightEdge = participants.reduce(

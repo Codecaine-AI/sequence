@@ -256,6 +256,8 @@ const ASCENT_EM = 0.97;
 export const LABEL_BOX_PAD = { x: 3, y: 1 } as const;
 /** Base px a label's background box reaches above its glyphs. */
 const LABEL_HALO = LABEL_BOX_PAD.y;
+/** Base px between an activation bar and an over note moved beside it. */
+const NOTE_BAR_GAP = 4;
 /** Base px from the top margin to the title's first baseline. */
 const TITLE_BASELINE = 18;
 
@@ -283,8 +285,19 @@ export function layoutSequence(
   // notes. Bars nest the same way at any spacing, so one more pass reserves
   // that room. The title wraps at the final width, which vertical placement
   // never changes, so the last pass only moves everything below it down.
-  if (pass.dockingExcess.size > 0 || (pass.activationDepth.size > 0 && pass.layout.notes.length > 0)) {
-    hints = { ...hints, activationDepth: pass.activationDepth, dockingExcess: pass.dockingExcess };
+  // An over note on an active bar moves beside the bar, which needs a
+  // note's width of room; which notes do comes out of a pass too.
+  if (
+    pass.dockingExcess.size > 0
+    || pass.notesBesideBars.size > 0
+    || (pass.activationDepth.size > 0 && pass.layout.notes.length > 0)
+  ) {
+    hints = {
+      ...hints,
+      activationDepth: pass.activationDepth,
+      dockingExcess: pass.dockingExcess,
+      notesBesideBars: pass.notesBesideBars,
+    };
     pass = computeLayout(doc, metrics, hints);
   }
   const titleLineCount = pass.layout.title?.lines.length ?? 1;
@@ -303,9 +316,16 @@ interface LayoutHints {
    * on unnested bars (nested bars step right by a third of a bar per level).
    */
   dockingExcess: ReadonlyMap<string, number>;
+  /** Ids of over notes that an activation bar of their own lifeline runs through. */
+  notesBesideBars: ReadonlySet<string>;
 }
 
-const NO_HINTS: LayoutHints = { titleLineCount: 1, activationDepth: new Map(), dockingExcess: new Map() };
+const NO_HINTS: LayoutHints = {
+  titleLineCount: 1,
+  activationDepth: new Map(),
+  dockingExcess: new Map(),
+  notesBesideBars: new Set(),
+};
 
 interface LayoutPass extends Omit<LayoutHints, "titleLineCount"> {
   layout: SequenceLayout;
@@ -314,7 +334,7 @@ interface LayoutPass extends Omit<LayoutHints, "titleLineCount"> {
 function computeLayout(
   doc: SequenceDocument,
   metrics: ResolvedSequenceTextMetrics,
-  { titleLineCount, activationDepth, dockingExcess }: LayoutHints,
+  { titleLineCount, activationDepth, dockingExcess, notesBesideBars }: LayoutHints,
 ): LayoutPass {
   const rawScale = doc.style.scale;
   const scale = typeof rawScale === "number" && Number.isFinite(rawScale) && rawScale > 0
@@ -436,13 +456,19 @@ function computeLayout(
         // fragment pad out; over notes straddle it, nudged right by half a
         // bar when an activation runs through them. Every enclosing frame
         // adds one more pad around the box.
+        // An over note that a bar runs through sits beside the bar instead.
         const frameReach = unit(fragPad) * fragmentDepth;
         const sideReach = unit(fragPad + SEQUENCE_LAYOUT.NOTE_W) + frameReach;
         const overReach = unit(SEQUENCE_LAYOUT.NOTE_W / 2) + frameReach;
+        const besideBar = item.side === "over" && notesBesideBars.has(item.id);
+        const besideReach = unit(activationW / 2 + NOTE_BAR_GAP + SEQUENCE_LAYOUT.NOTE_W)
+          + nestedBarReach(index) + frameReach;
         const rightReach = item.side === "right"
           ? sideReach
-          : item.side === "over" ? overReach + unit(activationW / 2) : 0;
-        const leftReach = item.side === "left" ? sideReach : item.side === "over" ? overReach : 0;
+          : besideBar ? besideReach : item.side === "over" ? overReach + unit(activationW / 2) : 0;
+        const leftReach = item.side === "left"
+          ? sideReach
+          : item.side === "over" && !besideBar ? overReach : 0;
         if (rightReach > 0 && index + 1 < centers.length) {
           widenSpan(index, index + 1, rightReach + noteClearance);
         }
@@ -1066,18 +1092,20 @@ function computeLayout(
     keepTextInsideLeftBound(message.label, message.text, messageFont);
   }
 
-  // An "over" note remains centered on its lifeline, with a half-bar nudge
-  // when an activation is present so its visual anchor is not obscured.
+  // An "over" note stays centered on its lifeline. When an activation bar
+  // of that lifeline runs through the box, the note moves beside the bar,
+  // its left edge NOTE_BAR_GAP right of the bar, so the bar stays whole.
+  const notesOnBars = new Set<string>();
   for (const note of notes) {
     if (note.side !== "over") continue;
-    const overlapsActivation = activations.some((activation) => {
-      if (activation.participantId !== note.anchorId) return false;
-      const activationBottom = activation.rect.y + activation.rect.height;
-      return activation.rect.y < note.box.y + note.box.height
-        && activationBottom > note.box.y;
-    });
-    if (!overlapsActivation) continue;
-    const offset = activationWidth / 2;
+    const bars = activations.filter((activation) =>
+      activation.participantId === note.anchorId
+      && activation.rect.y < note.box.y + note.box.height
+      && activation.rect.y + activation.rect.height > note.box.y);
+    if (bars.length === 0) continue;
+    notesOnBars.add(note.id);
+    const barRight = Math.max(...bars.map(({ rect }) => rect.x + rect.width));
+    const offset = barRight + unit(NOTE_BAR_GAP) - note.box.x;
     note.box.x += offset;
     note.label.x += offset;
     note.foldPath = note.foldPath.map((point) => ({ ...point, x: point.x + offset }));
@@ -1126,6 +1154,28 @@ function computeLayout(
     }
     fragment.outer.x = nextLeft;
     fragment.outer.width = nextRight - nextLeft;
+  }
+
+  // A guard that an activation bar runs through moves right, past the bar,
+  // while it still fits inside its frame; lifelines stop at its box.
+  const guardClearance = unit(LABEL_BOX_PAD.x + SEQUENCE_LAYOUT.GRID / 2);
+  for (const fragment of fragments) {
+    const frameRight = fragment.outer.x + fragment.outer.width - fragmentPad;
+    for (const guard of fragment.guardLabels) {
+      if (!guard.label) continue;
+      const width = safeMeasure(guard.label, guardFont);
+      const top = guard.anchor.y - guardFont.size * ASCENT_EM;
+      const bottom = guard.anchor.y + guardFont.size * DESCENT_EM;
+      let x = guard.anchor.x;
+      for (let step = 0; step < activations.length; step += 1) {
+        const hit = activations.filter(({ rect }) =>
+          rect.y < bottom && rect.y + rect.height > top
+          && rect.x < x + width + guardClearance && rect.x + rect.width + guardClearance > x);
+        if (hit.length === 0) break;
+        x = Math.max(...hit.map(({ rect }) => rect.x + rect.width)) + guardClearance;
+      }
+      if (x + width <= frameRight) guard.anchor.x = x;
+    }
   }
 
   // Label boxes, from the final anchors: the renderer paints each one with
@@ -1235,5 +1285,5 @@ function computeLayout(
     notes,
     activations,
   };
-  return { layout, activationDepth: deepestLevels, dockingExcess: excessByMessage };
+  return { layout, activationDepth: deepestLevels, dockingExcess: excessByMessage, notesBesideBars: notesOnBars };
 }

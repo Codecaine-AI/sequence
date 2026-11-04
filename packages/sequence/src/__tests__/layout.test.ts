@@ -401,7 +401,7 @@ describe("layoutSequence", () => {
     expect(activation.rect.y + activation.rect.height).toBe(secondReturn.y);
   });
 
-  test("keeps fragment edges clear of activation bars and offsets active over-notes", () => {
+  test("keeps fragment edges clear of activation bars and moves active over-notes beside the bar", () => {
     const calls: SequenceItem[] = Array.from({ length: 4 }, (_, index) => ({
       kind: "message",
       id: `call-${index}`,
@@ -441,9 +441,42 @@ describe("layoutSequence", () => {
     const note = layout.notes[0]!;
 
     expect(frameRight - rightmostBarEdge).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_PAD);
-    expect(note.box.x + note.box.width / 2).toBe(
-      participant.centerX + SEQUENCE_LAYOUT.ACTIVATION_W / 2,
-    );
+    const barsRight = Math.max(...layout.activations
+      .filter(({ participantId, rect }) =>
+        participantId === participant.id
+        && rect.y < note.box.y + note.box.height
+        && rect.y + rect.height > note.box.y)
+      .map(({ rect }) => rect.x + rect.width));
+    // The bars stay whole: the note sits right of the nested stack, not on it.
+    expect(note.box.x).toBeGreaterThan(barsRight);
+    expect(note.box.x - barsRight).toBeLessThanOrEqual(SEQUENCE_LAYOUT.GRID);
+    // And clear of the next lifeline.
+    const next = layout.participants.find(({ id }) => id === "p3")!;
+    expect(note.box.x + note.box.width).toBeLessThan(next.centerX - SEQUENCE_LAYOUT.ACTIVATION_W / 2);
+  });
+
+  test("a guard that an activation bar runs through moves past the bar", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "call" },
+      {
+        kind: "fragment",
+        id: "f1",
+        op: "alt",
+        operands: [
+          { guard: "ok", items: [{ kind: "message", id: "m1", from: "p2", to: "p3", line: "async", text: "work" }] },
+          { guard: "each turn", items: [{ kind: "message", id: "m2", from: "p2", to: "p3", line: "async", text: "more" }] },
+        ],
+      },
+      { kind: "message", id: "back", from: "p2", to: "p1", line: "return", text: "done" },
+    ]));
+    const bar = layout.activations.find(({ participantId }) => participantId === "p2")!.rect;
+    const fragment = layout.fragments[0]!;
+    // The second guard starts at the frame's left inset, on the p2 bar.
+    const guard = fragment.guardLabels[1]!;
+
+    expect(bar.y).toBeLessThan(guard.box.y);
+    expect(guard.box.x).toBeGreaterThanOrEqual(bar.x + bar.width);
+    expect(guard.box.x + guard.box.width).toBeLessThanOrEqual(fragment.outer.x + fragment.outer.width);
   });
 
   test("surface margin, column gap, and row gap overrides flow into geometry", () => {

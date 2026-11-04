@@ -42,12 +42,22 @@ export const SEQUENCE_LAYOUT = {
   ACTIVATION_W: 12,
   FRAG_PAD: 12,
   FRAG_TAB_H: 20,
-  /** Vertical clearance before and after every fragment frame. */
+  /**
+   * Vertical clearance between a fragment frame and a neighboring message or
+   * note. Margins collapse: two sibling frames sit one margin apart, not two.
+   */
   FRAG_MARGIN_Y: 24,
   /** Air between the tab/guard row and a fragment's first item. */
   FRAG_INNER_TOP: 14,
-  /** Air between a fragment's last item and its bottom edge. */
-  FRAG_INNER_BOTTOM: 16,
+  /**
+   * Air between a fragment's last item and its bottom edge. A nested frame
+   * that closes its operand adds no margin of its own, so nested frames that
+   * close together step their bottom edges by this much, as FRAG_PAD steps
+   * their sides.
+   */
+  FRAG_INNER_BOTTOM: 12,
+  /** Air above a nested frame that opens its operand, below the tab or guard row. */
+  FRAG_NESTED_TOP: 8,
   /** Clearance above and below each dashed operand divider. */
   FRAG_DIVIDER_GAP: 10,
   /** Reserved row for an operand guard label rendered below a divider. */
@@ -488,6 +498,7 @@ function computeLayout(
   const fragmentMarginY = unit(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
   const fragmentInnerTop = unit(SEQUENCE_LAYOUT.FRAG_INNER_TOP);
   const fragmentInnerBottom = unit(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+  const fragmentNestedTop = unit(SEQUENCE_LAYOUT.FRAG_NESTED_TOP);
   const fragmentDividerGap = unit(SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP);
   const fragmentGuardHeight = unit(SEQUENCE_LAYOUT.FRAG_GUARD_H);
   const noteMarginY = unit(SEQUENCE_LAYOUT.NOTE_MARGIN_Y);
@@ -674,7 +685,7 @@ function computeLayout(
   ): LayoutScope => {
     const scope: LayoutScope = { startY, endY: startY, events: [] };
     let cursor = startY;
-    for (const item of items) {
+    for (const [itemIndex, item] of items.entries()) {
       if (item.kind === "message") {
         const result = makeMessage(item, cursor, depth);
         rows.push(result.row);
@@ -692,8 +703,17 @@ function computeLayout(
       }
 
       // Frames get vertical clearance on both sides so they never touch the
-      // preceding/following row's geometry or a sibling frame.
-      const frameTop = cursor + fragmentMarginY;
+      // preceding/following row's geometry or a sibling frame. Margins
+      // collapse: a frame right after a sibling frame reuses that frame's
+      // trailing margin, and a frame that opens or closes an operand leans on
+      // the parent frame's own inner air instead of stacking a margin on it.
+      const nested = depth > 0;
+      const afterFrame = itemIndex > 0 && items[itemIndex - 1]!.kind === "fragment";
+      const closesOperand = nested && itemIndex === items.length - 1;
+      const leadingMargin = afterFrame
+        ? 0
+        : nested && itemIndex === 0 ? fragmentNestedTop : fragmentMarginY;
+      const frameTop = cursor + leadingMargin;
       const participantIds = collectParticipantIds(item);
       const fragmentRow: SequenceFragmentLayout = {
         kind: "fragment",
@@ -806,7 +826,7 @@ function computeLayout(
       }
       fragmentRow.outer.width = outerRight - outerLeft;
       // Trailing clearance below the frame before the next row begins.
-      cursor += fragmentMarginY;
+      if (!closesOperand) cursor += fragmentMarginY;
       scope.events.push({ type: "fragment", operands: operandScopes });
     }
     scope.endY = cursor;

@@ -85,7 +85,8 @@ describe("layoutSequence", () => {
       FRAG_TAB_H: 20,
       FRAG_MARGIN_Y: 24,
       FRAG_INNER_TOP: 14,
-      FRAG_INNER_BOTTOM: 16,
+      FRAG_INNER_BOTTOM: 12,
+      FRAG_NESTED_TOP: 8,
       FRAG_DIVIDER_GAP: 10,
       FRAG_GUARD_H: 18,
       NOTE_MARGIN_Y: 8,
@@ -617,8 +618,8 @@ describe("layoutSequence", () => {
     const f2 = layout.fragments.find(({ id }) => id === "f2")!;
 
     expect(f1.outer.y - before.y2).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
-    expect(f2.outer.y - (f1.outer.y + f1.outer.height))
-      .toBeGreaterThanOrEqual(2 * SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
+    // Sibling margins collapse into one.
+    expect(f2.outer.y - (f1.outer.y + f1.outer.height)).toBe(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
     expect(after.y - (f2.outer.y + f2.outer.height))
       .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
   });
@@ -646,6 +647,36 @@ describe("layoutSequence", () => {
     expect(first.y1 - tabBottom).toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_INNER_TOP);
     expect(fragment.outer.y + fragment.outer.height - last.y2)
       .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+  });
+
+  test("nested frames that close together step their bottom edges by the inner inset, with no stacked margins", () => {
+    const opt = (id: string, items: SequenceItem[]): SequenceItem => ({
+      kind: "fragment", id, op: "opt", operands: [{ guard: id, items }],
+    });
+    const layout = layoutSequence(documentWith([
+      opt("outer", [
+        { kind: "message", id: "m0", from: "p1", to: "p2", line: "async", text: "first" },
+        opt("middle", [
+          { kind: "message", id: "m1", from: "p1", to: "p2", line: "async", text: "second" },
+          opt("inner", [
+            { kind: "message", id: "m2", from: "p1", to: "p2", line: "async", text: "last" },
+          ]),
+        ]),
+      ]),
+      { kind: "message", id: "after", from: "p2", to: "p1", line: "async", text: "after" },
+    ]));
+    const bottom = (id: string): number => {
+      const frame = layout.fragments.find((fragment) => fragment.id === id)!.outer;
+      return frame.y + frame.height;
+    };
+    const last = layout.messages.find(({ id }) => id === "m2")!;
+    const after = layout.messages.find(({ id }) => id === "after")!;
+
+    expect(bottom("inner") - last.y2).toBe(SEQUENCE_LAYOUT.ROW_H / 2 + SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+    expect(bottom("middle") - bottom("inner")).toBe(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+    expect(bottom("outer") - bottom("middle")).toBe(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
+    // The outermost frame still keeps one margin before the next row.
+    expect(after.y - SEQUENCE_LAYOUT.ROW_H / 2 - bottom("outer")).toBe(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
   });
 
   test("nested frames step inward with visible top and bottom insets", () => {
@@ -676,11 +707,9 @@ describe("layoutSequence", () => {
     const inner = layout.fragments.find(({ id }) => id === "inner")!;
 
     expect(inner.outer.y - (outer.outer.y + SEQUENCE_LAYOUT.FRAG_TAB_H))
-      .toBeGreaterThanOrEqual(SEQUENCE_LAYOUT.FRAG_INNER_TOP + SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
+      .toBe(SEQUENCE_LAYOUT.FRAG_INNER_TOP + SEQUENCE_LAYOUT.FRAG_NESTED_TOP);
     expect((outer.outer.y + outer.outer.height) - (inner.outer.y + inner.outer.height))
-      .toBeGreaterThanOrEqual(
-        SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM + SEQUENCE_LAYOUT.FRAG_MARGIN_Y,
-      );
+      .toBe(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
   });
 
   test("operand dividers keep clearance from surrounding operand contents", () => {

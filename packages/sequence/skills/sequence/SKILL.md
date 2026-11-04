@@ -81,9 +81,16 @@ names its line. Fix every listed line, because a failed parse changes nothing.
   - Use one case style for every participant name, such as `Child agent` next to `Parent agent`.
 - Order the columns with the steps in "Order the Columns Before You Write Them".
 - Write a message label as the call or event the reader knows, such as `fetch(user)` or `200 OK`.
+  - Keep a label to 40 characters or fewer. Keep each argument the brief names, and drop the others.
+  - Use one label style in a diagram: a code call for a tool or API call, plain words for an event. Never add a prefix such as `publish:`.
+- Draw one arrow for each call. Never join two calls in one label with "then", because a reply then seems to answer both.
 - Show the return for each sync call that the reader needs to see answered.
+  - If no reply comes back and the receiver goes on to message others, use `->`.
+- Keep a guard to 40 characters or fewer. State the condition only, and put a reason in a note.
 - Keep a diagram to about 5 participants and 20 messages. Split a larger flow into two blocks.
 - Use a note for one fact a message cannot carry. Keep it short.
+  - Keep each condition that the brief gives for that fact.
+- When a `docs_sequence_set_program` result lists a `long-label`, `long-guard`, `joined-calls` or `sync-without-return` finding, fix it.
 
 ## References
 

@@ -1241,7 +1241,7 @@ function computeLayout(
         closeActivation(activation, Math.min(activation.shortEnd, scope.endY));
       }
     };
-    for (const event of scope.events) {
+    for (const [eventIndex, event] of scope.events.entries()) {
       if (event.type === "fragment") {
         closeShortBars(() => false);
         // Each operand starts from the same activation state. Its returns are
@@ -1386,7 +1386,15 @@ function computeLayout(
             break;
           }
         }
-        if (match) {
+        const next = scope.events[eventIndex + 1];
+        // A run of returns from the callee to its caller all leave the one
+        // bar they answer; the last of them ends it. When more than one bar
+        // is open between the two, each return closes one, innermost first.
+        const openMatches = candidates.filter((activation) =>
+          isOpen(activation, closedHere) && activation.participantId === row.from && activation.callerId === row.to).length;
+        const runsOn = openMatches <= 1 && next?.type === "message"
+          && next.row.line === "return" && next.row.from === row.from && next.row.to === row.to;
+        if (match && !runsOn) {
           if (local.includes(match)) {
             closeActivation(match, row.y, row.id);
           } else {

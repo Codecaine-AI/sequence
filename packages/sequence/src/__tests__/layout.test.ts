@@ -833,6 +833,23 @@ describe("layoutSequence", () => {
     }
   });
 
+  test("a run of returns from a callee to its caller all leave its bar, and the last one ends it", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "ask", from: "p1", to: "p2", line: "sync", text: "ask" },
+      { kind: "message", id: "result", from: "p2", to: "p1", line: "return", text: "result" },
+      { kind: "message", id: "settled", from: "p2", to: "p1", line: "return", text: "settled" },
+    ]));
+    const message = (id: string) => layout.messages.find((row) => row.id === id)!;
+    const bar = calleeBars(layout)[0]!;
+
+    expect(calleeBars(layout)).toHaveLength(1);
+    expect(bar.endMessageId).toBe("settled");
+    expect(bar.rect.y + bar.rect.height).toBe(message("settled").y);
+    // Both returns dock on the bar's edge.
+    expect(message("result").x1).toBe(bar.rect.x);
+    expect(message("settled").x1).toBe(bar.rect.x);
+  });
+
   test("a guard moves off a lifeline when a clear stretch of its frame holds it", () => {
     // The guard starts after the tab, on the p2 lifeline. The long p2-p3
     // arrow makes that stretch wide enough to hold it.

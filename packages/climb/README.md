@@ -88,7 +88,9 @@ Each brief gets one `claude -p` run:
   docs-system MCP, started with `--workspace <runDir>/project`.
 - `--append-system-prompt-file <runDir>/draw/system-prompt.md`: SKILL.md and
   every file in `references/`.
-- `--tools ""` and `--allowedTools mcp__docs-system`: no built-in tools.
+- `--tools Read` and `--allowedTools mcp__docs-system "Read(/<renders>/**)"`:
+  the only built-in tool is `Read`, and it reaches only the SVGs that the docs
+  daemon renders.
 - `--settings` with `claudeMdExcludes` and `disableAllHooks`: auth and the
   gateway still come from user settings, but no CLAUDE.md and no hook reaches
   the drawer.

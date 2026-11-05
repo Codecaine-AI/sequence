@@ -158,7 +158,8 @@ describe("default text metrics (text-measure)", () => {
     const note = layout.notes[0]!;
     const noteText = svg.querySelector(".seq-note text")!;
     const noteFont = drawnFontSpec(noteText);
-    const noteContentWidth = note.box.width - 2 * (note.label.x - note.box.x);
+    // The wrap limit, not the box: the box grows with its widest line.
+    const noteContentWidth = unit(SEQUENCE_LAYOUT.NOTE_W) - 2 * (note.label.x - note.box.x);
     expect(note.lines.length).toBeGreaterThan(3);
     expect(note.lines).toContain("");
     expect(note.lines.filter((line) => line !== "").join(" ")).toBe(

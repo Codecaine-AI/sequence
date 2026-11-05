@@ -574,7 +574,7 @@
       },
       "text": [
         {
-          "insert": "List each pair of participants that exchange messages. Count the messages of each pair, in both directions."
+          "insert": "Find the first caller: the participant that sends the first message. Put it in column 1, even when an actor appears first in the brief."
         }
       ],
       "children": []
@@ -587,7 +587,7 @@
       },
       "text": [
         {
-          "insert": "Put the first caller in column 1. Add the main flow's participants left to right, in the order the flow first calls them."
+          "insert": "Add each other participant in the order it first receives a message, a return included. Most calls then run left to right."
         }
       ],
       "children": []
@@ -600,7 +600,7 @@
       },
       "text": [
         {
-          "insert": "Put each store, database or server in the column next to the participant that sends it the most messages."
+          "insert": "Count the messages of each pair of participants, in both directions."
         }
       ],
       "children": []
@@ -626,7 +626,7 @@
       },
       "text": [
         {
-          "insert": "If a column sits between a busy pair, move one of the two next to the other. Then do step 4 again."
+          "insert": "If a column sits between a busy pair, move the right one of the two left, next to the other. Then do step 4 again."
         }
       ],
       "children": []
@@ -637,7 +637,7 @@
       "props": {},
       "text": [
         {
-          "insert": "For example, a kernel plugin writes "
+          "insert": "Never move a participant left of the participant that first calls it. For example, a kernel plugin writes "
         },
         {
           "insert": "trace.db",
@@ -646,7 +646,7 @@
           }
         },
         {
-          "insert": " 6 times, and no other participant talks to "
+          "insert": " 6 times. Put "
         },
         {
           "insert": "trace.db",
@@ -655,16 +655,7 @@
           }
         },
         {
-          "insert": ". Put "
-        },
-        {
-          "insert": "trace.db",
-          "attributes": {
-            "code": true
-          }
-        },
-        {
-          "insert": " in the column right after the plugin, even when the plugin calls two providers first."
+          "insert": " in the column right of the plugin, even when the plugin calls two providers first."
         }
       ],
       "children": []

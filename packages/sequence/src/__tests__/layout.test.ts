@@ -698,6 +698,22 @@ describe("layoutSequence", () => {
     expect(layout.activations.filter(({ participantId }) => participantId === "p3")).toEqual([]);
   });
 
+  test("a two-participant diagram has the same margin on its right as on its left", () => {
+    const layout = layoutSequence({
+      version: 1,
+      id: "narrow",
+      participants: [
+        { id: "a", name: "A", kind: "participant" },
+        { id: "b", name: "B", kind: "participant" },
+      ],
+      items: [{ kind: "message", id: "go", from: "a", to: "b", line: "sync", text: "go" }],
+      style: {},
+    });
+    const left = Math.min(...layout.participants.map(({ header }) => header.x));
+    const right = Math.max(...layout.participants.map(({ header }) => header.x + header.width));
+    expect(layout.width - right).toBeCloseTo(left, 6);
+  });
+
   test("both ends of an async message can start a turn on its row, and each gets its bar", () => {
     const layout = layoutSequence(documentWith([
       { kind: "message", id: "kick", from: "p1", to: "p2", line: "async", text: "kick" },

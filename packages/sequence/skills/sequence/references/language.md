@@ -48,13 +48,13 @@ The only explicit non-default kind is `kind=actor`. `kind=participant` is the de
 
 Order the columns before you write the participant lines. Each column that an arrow crosses makes the flow harder to follow. Follow these steps:
 
-1. List each pair of participants that exchange messages. Count the messages of each pair, in both directions.
-2. Put the first caller in column 1. Add the main flow's participants left to right, in the order the flow first calls them.
-3. Put each store, database or server in the column next to the participant that sends it the most messages.
+1. Find the first caller: the participant that sends the first message. Put it in column 1, even when an actor appears first in the brief.
+2. Add each other participant in the order it first receives a message, a return included. Most calls then run left to right.
+3. Count the messages of each pair of participants, in both directions.
 4. For each pair with 3 or more messages, check that no other column sits between the two participants.
-5. If a column sits between a busy pair, move one of the two next to the other. Then do step 4 again.
+5. If a column sits between a busy pair, move the right one of the two left, next to the other. Then do step 4 again.
 
-For example, a kernel plugin writes `trace.db` 6 times, and no other participant talks to `trace.db`. Put `trace.db` in the column right after the plugin, even when the plugin calls two providers first.
+Never move a participant left of the participant that first calls it. For example, a kernel plugin writes `trace.db` 6 times. Put `trace.db` in the column right of the plugin, even when the plugin calls two providers first.
 
 ## The sequence
 

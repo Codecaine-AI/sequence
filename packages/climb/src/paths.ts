@@ -17,13 +17,13 @@ export const OVERLAY_PRELOAD = join(CLIMB_ROOT, "src/overlay-preload.ts");
  */
 export function docsSystemRoot(): string {
   const fromEnv = process.env.CLIMB_DOCS_SYSTEM;
-  const candidates = [
-    fromEnv,
-    join(REPO_ROOT, "../docs-system"),
-  ].filter((value): value is string => typeof value === "string" && value.length > 0);
-  for (const candidate of candidates) {
-    if (existsSync(join(candidate, "packages/docs-mcp/src/cli.ts"))) return resolve(candidate);
+  if (fromEnv) {
+    // A named checkout that is wrong must stop the round, not fall back to another docs-system.
+    if (!existsSync(join(fromEnv, "packages/docs-mcp/src/cli.ts"))) throw new Error(`CLIMB_DOCS_SYSTEM=${fromEnv} has no packages/docs-mcp/src/cli.ts.`);
+    return resolve(fromEnv);
   }
+  const sibling = join(REPO_ROOT, "../docs-system");
+  if (existsSync(join(sibling, "packages/docs-mcp/src/cli.ts"))) return resolve(sibling);
   try {
     const manifest = realpathSync(Bun.resolveSync("@codecaine-ai/docs-mcp/package.json", REPO_ROOT));
     return resolve(dirname(manifest), "../..");

@@ -131,7 +131,16 @@ export async function runRender({ runDir, only }: { runDir: string; only?: reado
   const browser = await chromium.launch({ headless: true });
   try {
     const results = [];
-    for (const entry of entries) results.push(await renderBrief({ entry, runDir, browser, fontFaces }));
+    for (const entry of entries) {
+      // One broken brief must not stop the others: report it as not rendered, as a failed drawer is.
+      try {
+        results.push(await renderBrief({ entry, runDir, browser, fontFaces }));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await writeFile(join(runPaths(runDir).brief(entry.slug), "metrics.json"), `${JSON.stringify({ slug: entry.slug, sidecar: entry.sidecar, rendered: false, error: message }, null, 2)}\n`).catch(() => undefined);
+        results.push({ slug: entry.slug, rendered: false, problems: 1 });
+      }
+    }
     return results;
   } finally {
     await browser.close();

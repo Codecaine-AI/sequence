@@ -89,7 +89,7 @@ export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
     results.push({
       rule: "long-guard",
       severity: "info",
-      message: `The guard "${guard}" has ${guard.length} characters. Cut it to ${GUARD_LENGTH_LIMIT} or fewer by dropping filler words. Keep every condition and remark the brief gives; only a reason given with "because" moves to a note.`,
+      message: `The guard "${guard}" has ${guard.length} characters. Cut it to ${GUARD_LENGTH_LIMIT} or fewer by dropping filler words. Keep every condition and remark the brief gives, and keep a "because" reason in a few words. A condition never moves to a note.`,
       target: id,
     });
   }

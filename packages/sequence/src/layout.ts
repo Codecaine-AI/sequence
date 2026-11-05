@@ -1819,9 +1819,10 @@ function computeLayout(
     }
   }
 
+  // The content sets the right edge. The side gutter applies only to a diagram with no participants.
   let rightEdge = participants.reduce(
     (right, participant) => Math.max(right, participant.header.x + participant.header.width),
-    sideGutter,
+    participants.length === 0 ? sideGutter : 0,
   );
   for (const note of notes) rightEdge = Math.max(rightEdge, note.box.x + note.box.width);
   for (const fragment of fragments) rightEdge = Math.max(rightEdge, fragment.outer.x + fragment.outer.width);

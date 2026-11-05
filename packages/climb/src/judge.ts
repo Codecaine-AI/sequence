@@ -12,16 +12,17 @@ const JUDGES: Record<string, (input: { prompt: string; png: string; lastMessage:
     "codex", "exec", "-m", "gpt-6.1-sol", "-c", 'model_reasoning_effort="high"', "--enable", "fast_mode",
     "--skip-git-repo-check", "--sandbox", "read-only", "-i", png, "-o", lastMessage, prompt,
   ],
-  opus: ({ prompt }) => claudeJudge("claude-opus-5-5", prompt),
-  fable: ({ prompt }) => claudeJudge("claude-fable-5-1", prompt),
+  opus: ({ prompt, png }) => claudeJudge("claude-opus-5-5", prompt, png),
+  fable: ({ prompt, png }) => claudeJudge("claude-fable-5-1", prompt, png),
 };
 
 export const JUDGE_IDS = Object.keys(JUDGES);
 
-function claudeJudge(model: string, prompt: string): string[] {
+/** A Claude judge may Read only the diagram it scores: `//` starts an absolute path in a permission rule. */
+function claudeJudge(model: string, prompt: string, png: string): string[] {
   return [
     CLAUDE_BIN, "-p", prompt, "--model", model, "--effort", "high", "--output-format", "text",
-    "--tools", "Read", "--allowedTools", "Read", "--permission-mode", "dontAsk", "--no-session-persistence",
+    "--tools", "Read", "--allowedTools", `Read(/${png})`, "--permission-mode", "dontAsk", "--no-session-persistence",
     "--settings", JSON.stringify({ claudeMdExcludes: ["**/CLAUDE.md", "**/CLAUDE.local.md", `${process.env.HOME}/.claude/CLAUDE.md`], disableAllHooks: true }),
   ];
 }

@@ -339,6 +339,43 @@ const NOTE_BAR_GAP = 4;
 const TITLE_BASELINE = 18;
 
 /**
+ * The visible pieces of a bar: a bar that ends inside a frame stops
+ * `frameGap` above the frame and continues inside each operand.
+ */
+function barSegments(bar: MutableActivation, frameGap: number): { top: number; bottom: number }[] {
+  let segments = [{ top: bar.rect.y, bottom: bar.rect.y + bar.rect.height }];
+  const cuts = [...bar.cuts].sort((a, b) => a.top - b.top || (b.bottom - b.top) - (a.bottom - a.top));
+  for (const cut of cuts) {
+    const next: { top: number; bottom: number }[] = [];
+    let entered = false;
+    for (const segment of segments) {
+      if (segment.bottom <= cut.top || segment.top >= cut.bottom) {
+        next.push(segment);
+        continue;
+      }
+      entered = true;
+      const above = Math.min(segment.bottom, cut.top - frameGap);
+      if (above > segment.top) next.push({ top: segment.top, bottom: above });
+    }
+    if (entered) {
+      // The first operand's piece continues the bar across the frame's
+      // top edge; later operands restart below their divider.
+      const [first, ...rest] = cut.pieces;
+      if (first && first.bottom > first.top) {
+        const above = [...next].reverse().find((segment) => segment.bottom <= cut.top && segment.bottom >= cut.top - frameGap);
+        if (above) above.bottom = first.bottom;
+        else next.push(first);
+      }
+      for (const piece of rest) {
+        if (piece.bottom > piece.top) next.push(piece);
+      }
+    }
+    segments = next.sort((a, b) => a.top - b.top);
+  }
+  return segments;
+}
+
+/**
  * Finds each participant's caller-side turns, UML style: a participant that
  * no call holds active is active from the message that starts its turn
  * until its last send or the last reply it gets in that turn. An async
@@ -346,10 +383,14 @@ const TITLE_BASELINE = 18;
  * participant's last message. A turn never leaves the
  * frame operand it starts in, and it needs a sync call the participant
  * waits on, so a relay that only passes async messages on gets no bar.
- * `calleeBars` are the bars of a first walk: a matched one holds its
- * lifeline active, so rows under it belong to no turn.
+ * `heldSpans` are the visible pieces of the matched bars of a first walk:
+ * each holds its lifeline active, so rows under it belong to no turn. An
+ * operand that does not see a bar leaves its rows free for a turn.
  */
-function findCallerTurns(scope: LayoutScope, calleeBars: readonly MutableActivation[]): Map<string, CallerTurn> {
+function findCallerTurns(
+  scope: LayoutScope,
+  heldSpans: readonly { participantId: string; top: number; bottom: number }[],
+): Map<string, CallerTurn[]> {
   const ordered: { row: SequenceMessageLayout; path: RowPath }[] = [];
   const collect = (inner: LayoutScope, path: RowPath): void => {
     for (const event of inner.events) {
@@ -358,11 +399,8 @@ function findCallerTurns(scope: LayoutScope, calleeBars: readonly MutableActivat
     }
   };
   collect(scope, []);
-  const held = (participantId: string, y: number): boolean => calleeBars.some((bar) =>
-    bar.participantId === participantId
-    && bar.endMessageId !== undefined
-    && bar.rect.y <= y
-    && y <= bar.rect.y + bar.rect.height);
+  const held = (participantId: string, y: number): boolean => heldSpans.some((span) =>
+    span.participantId === participantId && span.top <= y && y <= span.bottom);
   const within = (path: RowPath, prefix: RowPath): boolean =>
     prefix.every((step, index) => path[index]?.frame === step.frame && path[index]?.operand === step.operand);
   // Two rows lie on one run unless some frame puts them in different operands.
@@ -373,7 +411,8 @@ function findCallerTurns(scope: LayoutScope, calleeBars: readonly MutableActivat
     }
     return true;
   };
-  const turns = new Map<string, CallerTurn>();
+  // Both ends of an async message can start a turn on its row.
+  const turns = new Map<string, CallerTurn[]>();
   const participantIds = new Set(ordered.flatMap(({ row }) => [row.from, row.to]));
   for (const participantId of participantIds) {
     let turn: { start: SequenceMessageLayout; path: RowPath; rows: typeof ordered; waits: boolean } | undefined;
@@ -382,7 +421,9 @@ function findCallerTurns(scope: LayoutScope, calleeBars: readonly MutableActivat
         const { rows } = turn;
         const ends = rows.filter(({ path }, index) => !rows.slice(index + 1).some((later) => oneRun(path, later.path)));
         if (ends.some(({ row }) => row !== turn!.start)) {
-          turns.set(turn.start.id, { participantId, endIds: new Set(ends.map(({ row }) => row.id)) });
+          const starting = turns.get(turn.start.id) ?? [];
+          starting.push({ participantId, endIds: new Set(ends.map(({ row }) => row.id)) });
+          turns.set(turn.start.id, starting);
         }
       }
       turn = undefined;
@@ -1228,8 +1269,8 @@ function computeLayout(
   const barFrameGap = unit(SEQUENCE_LAYOUT.GRID / 2);
   /** Ids of sync calls that the previous walk found no return for. */
   let unmatchedCalls: ReadonlySet<string> = new Set();
-  /** Caller-side turns, by the id of the row that starts each one. */
-  let callerTurns: ReadonlyMap<string, CallerTurn> = new Map();
+  /** Caller-side turns, by the id of the row that starts them. */
+  let callerTurns: ReadonlyMap<string, readonly CallerTurn[]> = new Map();
 
   const isOpen = (activation: MutableActivation, closedHere: Set<MutableActivation>): boolean =>
     activation.rect.height < 0 && !closedHere.has(activation);
@@ -1443,8 +1484,7 @@ function computeLayout(
           activation.shortEnd = Math.max(activation.shortEnd, rowBandEnd(row));
         }
       }
-      const turn = callerTurns.get(row.id);
-      if (turn) {
+      for (const turn of callerTurns.get(row.id) ?? []) {
         const level = [...inherited, ...local].filter(
           (activation) => activation.participantId === turn.participantId && isOpen(activation, closedHere),
         ).length;
@@ -1560,7 +1600,9 @@ function computeLayout(
   // bars short, so they neither run to the end of their scope nor stack.
   walkScope(documentScope, []);
   unmatchedCalls = new Set(bars.filter((bar) => bar.endMessageId === undefined).map((bar) => bar.startMessageId));
-  callerTurns = findCallerTurns(documentScope, bars);
+  callerTurns = findCallerTurns(documentScope, bars
+    .filter((bar) => bar.endMessageId !== undefined)
+    .flatMap((bar) => barSegments(bar, barFrameGap).map((segment) => ({ participantId: bar.participantId, ...segment }))));
   bars.length = 0;
   walkScope(documentScope, []);
 
@@ -1568,36 +1610,7 @@ function computeLayout(
   // stops above the frame and continues inside each operand.
   const activations: SequenceActivationLayout[] = [];
   for (const bar of bars) {
-    let segments = [{ top: bar.rect.y, bottom: bar.rect.y + bar.rect.height }];
-    const cuts = [...bar.cuts].sort((a, b) => a.top - b.top || (b.bottom - b.top) - (a.bottom - a.top));
-    for (const cut of cuts) {
-      const next: { top: number; bottom: number }[] = [];
-      let entered = false;
-      for (const segment of segments) {
-        if (segment.bottom <= cut.top || segment.top >= cut.bottom) {
-          next.push(segment);
-          continue;
-        }
-        entered = true;
-        const above = Math.min(segment.bottom, cut.top - barFrameGap);
-        if (above > segment.top) next.push({ top: segment.top, bottom: above });
-      }
-      if (entered) {
-        // The first operand's piece continues the bar across the frame's
-        // top edge; later operands restart below their divider.
-        const [first, ...rest] = cut.pieces;
-        if (first && first.bottom > first.top) {
-          const above = [...next].reverse().find((segment) => segment.bottom <= cut.top && segment.bottom >= cut.top - barFrameGap);
-          if (above) above.bottom = first.bottom;
-          else next.push(first);
-        }
-        for (const piece of rest) {
-          if (piece.bottom > piece.top) next.push(piece);
-        }
-      }
-      segments = next.sort((a, b) => a.top - b.top);
-    }
-    for (const segment of segments) {
+    for (const segment of barSegments(bar, barFrameGap)) {
       activations.push({
         participantId: bar.participantId,
         level: bar.level,

@@ -1,5 +1,5 @@
 import { useHarfBuzz } from "@codecaine-ai/text-measure/headless";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { chromium, type Browser } from "playwright";
 
@@ -66,6 +66,8 @@ async function renderBrief({ entry, runDir, browser, fontFaces }: { entry: Round
   const paths = runPaths(runDir);
   const dir = paths.brief(entry.slug);
   const sidecarPath = join(paths.root, entry.sidecar);
+  // A render that fails below must leave no earlier picture for the judges to score.
+  await Promise.all(["program.txt", "diagram.svg", "diagram.png"].map((file) => rm(join(dir, file), { force: true })));
   const raw: unknown = JSON.parse(await readFile(sidecarPath, "utf8"));
   const schema = validateSequenceDocument(raw);
   const transcript = await readTranscript(join(dir, "transcript.jsonl"));

@@ -1,6 +1,7 @@
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 
+import { readRound } from "./round.ts";
 import { parseJudgeScore, SCORE_CATEGORIES, type JudgeScore, type ScoreCategory } from "./score-schema.ts";
 
 /**
@@ -230,6 +231,9 @@ export async function loadScoreRound({ spec, judges }: { spec: string; judges: r
       return { label: basename(parts[0]!), draws: draws.map((draw, index) => ({ ...draw, label: basename(dirname(drawDirs[index]!)) })) };
     }
   }
+  const real = await Promise.all(parts.map((part) => realpath(part).catch(() => part)));
+  const repeated = real.find((path, index) => real.indexOf(path) !== index);
+  if (repeated !== undefined) throw new Error(`--scores names ${repeated} more than once: each draw must be its own folder`);
   const draws = await Promise.all(parts.map((dir) => loadDraw({ dir, judges })));
   return { label: draws.map((draw) => draw.label).join(" + "), draws };
 }
@@ -281,9 +285,19 @@ export function renderTable({
   ].join("\n");
 }
 
-/** The set's briefs: the folders of --briefs when given, else every brief any judge scored in the newest round. */
+/**
+ * The set's briefs: the folders of --briefs when given. Else every brief the newest round's draws set up
+ * (the round.json beside each scores folder), plus every brief any judge scored, so a brief that no judge
+ * scored still counts as missing.
+ */
 async function setBriefs({ briefsDir, round }: { briefsDir: string | undefined; round: ScoreRound }): Promise<string[]> {
-  if (briefsDir === undefined) return [...new Set(round.draws.flatMap((draw) => draw.scores.map((score) => score.brief)))].sort();
+  if (briefsDir === undefined) {
+    const setUp = await Promise.all(round.draws.map((draw) => readRound(dirname(draw.dir)).then(
+      (drawRound) => drawRound.briefs.map((brief) => brief.slug),
+      () => [],
+    )));
+    return [...new Set([...setUp.flat(), ...round.draws.flatMap((draw) => draw.scores.map((score) => score.brief))])].sort();
+  }
   const entries = await readdir(resolve(briefsDir), { withFileTypes: true });
   return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
 }

@@ -211,6 +211,28 @@ describe("runScore", () => {
     expect(table).toContain("| **Gate** | | **FAIL** (2) | **FAIL** (1) |");
   });
 
+  test("refuses a comma list that names the same score folder twice", async () => {
+    const root = await mkdtemp(join(tmpdir(), "climb-score-"));
+    await mkdir(join(root, "a/scores/j1"), { recursive: true });
+    await writeFile(join(root, "a/scores/j1/x.json"), JSON.stringify(judgeScore({ judge: "j1", brief: "x", all: 10 })));
+    const once = join(root, "a/scores");
+    await expect(runScore({ rounds: [[once, once, join(root, "a/../a/scores")].join(",")], set: "climb", judges: ["j1"], out: join(root, "out") }))
+      .rejects.toThrow(/more than once/);
+  });
+
+  test("a brief that the round set up but no judge scored fails the gate as missing", async () => {
+    const root = await mkdtemp(join(tmpdir(), "climb-score-"));
+    for (const n of [1, 2, 3]) {
+      const draw = join(root, `round/draw-${n}`);
+      await mkdir(join(draw, "scores/j1"), { recursive: true });
+      await writeFile(join(draw, "round.json"), JSON.stringify({ version: 1, briefs: [{ slug: "a" }, { slug: "b" }] }));
+      await writeFile(join(draw, "scores/j1/a.json"), JSON.stringify(judgeScore({ judge: "j1", brief: "a", all: 10 })));
+    }
+    const result = await runScore({ rounds: [join(root, "round")], set: "climb", judges: ["j1"], out: join(root, "out") });
+    expect(result.gate.pass).toBe(false);
+    expect(result.gate.failures.map(describeFailure).join("\n")).toContain("b");
+  });
+
   test("prints exempt cells in the table and gate.json, and refuses an exempt brief outside the set", async () => {
     const root = await mkdtemp(join(tmpdir(), "climb-score-"));
     const write = async (scoresDir: string, score: JudgeScore) => {

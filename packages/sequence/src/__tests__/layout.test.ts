@@ -698,6 +698,51 @@ describe("layoutSequence", () => {
     expect(layout.activations.filter(({ participantId }) => participantId === "p3")).toEqual([]);
   });
 
+  test("both ends of an async message can start a turn on its row, and each gets its bar", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "kick", from: "p1", to: "p2", line: "async", text: "kick" },
+      { kind: "message", id: "a", from: "p1", to: "p3", line: "sync", text: "a" },
+      { kind: "message", id: "a-back", from: "p3", to: "p1", line: "return", text: "a back" },
+      { kind: "message", id: "b", from: "p2", to: "p3", line: "sync", text: "b" },
+      { kind: "message", id: "b-back", from: "p3", to: "p2", line: "return", text: "b back" },
+    ]));
+    const message = (id: string) => layout.messages.find((row) => row.id === id)!;
+    const span = (participantId: string) => layout.activations
+      .filter((bar) => bar.participantId === participantId)
+      .map(({ rect }) => [rect.y, rect.y + rect.height]);
+
+    // p1's turn starts at its send, p2's at its receipt, on the same row.
+    expect(span("p1")).toEqual([[message("kick").y, message("a-back").y]]);
+    expect(span("p2")).toEqual([[message("kick").y, message("b-back").y]]);
+  });
+
+  test("a caller waits in a branch that does not see its call's bar, and gets a bar there", () => {
+    const layout = layoutSequence(documentWith([
+      { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "call" },
+      {
+        kind: "fragment",
+        id: "branches",
+        op: "alt",
+        operands: [
+          {
+            guard: "one",
+            items: [
+              { kind: "message", id: "note-store", from: "p1", to: "p3", line: "async", text: "note" },
+              { kind: "message", id: "wait", from: "p2", to: "p3", line: "sync", text: "wait" },
+              { kind: "message", id: "waited", from: "p3", to: "p2", line: "return", text: "waited" },
+            ],
+          },
+          { guard: "two", items: [{ kind: "message", id: "back", from: "p2", to: "p1", line: "return", text: "back" }] },
+        ],
+      },
+    ]));
+    const wait = layout.messages.find((row) => row.id === "wait")!;
+    const waited = layout.messages.find((row) => row.id === "waited")!;
+    const p2 = layout.activations.filter((bar) => bar.participantId === "p2").map(({ rect }) => [rect.y, rect.y + rect.height]);
+
+    expect(p2).toContainEqual([wait.y, waited.y]);
+  });
+
   test("a self-call on an active lifeline nests and covers its own row only", () => {
     const layout = layoutSequence(documentWith([
       { kind: "message", id: "hook", from: "p2", to: "p1", line: "async", text: "hook" },

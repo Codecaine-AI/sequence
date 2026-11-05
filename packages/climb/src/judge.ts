@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { Value } from "@sinclair/typebox/value";
 import { CLAUDE_BIN, PARENT_SESSION_VARIABLES } from "./draw.ts";
@@ -41,22 +41,44 @@ function judgePrompt({ judge, slug, judgeBrief, brief, program, png }: { judge: 
   ].join("\n");
 }
 
-/** The last top-level JSON object in a model reply. */
-export function lastJsonObject(text: string): unknown {
-  for (let end = text.lastIndexOf("}"); end >= 0; end = text.lastIndexOf("}", end - 1)) {
-    let depth = 0;
-    for (let start = end; start >= 0; start -= 1) {
-      if (text[start] === "}") depth += 1;
-      else if (text[start] === "{" && --depth === 0) {
-        try {
-          return JSON.parse(text.slice(start, end + 1));
-        } catch {
-          break;
-        }
-      }
-    }
+/** The index of the brace that closes the object opened at `start`. Braces inside strings do not count. */
+function objectEnd(text: string, start: number): number | undefined {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+    } else if (char === '"') inString = true;
+    else if (char === "{") depth += 1;
+    else if (char === "}" && --depth === 0) return index;
   }
   return undefined;
+}
+
+/** The last top-level JSON object in a model reply: the whole reply when it is one, else the last one in its prose. */
+export function lastJsonObject(text: string): unknown {
+  try {
+    const whole: unknown = JSON.parse(text.trim());
+    if (whole !== null && typeof whole === "object" && !Array.isArray(whole)) return whole;
+  } catch {
+    // Prose around the object: scan for it below.
+  }
+  let found: unknown;
+  for (let start = text.indexOf("{"); start >= 0; start = text.indexOf("{", start + 1)) {
+    const end = objectEnd(text, start);
+    if (end === undefined) continue;
+    try {
+      found = JSON.parse(text.slice(start, end + 1));
+      start = end;
+    } catch {
+      // Not JSON: try the next brace.
+    }
+  }
+  return found;
 }
 
 async function judgeOnce({ judge, slug, runDir, out }: { judge: string; slug: string; runDir: string; out: string }): Promise<JudgeScore | string> {
@@ -93,6 +115,13 @@ export async function runJudge({ runDir, judges, out, concurrency, only }: { run
   for (const entry of entries) {
     if (!entry.isDirectory() || (only && !only.includes(entry.name))) continue;
     if (await Bun.file(join(runDir, entry.name, "diagram.png")).exists()) slugs.push(entry.name);
+  }
+  // A score left from an earlier judging must never stand in for this one: clear every selected brief's old
+  // score, including a brief that has no diagram this time and so gets no job.
+  for (const judge of judges) {
+    for (const entry of entries) {
+      if (entry.isDirectory() && (!only || only.includes(entry.name))) await rm(join(out, judge, `${entry.name}.json`), { force: true });
+    }
   }
   const jobs = judges.flatMap((judge) => slugs.sort().map((slug) => ({ judge, slug })));
   const results: { judge: string; slug: string; ok: boolean; detail: string }[] = [];

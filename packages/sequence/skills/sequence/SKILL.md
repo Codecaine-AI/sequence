@@ -15,6 +15,24 @@ That JSON document is the source of truth. You edit it as a short text
 program, and the docs-mcp `docs_sequence_*` tools are the only write path.
 This skill has no MCP server of its own.
 
+## Order the Columns Before You Write Them
+
+Each column that an arrow crosses makes the flow harder to follow. Before
+you write the participant lines, do these steps:
+
+1. Find the first caller: the participant that sends the first message. Put it in column 1, even when an actor appears first in the brief.
+2. Add each other participant in the order it first receives a message, a return included. Most calls then run left to right.
+3. Count the messages of each pair of participants, in both directions.
+4. For each pair with 3 or more messages, check that no other column sits between the two participants.
+5. If a column sits between a busy pair, move the right one of the two left, next to the other. Then do step 4 again.
+
+Never move a participant left of the participant that first calls it. For
+example, a lead agent sends the first call to a builder and later asks Ford a
+question. The lead goes in column 1, the builder in column 2, and Ford to
+the right of both. When a kernel plugin writes `trace.db` 6 times, put
+`trace.db` in the column right of the plugin, even when the plugin calls
+two providers first.
+
 ## When to Use a Sequence Block
 
 - Use one when the order of calls and returns between named parts explains the behavior.
@@ -49,6 +67,9 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - Write participant fields in this order: `text=`, `kind=actor`, `label=`, `stereotype=`. Only `text=` is required.
 - Write each message as `<from> <arrow> <to> text=<value>`.
   - `>` is a sync call. `->` is an async message. `-->` is a return, drawn dashed.
+  - Use `>` for every call the caller waits on: a tool call, an RPC, an HTTP request or a write that must finish first.
+  - A waited-on call stays `>` even when the diagram draws no reply for it.
+  - Use `->` only for a message nobody waits on, such as an event, a notification or a chat message.
   - A self-message uses one number on both sides, such as `2 > 2 text=validate`.
 - The fragments are `alt` with `else`, `opt` and `loop`.
   - Each needs `guard=`. An `else` can omit it.
@@ -56,15 +77,39 @@ names its line. Fix every listed line, because a failed parse changes nothing.
 - A note is `note over=N text=<value>`. The side can also be `left=N` or `right=N`.
 - A value can be bare only when it holds letters, digits, `_`, `(`, `)` and `-`. Quote all other values, such as `text="Login page"`.
 - Never write coordinates, ids or activation bars. Layout comes from the structure.
-  - A sync call activates its receiver until the matching return. Write that return to end the bar.
+  - A sync call activates its receiver until the matching return.
+  - A caller that waits on a sync call is active for its turn: from the message that starts the turn to its last send or reply.
+  - A sync call with no return gets a short bar over its own row.
 
 ## Writing for the Reader
 
 - Name participants in the reader's words, such as `browser`, `docs server` and `database`.
+  - Keep a header to a name of 1 to 3 words, in one case style for every participant, such as `Child agent` next to `Parent agent`.
+  - Put a code name the brief gives, such as `buildLead(threads)`, in `stereotype=`. Leave any other detail about a participant out of the diagram: never move it into a note.
+- Order the columns with the steps in "Order the Columns Before You Write Them".
 - Write a message label as the call or event the reader knows, such as `fetch(user)` or `200 OK`.
-- Show the return for each sync call that the reader needs to see answered.
+  - Keep a plain-words label to 40 characters or fewer, and a code call to 56. Keep each argument the brief names, and drop the others.
+  - Use one label style in a diagram: a code call for a tool or API call, plain words for an event. Never add a prefix such as `publish:`.
+- Copy each detail the brief lists. Never rename, merge or drop one.
+  - Copy each argument the brief names into the call label, such as `getOrder(orderId, userId)`. When the brief lists a tool's parameters, write the required ones by name.
+  - Never abbreviate a name the brief uses, such as `baseRevision` to `baseRev`. A code call that lists the brief's arguments can run to 56 characters; shorten plain words first, such as `session_update(id, thread, phase, links)`. Never write an ellipsis, and never move a dropped argument into a note.
+  - Never write an argument the brief does not give for that call. A guessed argument, such as `read(childThreadId)` for a tool that takes `requestId`, misstates the tool.
+  - Write a guard in the brief's words, in prose with no code operator such as `!=`. Keep every condition and remark the brief puts in it, such as `(this part is proposed)` or `the last entry of models`.
+  - Draw each return the brief lists as its own arrow, in the brief's order. Never merge two returns into one.
+  - Keep the place the brief gives for a value, such as `ids in body.meta`.
+- Draw one arrow for each call. Never join two calls in one label with "then", because a reply then seems to answer both.
+- Draw a return only where the brief lists one or the reader must see the reply.
+  - A waited-on call with no listed return stays `>` with no return.
+  - Never add a return such as `saved` or `ok` only to close a call.
+- When an `alt` branches on a call's reply, put each reply inside the branch it starts, as that branch's first step.
+  - Never merge two outcomes into one reply before the `alt`, such as `200 or 409`.
+  - Let each guard name the condition, and draw only the replies the brief lists.
+- Keep a guard to 60 characters or fewer by cutting filler words, never a condition. A note cannot restrict a branch, so a condition never moves to a note. Keep a reason the brief gives with `because` in the guard, in a few words, such as `after a replan`.
 - Keep a diagram to about 5 participants and 20 messages. Split a larger flow into two blocks.
-- Use a note for one fact a message cannot carry. Keep it short.
+- Use a note only where the brief lists one. Keep it short, one fact a message cannot carry.
+  - Keep each condition that the brief gives for that fact.
+  - Start every note with a capital letter, and every prose label with a lowercase letter, so each kind of text has one look.
+- When a `docs_sequence_set_program` result lists a `long-label`, `long-guard`, `joined-calls` or `leftward-call` finding, fix it.
 
 ## References
 

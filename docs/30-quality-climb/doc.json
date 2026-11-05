@@ -1,0 +1,436 @@
+{
+  "schemaVersion": 1,
+  "id": "doc-72cc1b02a4bf5009f08e8d01ad1f1e02",
+  "title": "Quality Climb",
+  "root": "root",
+  "blocks": {
+    "root": {
+      "id": "root",
+      "type": "paragraph",
+      "props": {},
+      "children": [
+        "intro",
+        "round-h",
+        "round-lead",
+        "round-outline",
+        "briefs-h",
+        "b1",
+        "b2",
+        "cat-h",
+        "cat-lead",
+        "cat-table",
+        "gate-h",
+        "gate-lead",
+        "gate-1",
+        "gate-2",
+        "ceil",
+        "guard-h",
+        "guard-lead",
+        "guard-1",
+        "guard-2",
+        "guard-3"
+      ]
+    },
+    "intro": {
+      "id": "intro",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "A quality climb redraws the same sequence briefs every round, and a council of models scores the diagrams. Between rounds, you change the skill, the layout, the theme or the lints. You keep a change only when the scores rise and the guard still passes. The `packages/climb` CLI runs each round."
+        }
+      ],
+      "children": []
+    },
+    "round-h": {
+      "id": "round-h",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "One Round"
+        }
+      ],
+      "children": []
+    },
+    "round-lead": {
+      "id": "round-lead",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "The `climb round` command runs these steps for each draw. Each step is also its own command, and `packages/climb/README.md` lists every flag."
+        }
+      ],
+      "children": []
+    },
+    "round-outline": {
+      "id": "round-outline",
+      "type": "process-outline",
+      "props": {
+        "steps": [
+          {
+            "text": "One Climb Round",
+            "steps": [
+              {
+                "text": "`climb setup` copies each `brief.md` into the run folder."
+              },
+              {
+                "text": "`climb draw` starts one headless Claude Code drawer per brief, Opus 5.5 at medium effort, with the docs-system MCP and Read on the render folder."
+              },
+              {
+                "text": "`climb render` renders each program with `renderSequenceSvgString` and turns the SVG into `diagram.png`."
+              },
+              {
+                "text": "`climb judge` sends each PNG to each judge in a fresh CLI process and checks each reply against the score schema."
+              },
+              {
+                "text": "`climb score` averages the draws per brief and writes `table.md` and `gate.json`."
+              }
+            ]
+          }
+        ]
+      },
+      "children": []
+    },
+    "briefs-h": {
+      "id": "briefs-h",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Briefs and Judges"
+        }
+      ],
+      "children": []
+    },
+    "b1": {
+      "id": "b1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "**Briefs**"
+        }
+      ],
+      "children": [
+        "b1a",
+        "b1b"
+      ]
+    },
+    "b1a": {
+      "id": "b1a",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "A climb set of briefs drives every round. A held-out set is scored only at a gate, by a scorer the builder never reads."
+        }
+      ],
+      "children": []
+    },
+    "b1b": {
+      "id": "b1b",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Keep the briefs outside the repo, and pass their folder with `--briefs`."
+        }
+      ],
+      "children": []
+    },
+    "b2": {
+      "id": "b2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "**Judges**"
+        }
+      ],
+      "children": [
+        "b2a",
+        "b2b"
+      ]
+    },
+    "b2a": {
+      "id": "b2a",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "`sol` runs GPT-6.1 Sol through `codex exec`. `opus` and `fable` run Opus 5.5 and Fable 5.1 through `claude -p`."
+        }
+      ],
+      "children": []
+    },
+    "b2b": {
+      "id": "b2b",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Each judge reads `packages/climb/judge-brief.md`, the brief, the program and the PNG."
+        }
+      ],
+      "children": []
+    },
+    "cat-h": {
+      "id": "cat-h",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Categories"
+        }
+      ],
+      "children": []
+    },
+    "cat-lead": {
+      "id": "cat-lead",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Judges score 9 categories from 1 to 10. The Meaning group checks the diagram against the brief, and the Look group checks only the PNG."
+        }
+      ],
+      "children": []
+    },
+    "cat-table": {
+      "id": "cat-table",
+      "type": "structured-table",
+      "props": {
+        "columns": [
+          "Group",
+          "Category",
+          "The judge checks"
+        ],
+        "rows": [
+          [
+            "Meaning",
+            "System fidelity",
+            "The flow matches the system, and each arrow kind and guard is right"
+          ],
+          [
+            "Meaning",
+            "Requirement coverage",
+            "Every required step in the brief is on the diagram"
+          ],
+          [
+            "Meaning",
+            "Scope discipline",
+            "The diagram adds nothing the brief does not ask for"
+          ],
+          [
+            "Look",
+            "Readability",
+            "A new viewer can follow the flow at arm's length"
+          ],
+          [
+            "Look",
+            "Participant order",
+            "Column order keeps most arrows short and moving left to right"
+          ],
+          [
+            "Look",
+            "Rhythm and fragments",
+            "Rows have a steady rhythm, and frames, guards and bars read clearly"
+          ],
+          [
+            "Look",
+            "Color and contrast",
+            "Color carries meaning, and text stays legible"
+          ],
+          [
+            "Look",
+            "Typography and labels",
+            "Labels are short, never clipped, and never cross a lifeline"
+          ],
+          [
+            "Look",
+            "Craft",
+            "The diagram looks finished, ready to put in a doc"
+          ]
+        ]
+      },
+      "children": []
+    },
+    "gate-h": {
+      "id": "gate-h",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "The Gate"
+        }
+      ],
+      "children": []
+    },
+    "gate-lead": {
+      "id": "gate-lead",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "A set passes the gate when each judge meets two limits on it. A brief's score is its mean over 3 draws, because a re-judge of the same image moves a cell by up to 1.3."
+        }
+      ],
+      "children": []
+    },
+    "gate-1": {
+      "id": "gate-1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "**Mean**"
+        }
+      ],
+      "children": [
+        "gate-1a"
+      ]
+    },
+    "gate-1a": {
+      "id": "gate-1a",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "The judge's mean in each category over the set's briefs is 9.5 or more."
+        }
+      ],
+      "children": []
+    },
+    "gate-2": {
+      "id": "gate-2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "**Floor**"
+        }
+      ],
+      "children": [
+        "gate-2a"
+      ]
+    },
+    "gate-2a": {
+      "id": "gate-2a",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "No brief scores below 9 in any category. The flag `--exempt-floor <brief>:<category>` removes one cell from the floor and keeps it in the mean."
+        }
+      ],
+      "children": []
+    },
+    "ceil": {
+      "id": "ceil",
+      "type": "callout",
+      "props": {
+        "title": "Opus caps complex diagrams at about 9",
+        "tone": "warning"
+      },
+      "text": [
+        {
+          "insert": "Opus gives a 9 for any category with one low finding, and it almost always writes one on a complex diagram. In 76 Opus judgings on 3 tuned briefs, craft and rhythm got no 10, while a 2-participant control scored 10 in 5 of 6 look categories. Measure a judge's ceiling on a known-good diagram before you set a 9.5 gate on it."
+        }
+      ],
+      "children": []
+    },
+    "guard-h": {
+      "id": "guard-h",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "The Guard"
+        }
+      ],
+      "children": []
+    },
+    "guard-lead": {
+      "id": "guard-lead",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "A change can ship only when the guard passes."
+        }
+      ],
+      "children": []
+    },
+    "guard-1": {
+      "id": "guard-1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "`bun test`, the type check and `bun run --cwd packages/sequence skill:check` pass."
+        }
+      ],
+      "children": []
+    },
+    "guard-2": {
+      "id": "guard-2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Every diagram has zero program and schema diagnostics."
+        }
+      ],
+      "children": []
+    },
+    "guard-3": {
+      "id": "guard-3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "A builder keeps a change only when it beats a control that was re-judged in the same batch."
+        }
+      ],
+      "children": []
+    }
+  }
+}

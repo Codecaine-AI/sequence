@@ -1,5 +1,6 @@
 import type {
   SeqPoint,
+  SeqRect,
   SeqTextAnchor,
   SequenceFragmentLayout,
   SequenceLayout,
@@ -60,6 +61,12 @@ function labelText(value: string): string {
   return escapeXml(singleLineText(value));
 }
 
+/** An opaque background box behind a label, so no line shows through its text. */
+function labelBackground(box: SeqRect, colors: SequenceResolvedColors, className: string): string {
+  if (box.width <= 0 || box.height <= 0) return "";
+  return `<rect class="${className}" x="${number(box.x)}" y="${number(box.y)}" width="${number(box.width)}" height="${number(box.height)}" fill="${colors.background}" />`;
+}
+
 function textAnchor(anchor: SeqTextAnchor): string {
   return `x="${number(anchor.x)}" y="${number(anchor.y)}" text-anchor="${anchor.anchor}"`;
 }
@@ -100,7 +107,7 @@ function renderDefs(scale: number, colors: SequenceResolvedColors): string {
     "<defs>",
     `<marker id="seq-arrow-sync" data-seq-marker="sync" viewBox="0 0 10 9" refX="9" refY="4.5" markerWidth="${number(10 * scale)}" markerHeight="${number(9 * scale)}" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M 0 0 L 9 4.5 L 0 9 Z" fill="${colors.messageStroke}" /></marker>`,
     `<marker id="seq-arrow-async" data-seq-marker="async" viewBox="0 0 10 9" refX="9" refY="4.5" markerWidth="${number(10 * scale)}" markerHeight="${number(9 * scale)}" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M 1 1 L 9 4.5 L 1 8" fill="none" stroke="${colors.messageStroke}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></marker>`,
-    `<marker id="seq-arrow-return" data-seq-marker="return" viewBox="0 0 10 9" refX="9" refY="4.5" markerWidth="${number(10 * scale)}" markerHeight="${number(9 * scale)}" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M 1 1 L 9 4.5 L 1 8" fill="none" stroke="${colors.messageStroke}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></marker>`,
+    `<marker id="seq-arrow-return" data-seq-marker="return" viewBox="0 0 10 9" refX="9" refY="4.5" markerWidth="${number(10 * scale)}" markerHeight="${number(9 * scale)}" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M 1 1 L 9 4.5 L 1 8" fill="none" stroke="${colors.lifelineStroke}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></marker>`,
     "</defs>",
   ].join("");
 }
@@ -172,16 +179,19 @@ function renderMessage(
     : message.line === "async"
       ? "seq-arrow-async"
       : "seq-arrow-return";
+  // A return takes the lifeline gray, so color tells a reply from a call.
+  const stroke = message.line === "return" ? colors.lifelineStroke : colors.messageStroke;
   const dash = message.line === "return"
     ? ` stroke-dasharray="${number(6 * scale)} ${number(4 * scale)}"`
     : "";
   const geometry = message.selfLoop && message.selfLoop.length > 1
-    ? `<path d="${pointsPath(message.selfLoop)}" fill="none" stroke="${colors.messageStroke}" stroke-width="${number(1.5 * scale)}"${dash} marker-end="url(#${marker})" />`
-    : `<line x1="${number(message.x1)}" y1="${number(message.y1)}" x2="${number(message.x2)}" y2="${number(message.y2)}" stroke="${colors.messageStroke}" stroke-width="${number(1.5 * scale)}"${dash} marker-end="url(#${marker})" />`;
+    ? `<path d="${pointsPath(message.selfLoop)}" fill="none" stroke="${stroke}" stroke-width="${number(1.5 * scale)}"${dash} marker-end="url(#${marker})" />`
+    : `<line x1="${number(message.x1)}" y1="${number(message.y1)}" x2="${number(message.x2)}" y2="${number(message.y2)}" stroke="${stroke}" stroke-width="${number(1.5 * scale)}"${dash} marker-end="url(#${marker})" />`;
   return [
     `<g class="seq-message seq-message--${message.line}" data-item-id="${escapeXml(message.id)}"${opacityAttr(style.message?.opacity)}>`,
     geometry,
-    `<text ${textAnchor(message.label)} class="seq-message-label" fill="${colors.messageText}" stroke="${colors.background}" stroke-width="${number(4 * scale)}" stroke-linejoin="round" paint-order="stroke" ${fontAttrs("message", scale)}>${labelText(message.text)}</text>`,
+    labelBackground(message.labelBox, colors, "seq-label-box"),
+    `<text ${textAnchor(message.label)} class="seq-message-label" fill="${colors.messageText}" ${fontAttrs("message", scale)}>${labelText(message.text)}</text>`,
     "</g>",
   ].join("");
 }
@@ -220,7 +230,8 @@ function renderFragmentLabels(fragment: SequenceFragmentLayout, scale: number, c
   return [
     `<text class="seq-fragment-op" x="${number(fragment.tab.x + 6 * scale)}" y="${number(fragment.tab.y + 14 * scale)}" fill="${colors.fragmentLabelText}" stroke="${colors.fragmentLabelFill}" stroke-width="${number(4 * scale)}" paint-order="stroke" ${fontAttrs("fragmentOp", scale)}>${labelText(fragment.op)}</text>`,
     ...fragment.guardLabels.map((guard) => guard.label
-      ? `<text ${textAnchor(guard.anchor)} class="seq-fragment-guard" data-operand="${guard.operand}" fill="${colors.text}" stroke="${colors.background}" stroke-width="${number(4 * scale)}" stroke-linejoin="round" paint-order="stroke" ${fontAttrs("guard", scale)}>${labelText(bracketed(guard.label))}</text>`
+      ? labelBackground(guard.box, colors, "seq-label-box")
+        + `<text ${textAnchor(guard.anchor)} class="seq-fragment-guard" data-operand="${guard.operand}" fill="${colors.text}" ${fontAttrs("guard", scale)}>${labelText(bracketed(guard.label))}</text>`
       : ""),
   ].join("");
 }

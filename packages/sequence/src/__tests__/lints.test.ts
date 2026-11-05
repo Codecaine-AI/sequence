@@ -1,0 +1,109 @@
+import { expect, test } from "bun:test";
+
+import { lintSequence } from "../lints";
+import type { SequenceDocument, SequenceItem } from "../schema";
+
+const documentWith = (items: SequenceItem[]): SequenceDocument => ({
+  version: 1,
+  id: "lint-test",
+  participants: ["a", "b", "c", "d"].map((name, index) => ({ id: `p${index + 1}`, name, kind: "participant" as const })),
+  items,
+  style: {},
+});
+
+test("crossed-columns reports a message that crosses 2 or more other lifelines, inside fragments too", () => {
+  const results = lintSequence(documentWith([
+    { kind: "message", id: "near", from: "p1", to: "p2", line: "sync", text: "near" },
+    { kind: "message", id: "one", from: "p1", to: "p3", line: "sync", text: "one over" },
+    {
+      kind: "fragment",
+      id: "f1",
+      op: "opt",
+      operands: [{ guard: "x", items: [{ kind: "message", id: "far", from: "p4", to: "p1", line: "return", text: "far" }] }],
+    },
+    { kind: "message", id: "self", from: "p4", to: "p4", line: "async", text: "self" },
+  ]));
+
+  const crossed = results.filter(({ rule }) => rule === "crossed-columns");
+  expect(crossed.map(({ target }) => target)).toEqual(["far"]);
+  expect(crossed[0]!.message).toContain("crosses 2 other columns (b, c)");
+});
+
+test("long-label reports a label over 40 characters, long-guard a guard over 60", () => {
+  const long = "session_update(sessionId, threadId, phase, addLinks, agentId)";
+  const results = lintSequence(documentWith([
+    {
+      kind: "fragment",
+      id: "f1",
+      op: "opt",
+      operands: [{
+        guard: "T3 is signed in, the Session is done, paused or cancelled, and a Thread still reads live",
+        items: [
+          { kind: "message", id: "long", from: "p1", to: "p2", line: "async", text: long },
+          { kind: "message", id: "short", from: "p1", to: "p2", line: "async", text: "session_update(phase)" },
+        ],
+      }],
+    },
+  ]));
+
+  expect(results.map(({ rule, target }) => [rule, target])).toEqual([["long-label", "long"], ["long-guard", "f1"]]);
+  expect(results[0]!.message).toContain("Keep a label to 56 or fewer");
+  expect(results[1]!.message).toContain("Keep every condition and remark the brief gives");
+  // A code call with the brief's argument names gets 56 characters; plain words still get 40.
+  const call = "progress_add(accepted, by verifier, baseRevision)";
+  const prose = "records the accepted event with its base revision";
+  const mixed = lintSequence(documentWith([
+    { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: call },
+    { kind: "message", id: "prose", from: "p1", to: "p2", line: "async", text: prose },
+  ]));
+  expect(call.length).toBeLessThanOrEqual(56);
+  expect(mixed.map(({ rule, target }) => [rule, target])).toEqual([["long-label", "prose"]]);
+  // A guard between 40 and 60 characters keeps every condition and passes.
+  const kept = lintSequence(documentWith([
+    { kind: "fragment", id: "f2", op: "opt", operands: [{ guard: "T3 signed in, Session done, paused or cancelled, Thread live", items: [] }] },
+  ]));
+  expect(kept).toEqual([]);
+});
+
+test("joined-calls reports one arrow that carries two calls", () => {
+  const results = lintSequence(documentWith([
+    { kind: "message", id: "joined", from: "p1", to: "p2", line: "async", text: "add(verify), then add(note)" },
+    { kind: "message", id: "one", from: "p1", to: "p2", line: "async", text: "add(verify)" },
+    { kind: "message", id: "summary", from: "p2", to: "p1", line: "return", text: "result, then settled" },
+  ]));
+
+  expect(results.map(({ rule, target }) => [rule, target])).toEqual([["joined-calls", "joined"]]);
+});
+
+test("leftward-call reports a call to a column on the left that the flow reaches later, once per pair", () => {
+  // p3 sends first, so it belongs in column 1; p1 and p2 sit left of it.
+  const results = lintSequence(documentWith([
+    { kind: "message", id: "start", from: "p3", to: "p1", line: "sync", text: "build" },
+    { kind: "message", id: "done", from: "p1", to: "p3", line: "return", text: "done" },
+    { kind: "message", id: "again", from: "p3", to: "p1", line: "sync", text: "fix" },
+    { kind: "message", id: "store", from: "p3", to: "p4", line: "sync", text: "save" },
+    { kind: "message", id: "event", from: "p4", to: "p3", line: "async", text: "saved event" },
+    {
+      kind: "fragment",
+      id: "f1",
+      op: "opt",
+      operands: [{ guard: "x", items: [{ kind: "message", id: "ask", from: "p3", to: "p2", line: "async", text: "ask" }] }],
+    },
+  ]));
+
+  // A message back to a participant the flow reached first ("saved event")
+  // and a return are not reported.
+  const leftward = results.filter(({ rule }) => rule === "leftward-call");
+  expect(leftward.map(({ target }) => target)).toEqual(["start", "ask"]);
+  expect(leftward[0]!.message).toContain("Move a right of c");
+});
+
+test("leftward-call stays quiet when a call goes back to the first caller", () => {
+  const results = lintSequence(documentWith([
+    { kind: "message", id: "start", from: "p1", to: "p2", line: "sync", text: "task" },
+    { kind: "message", id: "ask", from: "p2", to: "p1", line: "sync", text: "ask" },
+    { kind: "message", id: "answer", from: "p1", to: "p2", line: "return", text: "answer" },
+  ]));
+
+  expect(results.filter(({ rule }) => rule === "leftward-call")).toEqual([]);
+});

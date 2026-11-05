@@ -25,11 +25,16 @@ export const SEQUENCE_CSS_VARIABLES = {
 } as const;
 
 /**
- * The `@codecaine-ai/design-system` token behind each default color. Lines,
- * fragments and activation bars are three element families, so they take
- * categorical hue tokens (orange, blue, gray), each in the role it paints:
- * `.solid` for strokes and fills, `.text` for fragment labels. Activation
- * outlines take a border role; everything else takes a neutral role.
+ * The `@codecaine-ai/design-system` token behind each default color. Each
+ * color marks one kind of thing: orange the calls, blue the fragments,
+ * gray the scaffolding (participant boxes, lifelines and activation bars)
+ * and the returns, which share the lifeline color,
+ * yellow the notes, which comment on the flow. Participant boxes and
+ * lifelines take `color.text.muted` (5.73:1 on the page). Activation bars
+ * take `color.code.gutter-fg`, the nearest gray that reaches 3:1 on the page
+ * (3.53:1) and stays lighter than the lifeline. `.soft` paints the note
+ * fill and `.text` the fragment labels. Activation outlines take a border
+ * role; everything else takes a neutral role.
  *
  * `muted` is kept for compatibility. `--seq-muted` has no default of its own
  * (a host that sets it colors both activation fill and stroke), and its value
@@ -41,9 +46,13 @@ export const SEQUENCE_THEME_TOKENS = {
   fragmentLabelText: "color.blue.text",
   participantFill: "color.surface.panel",
   text: "color.text.body",
-  muted: "color.gray.solid",
-  activationFill: "color.gray.solid",
+  muted: "color.code.gutter-fg",
+  activationFill: "color.code.gutter-fg",
   activationStroke: "color.border.default",
+  lifeline: "color.text.muted",
+  participantStroke: "color.text.muted",
+  noteFill: "color.yellow.soft",
+  noteStroke: "color.gray.solid",
   background: "color.surface.page",
 } as const satisfies Record<string, ThemeTokenPath>;
 
@@ -52,9 +61,29 @@ export type SequenceThemeDefaults = Readonly<Record<SequenceThemeColor, string>>
 
 const THEME_COLORS = Object.keys(SEQUENCE_THEME_TOKENS) as SequenceThemeColor[];
 
+const HEX = /^#[0-9a-f]{6}$/i;
+const SRGB_MIX = /^color-mix\(in srgb, (#[0-9a-f]{6}) (\d+(?:\.\d+)?)%, (#[0-9a-f]{6})(?: (\d+(?:\.\d+)?)%)?\)$/i;
+
+/**
+ * A token value as `#rrggbb`. Some tokens are `color-mix(in srgb, …)` of two
+ * hex colors; the mix is worked out here, so every default stays a plain
+ * hex color that exports and color inputs can read.
+ */
+function hexColor(value: string): string {
+  if (HEX.test(value)) return value;
+  const mix = SRGB_MIX.exec(value);
+  if (!mix) return value;
+  const [, first, firstPercent, second, secondPercent] = mix;
+  const weight = Number(firstPercent) / (Number(firstPercent) + Number(secondPercent ?? 100 - Number(firstPercent)));
+  const channel = (hex: string, index: number): number => Number.parseInt(hex.slice(1 + index * 2, 3 + index * 2), 16);
+  return `#${[0, 1, 2].map((index) =>
+    Math.round(channel(first!, index) * weight + channel(second!, index) * (1 - weight)).toString(16).padStart(2, "0"),
+  ).join("")}`;
+}
+
 function themeDefaults(theme: ThemeName): SequenceThemeDefaults {
   const values = {} as Record<SequenceThemeColor, string>;
-  for (const color of THEME_COLORS) values[color] = flat[theme][SEQUENCE_THEME_TOKENS[color]];
+  for (const color of THEME_COLORS) values[color] = hexColor(flat[theme][SEQUENCE_THEME_TOKENS[color]]);
   return Object.freeze(values);
 }
 
@@ -90,6 +119,10 @@ const PINNED_COLORS = [
   "text",
   "activationFill",
   "activationStroke",
+  "lifeline",
+  "participantStroke",
+  "noteFill",
+  "noteStroke",
   "background",
 ] as const satisfies readonly SequenceThemeColor[];
 
@@ -185,9 +218,9 @@ export function resolveSequenceColors(style: SequenceStyle): SequenceResolvedCol
       vars.participantFill,
       defaults.participantFill,
     ),
-    participantStroke: pick(style.participant?.stroke, style.accent, vars.participantStroke, accentChain),
+    participantStroke: pick(style.participant?.stroke, style.accent, vars.participantStroke, defaults.participantStroke),
     participantText: pick(style.participant?.text, undefined, vars.participantText, textChain),
-    lifelineStroke: pick(style.lifeline?.stroke, style.accent, vars.lifeline, accentChain),
+    lifelineStroke: pick(style.lifeline?.stroke, style.accent, vars.lifeline, defaults.lifeline),
     messageStroke: pick(style.message?.stroke, style.accent, vars.message, accentChain),
     messageText: pick(style.message?.text, undefined, vars.messageText, textChain),
     activationFill: pick(
@@ -209,9 +242,9 @@ export function resolveSequenceColors(style: SequenceStyle): SequenceResolvedCol
       style.note?.fill,
       style.participantFill,
       vars.noteFill,
-      varOr(vars.participantFill, defaults.participantFill),
+      defaults.noteFill,
     ),
-    noteStroke: pick(style.note?.stroke, style.accent, vars.noteStroke, accentChain),
+    noteStroke: pick(style.note?.stroke, style.accent, vars.noteStroke, defaults.noteStroke),
     noteText: pick(style.note?.text, undefined, vars.noteText, textChain),
   };
 }

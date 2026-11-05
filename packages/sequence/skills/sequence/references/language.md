@@ -46,6 +46,16 @@ Fields are in fixed order:
 
 The only explicit non-default kind is `kind=actor`. `kind=participant` is the default and is omitted in canonical output. Participant array order is therefore both declaration order and left-to-right column order.
 
+Order the columns before you write the participant lines. Each column that an arrow crosses makes the flow harder to follow. Follow these steps:
+
+1. Find the first caller: the participant that sends the first message. Put it in column 1, even when an actor appears first in the brief.
+2. Add each other participant in the order it first receives a message, a return included. Most calls then run left to right.
+3. Count the messages of each pair of participants, in both directions.
+4. For each pair with 3 or more messages, check that no other column sits between the two participants.
+5. If a column sits between a busy pair, move the right one of the two left, next to the other. Then do step 4 again.
+
+Never move a participant left of the participant that first calls it. For example, a kernel plugin writes `trace.db` 6 times. Put `trace.db` in the column right of the plugin, even when the plugin calls two providers first.
+
 ## The sequence
 
 The sequence block is mandatory and appears exactly once:
@@ -67,11 +77,13 @@ seq
 
 The form is `<from> <arrow> <to> text=<v>`. Both references must name declared participant numbers.
 
-| arrow | message line | rendering |
-| --- | --- | --- |
-| `>` | sync | solid line, filled arrowhead |
-| `->` | async | solid line, open arrowhead |
-| `-->` | return | dashed line, open arrowhead |
+| arrow | message line | rendering | use it when |
+| --- | --- | --- | --- |
+| `>` | sync | solid line, filled arrowhead | the caller waits for the reply: a tool call, an RPC, an HTTP request |
+| `->` | async | solid line, open arrowhead | the sender does not wait: an event, a notification, a fire-and-forget job |
+| `-->` | return | dashed line, open arrowhead | the reply to an earlier sync call comes back |
+
+Choose the arrow by whether the caller waits. A call whose caller waits for the reply is sync (`>`), and its reply is a return (`-->`), even when the reply is an error. An MCP tool call, an RPC and an HTTP request with its response are all sync. Use async (`->`) only for a message the sender does not wait on.
 
 A self-message uses the same number on both sides:
 
@@ -221,7 +233,7 @@ The parser collects multiple errors where feasible. Tabs, indentation not in 2-s
   - Numbers provide temporary program identity.
   - Stable ids are regenerated deterministically during parsing.
 - **Activations**
-  - Activation bars are derived from sync calls and matching returns within operand scope.
+  - Layout derives each activation bar from sync calls, their matching returns and the turns of each caller. A caller that no call holds active gets a bar for each turn in which it waits on a sync call.
   - They are not expressible in the language.
 - **Patch commands**
   - An agent rewrites the whole program.

@@ -3,6 +3,7 @@ import { flat } from "@codecaine-ai/design-system";
 import { cleanup, render, screen } from "@testing-library/react";
 
 import {
+  SEQUENCE_LAYOUT,
   SEQUENCE_THEME_DEFAULTS,
   SEQUENCE_THEME_DEFAULTS_DARK,
   SequenceViewer,
@@ -14,6 +15,7 @@ import {
   type SequenceTextMetrics,
 } from "../index";
 import { combinedFragments, loginFlow, minimal } from "../fixtures";
+import { resolveSequenceColors } from "../theme";
 
 afterEach(cleanup);
 
@@ -126,6 +128,19 @@ describe("sequence text measurement", () => {
       .toBeLessThanOrEqual(note.box.y + note.box.height);
   });
 
+  test("a note's text block sits centered in its box, one line or several", () => {
+    for (const text of ["cold path", "first\nsecond\nthird"]) {
+      const doc = withNote(text);
+      const note = layoutSequence(doc).notes[0]!;
+      const drawn = svgElement(renderSequenceSvgString(doc)).querySelector(".seq-note text")!;
+      const size = drawnFont(drawn).size;
+      // Glyphs reach 0.97 em above the first baseline and 0.25 em below the last.
+      const top = Number(drawn.getAttribute("y")) - size * 0.97;
+      const bottom = Number(drawn.getAttribute("y")) + (note.lines.length - 1) * note.lineHeight + size * 0.25;
+      expect((top + bottom) / 2).toBeCloseTo(note.box.y + note.box.height / 2, 1);
+    }
+  });
+
   test("renders explicit note line breaks as separate tspans", () => {
     const doc = withNote("first\nsecond\n\nfourth");
     const note = layoutSequence(doc).notes[0]!;
@@ -178,7 +193,9 @@ describe("sequence text measurement", () => {
 
     expect(drawnLines(svg.querySelector(".seq-note text")!)).toEqual(["alpha", "beta", "gamma"]);
     expect(drawnLines(svg.querySelector(".seq-title")!)).toEqual(["Two", "words"]);
-    expect(noteRequest.maxWidth).toBe(note.box.width - 2 * (note.label.x - note.box.x));
+    // Notes wrap at NOTE_W; the box then hugs the lines, so it is narrower.
+    expect(noteRequest.maxWidth).toBe(SEQUENCE_LAYOUT.NOTE_W - 2 * (note.label.x - note.box.x));
+    expect(note.box.width).toBeLessThanOrEqual(SEQUENCE_LAYOUT.NOTE_W + 10);
     expect(titleRequest.maxWidth).toBe(layout.width - 2 * layout.title!.anchor.x);
   });
 });
@@ -268,10 +285,41 @@ describe("sequence SVG rendering", () => {
       "--seq-fragment-accent": flat.dark["color.blue.solid"],
       "--seq-participant-fill": flat.dark["color.surface.panel"],
       "--seq-text": flat.dark["color.text.body"],
-      "--seq-activation-fill": flat.dark["color.gray.solid"],
+      "--seq-activation-fill": flat.dark["color.code.gutter-fg"],
       "--seq-activation-stroke": flat.dark["color.border.default"],
+      "--seq-note-stroke": flat.dark["color.gray.solid"],
+      "--seq-lifeline": flat.dark["color.text.muted"],
+      "--seq-participant-stroke": flat.dark["color.text.muted"],
+      // color-mix token, worked out to the hex a standalone SVG can paint.
+      "--seq-note-fill": "#2e2b23",
       "--seq-bg": flat.dark["color.surface.page"],
     });
+  });
+
+  test("lifelines and notes default to their own colors, not the accent", () => {
+    const colors = resolveSequenceColors({});
+    expect(colors.lifelineStroke).toBe(`var(--seq-lifeline, var(--ds-color-text-muted, ${SEQUENCE_THEME_DEFAULTS.lifeline}))`);
+    expect(colors.noteFill).toBe(`var(--seq-note-fill, var(--ds-color-yellow-soft, ${SEQUENCE_THEME_DEFAULTS.noteFill}))`);
+    expect(colors.noteStroke).toBe(`var(--seq-note-stroke, var(--ds-color-gray-solid, ${SEQUENCE_THEME_DEFAULTS.noteStroke}))`);
+  });
+
+  test("participant boxes default to gray while messages keep the accent", () => {
+    const colors = resolveSequenceColors({});
+    expect(colors.participantStroke).toBe(`var(--seq-participant-stroke, var(--ds-color-text-muted, ${SEQUENCE_THEME_DEFAULTS.participantStroke}))`);
+    expect(colors.messageStroke).toContain("--seq-accent");
+  });
+
+  test("a return and its arrowhead take the lifeline color, and a document's lifeline stroke recolors them", () => {
+    const strokes = (doc: SequenceDocument) => {
+      const svg = svgElement(renderSequenceSvgString(doc));
+      const line = (kind: string) => svg.querySelector(`.seq-message--${kind} line`)!.getAttribute("stroke");
+      const head = svg.querySelector('[data-seq-marker="return"] path')!.getAttribute("stroke");
+      return { call: line("sync"), reply: line("return"), head };
+    };
+    const { lifelineStroke, messageStroke } = resolveSequenceColors({});
+    expect(strokes(minimal)).toEqual({ call: messageStroke, reply: lifelineStroke, head: lifelineStroke });
+    expect(strokes({ ...minimal, style: { lifeline: { stroke: "#222222" }, message: { stroke: "#ff0000" } } }))
+      .toEqual({ call: "#ff0000", reply: "#222222", head: "#222222" });
   });
 
   test("shortcuts still color elements that have no per-element override", () => {
@@ -358,8 +406,13 @@ test("renders matching top and bottom participants, including actors", () => {
   }
 });
 
-test("paints branch labels above activation bars with a background halo", () => {
+test("paints an opaque background box behind every message label and guard, above lines and bars", () => {
   const svg = renderSequenceSvgString(combinedFragments);
   expect(svg.indexOf('class="seq-fragment-labels"')).toBeGreaterThan(svg.indexOf('class="seq-activations"'));
-  expect(svg).toMatch(/class="seq-fragment-guard"[^>]*paint-order="stroke"/);
+  expect(svg.indexOf('class="seq-messages"')).toBeGreaterThan(svg.indexOf('class="seq-activations"'));
+  const background = /class="seq-background"[^>]*fill="([^"]+)"/.exec(svg)![1];
+  const labels = svg.match(/<text[^>]*class="seq-(?:message-label|fragment-guard)"/g) ?? [];
+  const boxed = svg.match(new RegExp(`<rect class="seq-label-box"[^>]*fill="${background!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}" /><text[^>]*class="seq-(?:message-label|fragment-guard)"`, "g")) ?? [];
+  expect(labels.length).toBeGreaterThan(0);
+  expect(boxed.length).toBe(labels.length);
 });

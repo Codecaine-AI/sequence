@@ -26,6 +26,13 @@
         "b-language-fields-are-in-fixed-orde-18",
         "b-language-field-required-val-19-table",
         "b-language-the-only-explicit-non-de-20",
+        "b-language-order-the-columns-87",
+        "b-language-order-step-88",
+        "b-language-order-step-89",
+        "b-language-order-step-90",
+        "b-language-order-step-91",
+        "b-language-order-step-92",
+        "b-language-order-example-93",
         "b-language-the-sequence-21",
         "b-language-the-sequence-block-is-ma-22",
         "b-language-seq-1-2-text-req-23-code",
@@ -34,6 +41,7 @@
         "b-language-1-2-text-input-userna-26-code",
         "b-language-the-form-is-from-arr-27",
         "b-language-arrow-message-line-28-table",
+        "b-language-choose-the-arrow-86",
         "b-language-a-self-message-uses-the-29",
         "b-language-2-2-text-validate-30-code",
         "b-language-combined-fragments-31",
@@ -547,6 +555,111 @@
       ],
       "children": []
     },
+    "b-language-order-the-columns-87": {
+      "id": "b-language-order-the-columns-87",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Order the columns before you write the participant lines. Each column that an arrow crosses makes the flow harder to follow. Follow these steps:"
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-88": {
+      "id": "b-language-order-step-88",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "Find the first caller: the participant that sends the first message. Put it in column 1, even when an actor appears first in the brief."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-89": {
+      "id": "b-language-order-step-89",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "Add each other participant in the order it first receives a message, a return included. Most calls then run left to right."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-90": {
+      "id": "b-language-order-step-90",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "Count the messages of each pair of participants, in both directions."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-91": {
+      "id": "b-language-order-step-91",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "For each pair with 3 or more messages, check that no other column sits between the two participants."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-92": {
+      "id": "b-language-order-step-92",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "If a column sits between a busy pair, move the right one of the two left, next to the other. Then do step 4 again."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-example-93": {
+      "id": "b-language-order-example-93",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Never move a participant left of the participant that first calls it. For example, a kernel plugin writes "
+        },
+        {
+          "insert": "trace.db",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " 6 times. Put "
+        },
+        {
+          "insert": "trace.db",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " in the column right of the plugin, even when the plugin calls two providers first."
+        }
+      ],
+      "children": []
+    },
     "b-language-the-sequence-21": {
       "id": "b-language-the-sequence-21",
       "type": "heading",
@@ -663,7 +776,8 @@
         "columns": [
           "arrow",
           "message line",
-          "rendering"
+          "rendering",
+          "use it when"
         ],
         "rows": [
           [
@@ -676,7 +790,8 @@
               }
             ],
             "sync",
-            "solid line, filled arrowhead"
+            "solid line, filled arrowhead",
+            "the caller waits for the reply: a tool call, an RPC, an HTTP request"
           ],
           [
             [
@@ -688,7 +803,8 @@
               }
             ],
             "async",
-            "solid line, open arrowhead"
+            "solid line, open arrowhead",
+            "the sender does not wait: an event, a notification, a fire-and-forget job"
           ],
           [
             [
@@ -700,10 +816,49 @@
               }
             ],
             "return",
-            "dashed line, open arrowhead"
+            "dashed line, open arrowhead",
+            "the reply to an earlier sync call comes back"
           ]
         ]
       },
+      "children": []
+    },
+    "b-language-choose-the-arrow-86": {
+      "id": "b-language-choose-the-arrow-86",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Choose the arrow by whether the caller waits. A call whose caller waits for the reply is sync ("
+        },
+        {
+          "insert": ">",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "), and its reply is a return ("
+        },
+        {
+          "insert": "-->",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "), even when the reply is an error. An MCP tool call, an RPC and an HTTP request with its response are all sync. Use async ("
+        },
+        {
+          "insert": "->",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ") only for a message the sender does not wait on."
+        }
+      ],
       "children": []
     },
     "b-language-a-self-message-uses-the-29": {
@@ -1833,7 +1988,7 @@
       },
       "text": [
         {
-          "insert": "Activation bars are derived from sync calls and matching returns within operand scope."
+          "insert": "Layout derives each activation bar from sync calls, their matching returns and the turns of each caller. A caller that no call holds active gets a bar for each turn in which it waits on a sync call."
         }
       ],
       "children": []

@@ -12,6 +12,7 @@ import type {
 import {
   resolveSequenceTextMetrics,
   sequenceFont,
+  singleLineText,
   type ResolvedSequenceTextMetrics,
   type SeqFont,
   type SequenceMeasureInput,
@@ -39,21 +40,60 @@ export const SEQUENCE_LAYOUT = {
   HEADER_PAD_X: 16,
   ROW_H: 40,
   ACTIVATION_W: 12,
-  FRAG_PAD: 12,
+  FRAG_PAD: 18,
   FRAG_TAB_H: 20,
-  /** Vertical clearance before and after every fragment frame. */
+  /**
+   * Clear space between a frame edge and the nearest content outside it: an
+   * arrow, a note box or a sibling frame. Margins collapse: two sibling
+   * frames sit one margin apart, not two.
+   */
   FRAG_MARGIN_Y: 24,
-  /** Air between the tab/guard row and a fragment's first item. */
-  FRAG_INNER_TOP: 14,
-  /** Air between a fragment's last item and its bottom edge. */
-  FRAG_INNER_BOTTOM: 16,
-  /** Clearance above and below each dashed operand divider. */
-  FRAG_DIVIDER_GAP: 10,
-  /** Reserved row for an operand guard label rendered below a divider. */
-  FRAG_GUARD_H: 18,
+  /** Air between the tab row and the band of a fragment's first row. */
+  FRAG_INNER_TOP: 12,
+  /**
+   * Clear space between an operand's last content (an arrow, a note box or a
+   * nested frame's bottom edge) and the divider or bottom edge below it. Every
+   * frame kind uses it, so nested bottom edges sit this far apart too.
+   */
+  FRAG_INNER_PAD: 24,
+  /** Air above a nested frame that opens its operand, below the tab or guard row. */
+  FRAG_NESTED_TOP: 4,
+  /**
+   * From a divider to the band of its operand's first row, when the operand
+   * shows a guard: the guard row, as tall as the tab row plus FRAG_INNER_TOP.
+   */
+  FRAG_GUARD_H: 32,
+  /** From a divider to the baseline of the guard below it. */
+  FRAG_GUARD_BASELINE: 18,
+  /** Furthest a guard moves right from its place to clear a lifeline. */
+  GUARD_SHIFT_MAX: 120,
+  /**
+   * Clear space between a frame tab or a moved message label and the
+   * nearest lifeline or activation bar.
+   */
+  LABEL_CLEARANCE: 12,
+  /**
+   * Clear space between a guard and the nearest lifeline or activation bar
+   * on either side. A guard sits in a frame's header row, where a line
+   * close to its last word reads as crossing it, so it gets more air than
+   * a message label.
+   */
+  GUARD_CLEARANCE: 24,
   /** Extra clearance above and below note boxes. */
   NOTE_MARGIN_Y: 8,
-  NOTE_W: 160,
+  /** Clear space between a note box and a frame edge or divider below it. */
+  NOTE_EDGE_GAP: 16,
+  /**
+   * Clear space between a frame edge or divider and the end of a bar that
+   * fills the band of the row next to it: a sync call's callee bar, or a
+   * turn that ends on a send. The edge sits this far below the band.
+   */
+  BAR_EDGE_GAP: 12,
+  /**
+   * Width a note's text wraps at. The box hugs the wrapped lines and adds
+   * room for its folded corner, so it is at most 10 px wider than this.
+   */
+  NOTE_W: 220,
   MARGIN: 24,
   SELF_LOOP_W: 40,
 } as const;
@@ -112,6 +152,11 @@ export interface SequenceMessageLayout extends SequenceRowBase {
   y2: number;
   selfLoop?: SeqPoint[];
   label: SeqTextAnchor;
+  /**
+   * The label's measured text box plus {@link LABEL_BOX_PAD}. The renderer
+   * fills it with the background so no line shows through the text.
+   */
+  labelBox: SeqRect;
 }
 
 export interface SequenceFragmentGuardLayout {
@@ -120,6 +165,8 @@ export interface SequenceFragmentGuardLayout {
   /** Already bracketed for direct SVG rendering. */
   label: string;
   anchor: SeqTextAnchor;
+  /** The guard's text box plus {@link LABEL_BOX_PAD}; empty when there is no label. */
+  box: SeqRect;
 }
 
 export interface SequenceFragmentLayout extends SequenceRowBase {
@@ -202,7 +249,10 @@ interface ScopeMessageEvent {
 
 interface ScopeFragmentEvent {
   type: "fragment";
+  frame: SequenceFragmentLayout;
   operands: LayoutScope[];
+  /** Top of each operand's content band, just below the tab or divider. */
+  operandTops: number[];
 }
 
 type ScopeEvent = ScopeMessageEvent | ScopeFragmentEvent;
@@ -220,7 +270,47 @@ interface MutableActivation {
   rect: SeqRect;
   startMessageId: string;
   endMessageId?: string;
+  /**
+   * Set on a bar for a sync call with no matching return: where the bar ends
+   * if no later row of its lifeline extends it.
+   */
+  shortEnd?: number;
+  /**
+   * Set on a caller-side bar: the rows that end its turn, one per path
+   * through the frames it ends inside.
+   */
+  endIds?: ReadonlySet<string>;
+  /** Frames this bar enters and ends inside, outermost last-recorded. */
+  cuts: ActivationCut[];
 }
+
+/**
+ * A frame that a bar enters from above and ends inside. The bar stops above
+ * the frame and continues as one piece per operand, so it never crosses a
+ * frame edge or divider that its call does not enclose.
+ */
+interface ActivationCut {
+  top: number;
+  bottom: number;
+  pieces: { top: number; bottom: number }[];
+}
+
+/**
+ * A turn of a participant that no call holds active: it starts at an async
+ * message the participant receives, or at its first send, and lasts until
+ * its last send or the last reply it gets. It gets a bar when the
+ * participant waits on a sync call during it.
+ */
+interface CallerTurn {
+  participantId: string;
+  endIds: ReadonlySet<string>;
+}
+
+/** The callerId of a caller-side bar. No return matches it. */
+const TURN_CALLER = "\u0000turn";
+
+/** The frame operands that enclose a row, outermost first. */
+type RowPath = readonly { frame: string; operand: number }[];
 
 interface ActivationClosure {
   endY: number;
@@ -234,10 +324,138 @@ interface ActivationClosure {
 const DESCENT_EM = 0.25;
 /** Inter's ascender (0.969 em): the tallest glyph, accents included. */
 const ASCENT_EM = 0.97;
-/** Base px a label's halo (a 4 px background stroke) reaches past its glyphs. */
-const LABEL_HALO = 2;
+/**
+ * Base px a label's background box reaches past its glyphs, per side. The
+ * vertical pad keeps a clear gap between a lifeline's end and the glyphs,
+ * so the line reads as stopping at the label, not running through it. A
+ * message label's box also reaches down to its arrow.
+ */
+export const LABEL_BOX_PAD = { x: 3, y: 4 } as const;
+/** Base px a label's background box reaches above its glyphs. */
+const LABEL_HALO = LABEL_BOX_PAD.y;
+/** Base px between an activation bar and an over note moved beside it. */
+const NOTE_BAR_GAP = 4;
 /** Base px from the top margin to the title's first baseline. */
 const TITLE_BASELINE = 18;
+
+/**
+ * The visible pieces of a bar: a bar that ends inside a frame stops
+ * `frameGap` above the frame and continues inside each operand.
+ */
+function barSegments(bar: MutableActivation, frameGap: number): { top: number; bottom: number }[] {
+  let segments = [{ top: bar.rect.y, bottom: bar.rect.y + bar.rect.height }];
+  const cuts = [...bar.cuts].sort((a, b) => a.top - b.top || (b.bottom - b.top) - (a.bottom - a.top));
+  for (const cut of cuts) {
+    const next: { top: number; bottom: number }[] = [];
+    let entered = false;
+    for (const segment of segments) {
+      if (segment.bottom <= cut.top || segment.top >= cut.bottom) {
+        next.push(segment);
+        continue;
+      }
+      entered = true;
+      const above = Math.min(segment.bottom, cut.top - frameGap);
+      if (above > segment.top) next.push({ top: segment.top, bottom: above });
+    }
+    if (entered) {
+      // The first operand's piece continues the bar across the frame's
+      // top edge; later operands restart below their divider.
+      const [first, ...rest] = cut.pieces;
+      if (first && first.bottom > first.top) {
+        const above = [...next].reverse().find((segment) => segment.bottom <= cut.top && segment.bottom >= cut.top - frameGap);
+        if (above) above.bottom = first.bottom;
+        else next.push(first);
+      }
+      for (const piece of rest) {
+        if (piece.bottom > piece.top) next.push(piece);
+      }
+    }
+    segments = next.sort((a, b) => a.top - b.top);
+  }
+  return segments;
+}
+
+/**
+ * Finds each participant's caller-side turns, UML style: a participant that
+ * no call holds active is active from the message that starts its turn
+ * until its last send or the last reply it gets in that turn. An async
+ * message it receives while idle starts a new turn, unless it answers the
+ * participant's last message. A turn never leaves the
+ * frame operand it starts in, and it needs a sync call the participant
+ * waits on, so a relay that only passes async messages on gets no bar.
+ * `heldSpans` are the visible pieces of the matched bars of a first walk:
+ * each holds its lifeline active, so rows under it belong to no turn. An
+ * operand that does not see a bar leaves its rows free for a turn.
+ */
+function findCallerTurns(
+  scope: LayoutScope,
+  heldSpans: readonly { participantId: string; top: number; bottom: number }[],
+): Map<string, CallerTurn[]> {
+  const ordered: { row: SequenceMessageLayout; path: RowPath }[] = [];
+  const collect = (inner: LayoutScope, path: RowPath): void => {
+    for (const event of inner.events) {
+      if (event.type === "message") ordered.push({ row: event.row, path });
+      else event.operands.forEach((operand, index) => collect(operand, [...path, { frame: event.frame.id, operand: index }]));
+    }
+  };
+  collect(scope, []);
+  const held = (participantId: string, y: number): boolean => heldSpans.some((span) =>
+    span.participantId === participantId && span.top <= y && y <= span.bottom);
+  const within = (path: RowPath, prefix: RowPath): boolean =>
+    prefix.every((step, index) => path[index]?.frame === step.frame && path[index]?.operand === step.operand);
+  // Two rows lie on one run unless some frame puts them in different operands.
+  const oneRun = (a: RowPath, b: RowPath): boolean => {
+    for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
+      if (a[index]!.frame !== b[index]!.frame) return true;
+      if (a[index]!.operand !== b[index]!.operand) return false;
+    }
+    return true;
+  };
+  // Both ends of an async message can start a turn on its row.
+  const turns = new Map<string, CallerTurn[]>();
+  const participantIds = new Set(ordered.flatMap(({ row }) => [row.from, row.to]));
+  for (const participantId of participantIds) {
+    let turn: { start: SequenceMessageLayout; path: RowPath; rows: typeof ordered; waits: boolean } | undefined;
+    const finish = (): void => {
+      if (turn?.waits) {
+        const { rows } = turn;
+        const ends = rows.filter(({ path }, index) => !rows.slice(index + 1).some((later) => oneRun(path, later.path)));
+        if (ends.some(({ row }) => row !== turn!.start)) {
+          const starting = turns.get(turn.start.id) ?? [];
+          starting.push({ participantId, endIds: new Set(ends.map(({ row }) => row.id)) });
+          turns.set(turn.start.id, starting);
+        }
+      }
+      turn = undefined;
+    };
+    for (const entry of ordered) {
+      const { row, path } = entry;
+      if (row.from !== participantId && row.to !== participantId) continue;
+      if (held(participantId, row.y)) continue;
+      if (row.to === participantId && row.from !== participantId && row.line === "async") {
+        // An answer from the participant the turn last messaged continues
+        // the turn: the participant was waiting for it.
+        const last = turn?.rows[turn.rows.length - 1]?.row;
+        if (turn && last?.from === participantId && last.to === row.from && within(path, turn.path)) {
+          turn.rows.push(entry);
+          continue;
+        }
+        finish();
+        turn = { start: row, path, rows: [], waits: false };
+        continue;
+      }
+      const acts = (row.from === participantId && row.line !== "return")
+        || (row.to === participantId && row.from !== participantId && row.line === "return");
+      if (!acts) continue;
+      if (turn && !within(path, turn.path)) finish();
+      turn ??= { start: row, path, rows: [], waits: false };
+      turn.rows.push(entry);
+      if (row.line === "sync" && row.to !== participantId) turn.waits = true;
+    }
+    finish();
+  }
+  return turns;
+}
 
 /**
  * Computes all sequence geometry without consulting the DOM. Text metrics are
@@ -263,8 +481,19 @@ export function layoutSequence(
   // notes. Bars nest the same way at any spacing, so one more pass reserves
   // that room. The title wraps at the final width, which vertical placement
   // never changes, so the last pass only moves everything below it down.
-  if (pass.dockingExcess.size > 0 || (pass.activationDepth.size > 0 && pass.layout.notes.length > 0)) {
-    hints = { ...hints, activationDepth: pass.activationDepth, dockingExcess: pass.dockingExcess };
+  // An over note on an active bar moves beside the bar, which needs a
+  // note's width of room; which notes do comes out of a pass too.
+  if (
+    pass.dockingExcess.size > 0
+    || pass.notesBesideBars.size > 0
+    || (pass.activationDepth.size > 0 && pass.layout.notes.length > 0)
+  ) {
+    hints = {
+      ...hints,
+      activationDepth: pass.activationDepth,
+      dockingExcess: pass.dockingExcess,
+      notesBesideBars: pass.notesBesideBars,
+    };
     pass = computeLayout(doc, metrics, hints);
   }
   const titleLineCount = pass.layout.title?.lines.length ?? 1;
@@ -283,9 +512,16 @@ interface LayoutHints {
    * on unnested bars (nested bars step right by a third of a bar per level).
    */
   dockingExcess: ReadonlyMap<string, number>;
+  /** Ids of over notes that an activation bar of their own lifeline runs through. */
+  notesBesideBars: ReadonlySet<string>;
 }
 
-const NO_HINTS: LayoutHints = { titleLineCount: 1, activationDepth: new Map(), dockingExcess: new Map() };
+const NO_HINTS: LayoutHints = {
+  titleLineCount: 1,
+  activationDepth: new Map(),
+  dockingExcess: new Map(),
+  notesBesideBars: new Set(),
+};
 
 interface LayoutPass extends Omit<LayoutHints, "titleLineCount"> {
   layout: SequenceLayout;
@@ -294,7 +530,7 @@ interface LayoutPass extends Omit<LayoutHints, "titleLineCount"> {
 function computeLayout(
   doc: SequenceDocument,
   metrics: ResolvedSequenceTextMetrics,
-  { titleLineCount, activationDepth, dockingExcess }: LayoutHints,
+  { titleLineCount, activationDepth, dockingExcess, notesBesideBars }: LayoutHints,
 ): LayoutPass {
   const rawScale = doc.style.scale;
   const scale = typeof rawScale === "number" && Number.isFinite(rawScale) && rawScale > 0
@@ -393,22 +629,126 @@ function computeLayout(
   // bars reach further right than left.
   const nestedBarReach = (index: number): number =>
     unit(activationW / 3) * (activationDepth.get(doc.participants[index]!.id) ?? 0);
+  const frameColumns = (items: SequenceItem[], found: Set<number>): Set<number> => {
+    for (const item of items) {
+      if (item.kind === "message") {
+        found.add(participantIndex(item.from));
+        found.add(participantIndex(item.to));
+      } else if (item.kind === "note") {
+        found.add(participantIndex(item.anchor));
+      } else {
+        for (const operand of item.operands) frameColumns(operand.items, found);
+      }
+    }
+    found.delete(-1);
+    return found;
+  };
+  // Guards sit near their frame's left edge. The gap right of the frame's
+  // leftmost lifeline holds the widest guard, so no lifeline runs through it.
+  const guardClearance = unit(SEQUENCE_LAYOUT.GUARD_CLEARANCE);
+  const reserveGuardRoom = (fragment: SequenceFragment): void => {
+    const columns = [...frameColumns(fragment.operands.flatMap((operand) => operand.items), new Set())];
+    if (columns.length < 2) return;
+    const left = Math.min(...columns);
+    const widest = Math.max(...fragment.operands.map((operand, index) => {
+      const label = operand.guard ? `[${operand.guard}]` : fragment.op === "alt" && index > 0 ? "[else]" : "";
+      return label ? safeMeasure(label, guardFont) : 0;
+    }));
+    if (widest === 0) return;
+    widenSpan(left, left + 1, widest + unit(activationW) + guardClearance * 2 + nestedBarReach(left));
+  };
+  // Notes wrap at NOTE_W minus the label inset on each side and grow
+  // downward: each line adds one note line height.
+  const noteWidth = unit(SEQUENCE_LAYOUT.NOTE_W);
+  const noteInset = unit(notePad + 2);
+  const noteLineHeight = noteFont.lineHeight ?? noteFont.size;
+  // The text block sits centered in the note box. Each line centers its
+  // glyphs (ascent to descent) in its line height, which puts the first
+  // baseline this far below the block's top.
+  const noteFirstBaseline = noteLineHeight / 2 + noteFont.size * (ASCENT_EM - DESCENT_EM) / 2;
+  // Breaks a note into as many lines as a greedy wrap at the full width
+  // gives, at the narrowest width that keeps that count, so the last line
+  // is never one word left alone.
+  const wrapBalanced = (text: string, font: SeqFont, maxWidth: number): string[] => {
+    const lines = metrics.wrap(text, font, maxWidth);
+    if (lines.length < 2) return lines;
+    const words = (broken: string[]): string => broken.flatMap((line) => line.split(/\s+/).filter(Boolean)).join(" ");
+    const wholeWords = words(lines);
+    let best = lines;
+    let low = 0;
+    let high = maxWidth;
+    for (let step = 0; step < 12; step += 1) {
+      const width = (low + high) / 2;
+      const trial = metrics.wrap(text, font, width);
+      if (trial.length <= lines.length && words(trial) === wholeWords) {
+        best = trial;
+        high = width;
+      } else {
+        low = width;
+      }
+    }
+    return best;
+  };
+  const noteLinesById = new Map<string, string[]>();
+  const noteLines = (note: SequenceNote): string[] => {
+    let lines = noteLinesById.get(note.id);
+    if (!lines) {
+      lines = wrapBalanced(note.text, noteFont, noteWidth - noteInset * 2);
+      noteLinesById.set(note.id, lines);
+    }
+    return lines;
+  };
+  const noteFold = unit(10);
+  /**
+   * A note's box hugs its wrapped lines: the widest line plus the inset per
+   * side and room for the folded corner.
+   */
+  const noteBoxWidth = (note: SequenceNote): number => Math.max(
+    unit(72),
+    Math.max(...noteLines(note).map((line) => safeMeasure(line, noteFont))) + noteInset * 2 + noteFold,
+  );
+
   const reserveColumnWidths = (items: SequenceItem[], fragmentDepth: number): void => {
     for (const item of items) {
       if (item.kind === "fragment") {
+        reserveGuardRoom(item);
         for (const operand of item.operands) reserveColumnWidths(operand.items, fragmentDepth + 1);
       } else if (item.kind === "message") {
-        if (item.from === item.to) continue;
+        if (item.from === item.to) {
+          // A self-call's label starts right of its loop, past the nested
+          // bar, and must stop short of the next lifeline and its bar.
+          const index = participantIndex(item.from);
+          if (index < 0 || index + 1 >= centers.length) continue;
+          widenSpan(
+            index,
+            index + 1,
+            safeMeasure(item.text, messageFont)
+              + unit(activationW * 4 / 3 + SEQUENCE_LAYOUT.SELF_LOOP_W + labelGap + LABEL_BOX_PAD.x + SEQUENCE_LAYOUT.GRID)
+              + nestedBarReach(index),
+          );
+          continue;
+        }
         const from = participantIndex(item.from);
         const to = participantIndex(item.to);
         if (from < 0 || to < 0) continue;
+        const textWidth = safeMeasure(item.text, messageFont);
         widenSpan(
           Math.min(from, to),
           Math.max(from, to),
-          safeMeasure(item.text, messageFont)
+          textWidth
             + unit(activationW * 2 + 24)
             + (dockingExcess.get(item.id) ?? 0),
         );
+        // A label on an arrow that crosses a lifeline needs one gap that
+        // holds it whole, clear of the lifelines and bars on either side,
+        // or it straddles a lifeline. The gap nearest the arrow's midpoint
+        // holds it, the sender's side on a tie, where the label moves to.
+        const gaps = Math.abs(to - from);
+        if (gaps >= 2) {
+          const first = Math.min(from, to);
+          const gap = first + (from < to ? Math.floor((gaps - 1) / 2) : Math.ceil((gaps - 1) / 2));
+          widenSpan(gap, gap + 1, textWidth + unit(activationW + SEQUENCE_LAYOUT.LABEL_CLEARANCE * 2 + LABEL_BOX_PAD.x * 2));
+        }
       } else {
         const index = participantIndex(item.anchor);
         if (index < 0) continue;
@@ -416,13 +756,20 @@ function computeLayout(
         // fragment pad out; over notes straddle it, nudged right by half a
         // bar when an activation runs through them. Every enclosing frame
         // adds one more pad around the box.
+        // An over note that a bar runs through sits beside the bar instead.
         const frameReach = unit(fragPad) * fragmentDepth;
-        const sideReach = unit(fragPad + SEQUENCE_LAYOUT.NOTE_W) + frameReach;
-        const overReach = unit(SEQUENCE_LAYOUT.NOTE_W / 2) + frameReach;
+        const boxWidth = noteBoxWidth(item);
+        const sideReach = unit(fragPad) + boxWidth + frameReach;
+        const overReach = boxWidth / 2 + frameReach;
+        const besideBar = item.side === "over" && notesBesideBars.has(item.id);
+        const besideReach = unit(activationW / 2 + NOTE_BAR_GAP) + boxWidth
+          + nestedBarReach(index) + frameReach;
         const rightReach = item.side === "right"
           ? sideReach
-          : item.side === "over" ? overReach + unit(activationW / 2) : 0;
-        const leftReach = item.side === "left" ? sideReach : item.side === "over" ? overReach : 0;
+          : besideBar ? besideReach : item.side === "over" ? overReach + unit(activationW / 2) : 0;
+        const leftReach = item.side === "left"
+          ? sideReach
+          : item.side === "over" && !besideBar ? overReach : 0;
         if (rightReach > 0 && index + 1 < centers.length) {
           widenSpan(index, index + 1, rightReach + noteClearance);
         }
@@ -433,6 +780,43 @@ function computeLayout(
     }
   };
   reserveColumnWidths(doc.items, 0);
+  {
+    // The first lifeline sits exactly as far from the left margin as the
+    // widest thing that reaches left of it: its header, a frame (one pad
+    // past its leftmost header, or past the tab room left of that
+    // lifeline's bar, plus one pad per frame around it) or a note box.
+    // Each reach is measured left of the first lifeline's center.
+    const leftReachOf = (items: SequenceItem[]): number => {
+      let reach = Number.NEGATIVE_INFINITY;
+      for (const item of items) {
+        if (item.kind === "fragment") {
+          const columns = frameColumns(item.operands.flatMap((operand) => operand.items), new Set());
+          let own = Number.NEGATIVE_INFINITY;
+          if (columns.size > 0) {
+            const left = Math.min(...columns);
+            const leftX = centers[left]! - centers[0]!;
+            const tab = safeMeasure(item.op, fragmentOpFont) + unit(30);
+            own = Math.max(
+              headerWidths[left]! / 2 + unit(fragPad) - leftX,
+              unit(activationW / 2 + SEQUENCE_LAYOUT.LABEL_CLEARANCE) + tab - leftX,
+            );
+          }
+          const inner = Math.max(...item.operands.map((operand) => leftReachOf(operand.items)));
+          reach = Math.max(reach, own, inner + unit(fragPad));
+        } else if (item.kind === "note") {
+          const index = participantIndex(item.anchor);
+          if (index < 0 || item.side === "right") continue;
+          const boxWidth = noteBoxWidth(item);
+          const left = item.side === "left" ? unit(fragPad) + boxWidth : boxWidth / 2;
+          reach = Math.max(reach, left - (centers[index]! - centers[0]!));
+        }
+      }
+      return reach;
+    };
+    const reach = Math.max(headerWidths[0]! / 2, leftReachOf(doc.items));
+    const shift = unit(margin) + reach - centers[0]!;
+    for (let index = 0; index < centers.length; index += 1) centers[index]! += shift;
+  }
 
   const participantById = new Map<string, SequenceParticipantLayout>();
   const participants = doc.participants.map((participant, index): SequenceParticipantLayout => {
@@ -477,19 +861,13 @@ function computeLayout(
   const fragmentTabHeight = unit(SEQUENCE_LAYOUT.FRAG_TAB_H);
   const fragmentMarginY = unit(SEQUENCE_LAYOUT.FRAG_MARGIN_Y);
   const fragmentInnerTop = unit(SEQUENCE_LAYOUT.FRAG_INNER_TOP);
-  const fragmentInnerBottom = unit(SEQUENCE_LAYOUT.FRAG_INNER_BOTTOM);
-  const fragmentDividerGap = unit(SEQUENCE_LAYOUT.FRAG_DIVIDER_GAP);
+  const fragmentInnerPad = unit(SEQUENCE_LAYOUT.FRAG_INNER_PAD);
+  const fragmentNestedTop = unit(SEQUENCE_LAYOUT.FRAG_NESTED_TOP);
   const fragmentGuardHeight = unit(SEQUENCE_LAYOUT.FRAG_GUARD_H);
   const noteMarginY = unit(SEQUENCE_LAYOUT.NOTE_MARGIN_Y);
 
   const participantX = (id: string): number => participantById.get(id)?.centerX ?? sideGutter;
 
-  // Notes keep the fixed NOTE_W column the side gutters are sized for and
-  // grow downward instead: text wraps at the box width minus the label inset
-  // on each side, and each line adds one note line height.
-  const noteWidth = unit(SEQUENCE_LAYOUT.NOTE_W);
-  const noteInset = unit(notePad + 2);
-  const noteLineHeight = noteFont.lineHeight ?? noteFont.size;
   const noteHeight = (lineCount: number): number => Math.max(
     unit(24 + notePad * 2),
     lineCount * noteLineHeight + unit(notePad * 2),
@@ -498,6 +876,30 @@ function computeLayout(
   // row gaps that label's ascent and halo would reach into the note box.
   const messageLabelReach = unit(labelGap + LABEL_HALO) + messageFont.size * ASCENT_EM;
   const noteBottomMargin = Math.max(noteMarginY, messageLabelReach - rowHeight / 2);
+  /**
+   * Empty space a row's band leaves below its content: a message band ends
+   * half a row below its (last) arrow, a note band its bottom margin below
+   * the box. A frame closes its operand with no trailing margin.
+   */
+  const bandBlank = (item: SequenceItem | undefined): number =>
+    item?.kind === "fragment" ? 0 : item?.kind === "note" ? noteBottomMargin : rowHeight / 2;
+  /**
+   * How far a frame edge or divider sits from the content of the row next
+   * to it. A sync call leaves a bar that fills its band, so the edge keeps
+   * BAR_EDGE_GAP below the band. A note box keeps NOTE_EDGE_GAP. Any other
+   * row keeps `pad` from its arrow, or from a nested frame's edge.
+   */
+  const edgeGap = (item: SequenceItem | undefined, pad: number): number =>
+    item?.kind === "message" && item.line === "sync"
+      ? rowHeight / 2 + unit(SEQUENCE_LAYOUT.BAR_EDGE_GAP)
+      : item?.kind === "note"
+        ? unit(SEQUENCE_LAYOUT.NOTE_EDGE_GAP)
+        : pad;
+  /** Space a frame edge or divider adds below an operand's last row. */
+  const closingPad = (items: SequenceItem[]): number => {
+    const last = items[items.length - 1];
+    return Math.max(0, edgeGap(last, fragmentInnerPad) - bandBlank(last));
+  };
 
   const horizontalTextBounds = (
     anchor: SeqTextAnchor,
@@ -526,14 +928,14 @@ function computeLayout(
     row: SequenceNoteLayout;
     endY: number;
   } => {
-    const lines = metrics.wrap(note.text, noteFont, noteWidth - noteInset * 2);
+    const lines = noteLines(note);
     const height = noteHeight(lines.length);
     // The band keeps NOTE_MARGIN_Y of clearance above the box and at least
     // that below it, so notes never collide with adjacent frames or messages;
     // any slack left in a tall row is split evenly.
     const bandHeight = Math.max(rowHeight, height + noteMarginY + noteBottomMargin);
     const y = top + noteMarginY + (bandHeight - noteMarginY - noteBottomMargin) / 2;
-    const width = noteWidth;
+    const width = noteBoxWidth(note);
     const anchorX = participantX(note.anchor);
     let x: number;
     if (note.side === "left") {
@@ -555,7 +957,7 @@ function computeLayout(
       lineHeight: noteLineHeight,
       y,
       box,
-      label: { x: x + noteInset, y: box.y + unit(notePad + 12), anchor: "start" },
+      label: { x: x + noteInset, y: box.y + (height - lines.length * noteLineHeight) / 2 + noteFirstBaseline, anchor: "start" },
       foldPath: [
         { x: box.x + box.width - fold, y: box.y },
         { x: box.x + box.width - fold, y: box.y + fold },
@@ -571,8 +973,11 @@ function computeLayout(
     endY: number;
   } => {
     const self = message.from === message.to;
-    const bandHeight = self ? rowHeight * 1.5 : rowHeight;
-    const y = top + rowHeight / 2;
+    // A self-call's label sits beside its loop, not above it, so the loop
+    // starts near the top of its band instead of half a row down.
+    const loopTop = Math.min(rowHeight / 2, unit(SEQUENCE_LAYOUT.GRID));
+    const bandHeight = self ? loopTop + rowHeight : rowHeight;
+    const y = top + (self ? loopTop : rowHeight / 2);
     const x1 = participantX(message.from);
     const x2 = participantX(message.to);
     const row: SequenceMessageLayout = {
@@ -592,6 +997,7 @@ function computeLayout(
         y: y - unit(labelGap),
         anchor: self ? "start" : "middle",
       },
+      labelBox: { x: 0, y: 0, width: 0, height: 0 },
       depth,
     };
     if (self) {
@@ -663,7 +1069,7 @@ function computeLayout(
   ): LayoutScope => {
     const scope: LayoutScope = { startY, endY: startY, events: [] };
     let cursor = startY;
-    for (const item of items) {
+    for (const [itemIndex, item] of items.entries()) {
       if (item.kind === "message") {
         const result = makeMessage(item, cursor, depth);
         rows.push(result.row);
@@ -681,8 +1087,20 @@ function computeLayout(
       }
 
       // Frames get vertical clearance on both sides so they never touch the
-      // preceding/following row's geometry or a sibling frame.
-      const frameTop = cursor + fragmentMarginY;
+      // preceding/following row's geometry or a sibling frame. Margins
+      // collapse: a frame right after a sibling frame reuses that frame's
+      // trailing margin, and a frame that opens or closes an operand leans on
+      // the parent frame's own inner air instead of stacking a margin on it.
+      const nested = depth > 0;
+      const afterFrame = itemIndex > 0 && items[itemIndex - 1]!.kind === "fragment";
+      const closesOperand = nested && itemIndex === items.length - 1;
+      // The row above already leaves its band's blank below its content.
+      const leadingMargin = afterFrame
+        ? 0
+        : nested && itemIndex === 0
+          ? fragmentNestedTop
+          : Math.max(0, edgeGap(items[itemIndex - 1], fragmentMarginY) - bandBlank(items[itemIndex - 1]));
+      const frameTop = cursor + leadingMargin;
       const participantIds = collectParticipantIds(item);
       const fragmentRow: SequenceFragmentLayout = {
         kind: "fragment",
@@ -709,22 +1127,22 @@ function computeLayout(
       };
       for (let operandIndex = 0; operandIndex < item.operands.length; operandIndex += 1) {
         if (operandIndex > 0) {
-          // Dashed dividers get breathing room on both sides so operand
-          // contents never crowd them.
-          cursor += fragmentDividerGap;
+          // A divider sits as far below its operand's content as a bottom
+          // edge does, and opens the next operand like a tab row.
+          cursor += closingPad(item.operands[operandIndex - 1]!.items);
           fragmentRow.dividerYs.push(cursor);
-          cursor += fragmentDividerGap;
+          operandStarts.push(cursor);
+          cursor += hasGuardRow(operandIndex) ? fragmentGuardHeight : fragmentInnerTop;
+        } else {
+          operandStarts.push(cursor);
         }
-        operandStarts.push(cursor);
-        // Guard labels below a divider occupy their own band before items.
-        if (operandIndex > 0 && hasGuardRow(operandIndex)) cursor += fragmentGuardHeight;
         const operand = item.operands[operandIndex]!;
         const operandScope = layoutItems(operand.items, cursor, depth + 1);
         if (operandScope.endY === cursor) operandScope.endY += rowHeight;
         operandScopes.push(operandScope);
         cursor = operandScope.endY;
       }
-      cursor += fragmentInnerBottom;
+      cursor += closingPad(item.operands[item.operands.length - 1]!.items);
       const childRows = rows.slice(firstChildRow);
       fragmentChildren.set(fragmentRow, childRows);
       const childBounds = xBoundsForRows(childRows);
@@ -735,14 +1153,18 @@ function computeLayout(
       const involvedLeft = involvedXs.length > 0
         ? Math.min(...participantIds.map(id => participantById.get(id)!.header.x))
         : fallbackCenter;
-      const involvedRight = involvedXs.length > 0
-        ? Math.max(...participantIds.map(id => {
-            const header = participantById.get(id)!.header;
-            return header.x + header.width;
-          }))
-        : fallbackCenter;
+      // The right edge follows the rightmost lifeline the frame's steps use,
+      // not that participant's header box, which can reach far past it. The
+      // activation pass below widens it to cover bars.
+      const involvedRight = involvedXs.length > 0 ? Math.max(...involvedXs) : fallbackCenter;
       const tabWidth = safeMeasure(item.op, fragmentOpFont) + unit(30);
-      const outerLeft = Math.min(involvedLeft, childBounds?.left ?? involvedLeft) - fragmentPad;
+      let outerLeft = Math.min(involvedLeft, childBounds?.left ?? involvedLeft) - fragmentPad;
+      if (involvedXs.length > 0) {
+        // The tab ends clear of the leftmost lifeline's bar, so neither the
+        // tab's slanted edge nor the guard's first glyph touches the bar.
+        const barLeft = Math.min(...involvedXs) - unit(activationW / 2);
+        outerLeft = Math.min(outerLeft, barLeft - unit(SEQUENCE_LAYOUT.LABEL_CLEARANCE) - tabWidth);
+      }
       let outerRight = Math.max(involvedRight, childBounds?.right ?? involvedRight) + fragmentPad;
       outerRight = Math.max(outerRight, outerLeft + tabWidth + fragmentPad);
       fragmentRow.outer = {
@@ -779,9 +1201,10 @@ function computeLayout(
             x: operandIndex === 0 ? outerLeft + tabWidth + unit(6) : outerLeft + fragmentPad,
             y: operandIndex === 0
               ? frameTop + fragmentTabHeight * 0.72
-              : operandStarts[operandIndex]! + unit(14),
+              : operandStarts[operandIndex]! + unit(SEQUENCE_LAYOUT.FRAG_GUARD_BASELINE),
             anchor: "start",
           },
+          box: { x: 0, y: 0, width: 0, height: 0 },
         };
       });
       for (const guard of fragmentRow.guardLabels) {
@@ -794,8 +1217,41 @@ function computeLayout(
       }
       fragmentRow.outer.width = outerRight - outerLeft;
       // Trailing clearance below the frame before the next row begins.
-      cursor += fragmentMarginY;
-      scope.events.push({ type: "fragment", operands: operandScopes });
+      if (!closesOperand) cursor += fragmentMarginY;
+      scope.events.push({
+        type: "fragment",
+        frame: fragmentRow,
+        operands: operandScopes,
+        operandTops: operandStarts,
+      });
+    }
+    {
+      // Sibling frames that open on the same leftmost lifeline line up their
+      // left edges, so stacked frames at one level read as one column.
+      const siblings = scope.events.flatMap((event) => event.type === "fragment" ? [event.frame] : []);
+      const byLeftmost = new Map<string, SequenceFragmentLayout[]>();
+      for (const frame of siblings) {
+        const xs = frame.participantIds.map(participantX);
+        if (xs.length === 0) continue;
+        const leftmost = frame.participantIds[xs.indexOf(Math.min(...xs))]!;
+        byLeftmost.set(leftmost, [...(byLeftmost.get(leftmost) ?? []), frame]);
+      }
+      for (const group of byLeftmost.values()) {
+        if (group.length < 2) continue;
+        const left = Math.min(...group.map((frame) => frame.outer.x));
+        for (const frame of group) {
+          const delta = left - frame.outer.x;
+          if (delta === 0) continue;
+          frame.outer.width -= delta;
+          frame.outer.x = left;
+          frame.tab.x += delta;
+          frame.tabPath = frame.tabPath.map((point) => ({ x: point.x + delta, y: point.y }));
+          frame.guardLabels = frame.guardLabels.map((guard) => ({
+            ...guard,
+            anchor: { ...guard.anchor, x: guard.anchor.x + delta },
+          }));
+        }
+      }
     }
     scope.endY = cursor;
     return scope;
@@ -806,9 +1262,18 @@ function computeLayout(
   if (documentScope.endY === sequenceTop) documentScope.endY += rowHeight;
   const contentEnd = documentScope.endY;
 
-  const activations: MutableActivation[] = [];
+  const bars: MutableActivation[] = [];
   const activationWidth = unit(activationW);
   const activationOffset = activationWidth / 3;
+  /** Air between a bar that stops for a frame and the frame's top edge. */
+  const barFrameGap = unit(SEQUENCE_LAYOUT.GRID / 2);
+  /** Ids of sync calls that the previous walk found no return for. */
+  let unmatchedCalls: ReadonlySet<string> = new Set();
+  /** Caller-side turns, by the id of the row that starts them. */
+  let callerTurns: ReadonlyMap<string, readonly CallerTurn[]> = new Map();
+
+  const isOpen = (activation: MutableActivation, closedHere: Set<MutableActivation>): boolean =>
+    activation.rect.height < 0 && !closedHere.has(activation);
 
   const activeFor = (
     participantId: string,
@@ -817,9 +1282,7 @@ function computeLayout(
     closedHere: Set<MutableActivation>,
   ): MutableActivation | undefined => {
     const active = [...inherited, ...local].filter(
-      (activation) => activation.participantId === participantId
-        && activation.rect.height < 0
-        && !closedHere.has(activation),
+      (activation) => activation.participantId === participantId && isOpen(activation, closedHere),
     );
     return active[active.length - 1];
   };
@@ -883,6 +1346,57 @@ function computeLayout(
     activation.endMessageId = endMessageId;
   };
 
+  /** Bottom of a message's own row band. */
+  const rowBandEnd = (row: SequenceMessageLayout): number =>
+    row.y + (row.from === row.to ? rowHeight : rowHeight / 2);
+
+  /**
+   * In an operand that does not return a bar opened above its frame, the bar
+   * shows only over the operand's first rows that its lifeline takes part
+   * in. Undefined when the operand does not open with such a row.
+   */
+  const involvedRowsEnd = (operand: LayoutScope, participantId: string): number | undefined => {
+    let end: number | undefined;
+    for (const event of operand.events) {
+      if (event.type === "fragment") break;
+      if (event.row.from !== participantId && event.row.to !== participantId) break;
+      end = rowBandEnd(event.row);
+    }
+    return end === undefined ? undefined : Math.min(end, operand.endY);
+  };
+
+  /**
+   * Where a bar opened above a frame shows again in a later operand: at the
+   * operand's first row on its lifeline, not at the divider. An arrow into
+   * the lifeline starts the piece. A row that the lifeline sends starts it at
+   * the top of that row's band, so the arrow leaves a bar.
+   */
+  const firstInvolvedTop = (scope: LayoutScope, participantId: string): number | undefined => {
+    for (const event of scope.events) {
+      if (event.type === "fragment") {
+        for (const operand of event.operands) {
+          const top = firstInvolvedTop(operand, participantId);
+          if (top !== undefined) return top;
+        }
+        continue;
+      }
+      const { row } = event;
+      if (row.from !== participantId && row.to !== participantId) continue;
+      return row.to === participantId && row.from !== participantId ? row.y : row.y - rowHeight / 2;
+    }
+    return undefined;
+  };
+
+  /** Whether a scope, or a frame inside it, holds a return for this bar. */
+  const returns = (scope: LayoutScope, activation: MutableActivation): boolean => scope.events.some((event) =>
+    event.type === "fragment"
+      ? event.operands.some((operand) => returns(operand, activation))
+      : activation.endIds
+        ? activation.endIds.has(event.row.id)
+        : event.row.line === "return"
+          && event.row.from === activation.participantId
+          && event.row.to === activation.callerId);
+
   const walkScope = (
     scope: LayoutScope,
     inherited: MutableActivation[],
@@ -890,24 +1404,63 @@ function computeLayout(
     const local: MutableActivation[] = [];
     const inheritedClosures = new Map<MutableActivation, ActivationClosure>();
     const closedHere = new Set<MutableActivation>();
-    for (const event of scope.events) {
+    // A bar for a call with no return covers its own row and the rows right
+    // after it that its lifeline takes part in. It ends at the first row
+    // without that lifeline, at a frame, or at the end of its scope.
+    const closeShortBars = (keep: (activation: MutableActivation) => boolean): void => {
+      for (const activation of local) {
+        if (activation.shortEnd === undefined || !isOpen(activation, closedHere) || keep(activation)) continue;
+        closeActivation(activation, Math.min(activation.shortEnd, scope.endY));
+      }
+    };
+    for (const [eventIndex, event] of scope.events.entries()) {
       if (event.type === "fragment") {
+        closeShortBars(() => false);
         // Each operand starts from the same activation state. Its returns are
         // branch-local until they are merged here, which prevents one sibling
         // from changing the state observed by another sibling.
-        const visible = [...inherited, ...local].filter(
-          (activation) => activation.rect.height < 0 && !closedHere.has(activation),
-        );
+        const visible = [...inherited, ...local].filter((activation) => isOpen(activation, closedHere));
+        // A call's bar that some operand returns stops at this frame. An
+        // operand that neither returns it nor opens on its lifeline does not
+        // see it, so calls there dock on the bare lifeline and get bars of
+        // their own. A caller's turn runs whole through the frame instead,
+        // to its last step in any operand: the caller is active throughout.
+        const cut = visible.filter((activation) =>
+          activation.callerId !== TURN_CALLER
+          && event.operands.some((operand) => returns(operand, activation)));
+        const perOperand = event.operands.map((operand) => walkScope(
+          operand,
+          visible.filter((activation) => !cut.includes(activation)
+            || returns(operand, activation)
+            || involvedRowsEnd(operand, activation.participantId) !== undefined),
+        ));
         const mergedClosures = new Map<MutableActivation, ActivationClosure>();
-        for (const operand of event.operands) {
-          for (const [activation, closure] of walkScope(operand, visible)) {
+        for (const closures of perOperand) {
+          for (const [activation, closure] of closures) {
             const previous = mergedClosures.get(activation);
             if (!previous || closure.endY > previous.endY) {
               mergedClosures.set(activation, closure);
             }
           }
         }
+        const frameTop = event.frame.outer.y;
         for (const [activation, closure] of mergedClosures) {
+          // The bar ends inside this frame: it stops above the frame and
+          // shows in each operand until that operand's return.
+          if (cut.includes(activation)) activation.cuts.push({
+            top: frameTop,
+            bottom: frameTop + event.frame.outer.height,
+            pieces: event.operands.map((operand, index) => {
+              const bottom = perOperand[index]!.get(activation)?.endY
+                ?? involvedRowsEnd(operand, activation.participantId)
+                ?? event.operandTops[index]!;
+              // The first operand's piece joins the bar above the frame.
+              const top = index === 0
+                ? event.operandTops[0]!
+                : firstInvolvedTop(operand, activation.participantId) ?? bottom;
+              return { top: Math.min(top, bottom), bottom };
+            }),
+          });
           if (local.includes(activation)) {
             closeActivation(activation, closure.endY, closure.endMessageId);
           } else {
@@ -918,6 +1471,36 @@ function computeLayout(
         continue;
       }
       const row = event.row;
+      // A self-call stacked on a bar of its own lifeline covers its own row
+      // only: the bar below it already shows the lifeline busy.
+      const stackedSelf = (activation: MutableActivation): boolean =>
+        activation.level > 0 && activation.callerId === activation.participantId;
+      // A new sync call from the same caller means the earlier call is over.
+      closeShortBars((activation) => !stackedSelf(activation)
+        && (activation.participantId === row.from || activation.participantId === row.to)
+        && !(row.line === "sync" && activation.participantId === row.to && activation.callerId === row.from));
+      for (const activation of local) {
+        if (activation.shortEnd !== undefined && isOpen(activation, closedHere) && !stackedSelf(activation)) {
+          activation.shortEnd = Math.max(activation.shortEnd, rowBandEnd(row));
+        }
+      }
+      for (const turn of callerTurns.get(row.id) ?? []) {
+        const level = [...inherited, ...local].filter(
+          (activation) => activation.participantId === turn.participantId && isOpen(activation, closedHere),
+        ).length;
+        const center = participantX(turn.participantId) + level * activationOffset;
+        const activation: MutableActivation = {
+          participantId: turn.participantId,
+          callerId: TURN_CALLER,
+          level,
+          rect: { x: center - activationWidth / 2, y: row.y, width: activationWidth, height: -1 },
+          startMessageId: row.id,
+          endIds: turn.endIds,
+          cuts: [],
+        };
+        local.push(activation);
+        bars.push(activation);
+      }
       if (row.line === "sync") {
         // The caller docks before receipt; the callee docks on the bar beginning
         // at this row, which matches UML activation-bar arrow docking.
@@ -928,26 +1511,34 @@ function computeLayout(
           local,
           closedHere,
         );
-        const level = [...inherited, ...local].filter(
-          (activation) => activation.participantId === row.to
-            && activation.rect.height < 0
-            && !closedHere.has(activation),
-        ).length;
-        const center = participantX(row.to) + level * activationOffset;
-        const activation: MutableActivation = {
-          participantId: row.to,
-          callerId: row.from,
-          level,
-          rect: {
-            x: center - activationWidth / 2,
-            y: row.y,
-            width: activationWidth,
-            height: -1,
-          },
-          startMessageId: row.id,
-        };
-        local.push(activation);
-        activations.push(activation);
+        const unmatched = unmatchedCalls.has(row.id);
+        // A call with no return onto a lifeline that is already active adds
+        // no bar: the open bar covers it. Self-calls still nest.
+        const covering = unmatched && row.from !== row.to
+          ? activeFor(row.to, inherited, local, closedHere)
+          : undefined;
+        if (!covering) {
+          const level = [...inherited, ...local].filter(
+            (activation) => activation.participantId === row.to && isOpen(activation, closedHere),
+          ).length;
+          const center = participantX(row.to) + level * activationOffset;
+          const activation: MutableActivation = {
+            participantId: row.to,
+            callerId: row.from,
+            level,
+            rect: {
+              x: center - activationWidth / 2,
+              y: row.y,
+              width: activationWidth,
+              height: -1,
+            },
+            startMessageId: row.id,
+            shortEnd: unmatched ? rowBandEnd(row) : undefined,
+            cuts: [],
+          };
+          local.push(activation);
+          bars.push(activation);
+        }
         setMessageGeometry(row, inherited, local, closedHere);
         row.x1 = sourceX;
         if (row.selfLoop) row.selfLoop[0] = { x: sourceX, y: row.y1 };
@@ -958,8 +1549,7 @@ function computeLayout(
         for (let index = candidates.length - 1; index >= 0; index -= 1) {
           const activation = candidates[index]!;
           if (
-            activation.rect.height < 0
-            && !closedHere.has(activation)
+            isOpen(activation, closedHere)
             && activation.participantId === row.from
             && activation.callerId === row.to
           ) {
@@ -967,7 +1557,15 @@ function computeLayout(
             break;
           }
         }
-        if (match) {
+        const next = scope.events[eventIndex + 1];
+        // A run of returns from the callee to its caller all leave the one
+        // bar they answer; the last of them ends it. When more than one bar
+        // is open between the two, each return closes one, innermost first.
+        const openMatches = candidates.filter((activation) =>
+          isOpen(activation, closedHere) && activation.participantId === row.from && activation.callerId === row.to).length;
+        const runsOn = openMatches <= 1 && next?.type === "message"
+          && next.row.line === "return" && next.row.from === row.from && next.row.to === row.to;
+        if (match && !runsOn) {
           if (local.includes(match)) {
             closeActivation(match, row.y, row.id);
           } else {
@@ -978,13 +1576,104 @@ function computeLayout(
       } else {
         setMessageGeometry(row, inherited, local, closedHere);
       }
+      for (const activation of [...inherited, ...local]) {
+        if (!activation.endIds?.has(row.id) || !isOpen(activation, closedHere)) continue;
+        // A turn that ends on its own send covers that row's band, like the
+        // callee's bar for a call with no return; one that ends on a reply
+        // ends at that arrow.
+        const endY = row.from === activation.participantId && row.line !== "return" ? rowBandEnd(row) : row.y;
+        if (local.includes(activation)) {
+          closeActivation(activation, endY, row.id);
+        } else {
+          inheritedClosures.set(activation, { endY, endMessageId: row.id });
+        }
+        closedHere.add(activation);
+      }
     }
+    closeShortBars(() => false);
     for (const activation of local) {
       if (activation.rect.height < 0) closeActivation(activation, scope.endY);
     }
     return inheritedClosures;
   };
+  // The first walk finds the calls with no return; the second draws their
+  // bars short, so they neither run to the end of their scope nor stack.
   walkScope(documentScope, []);
+  unmatchedCalls = new Set(bars.filter((bar) => bar.endMessageId === undefined).map((bar) => bar.startMessageId));
+  callerTurns = findCallerTurns(documentScope, bars
+    .filter((bar) => bar.endMessageId !== undefined)
+    .flatMap((bar) => barSegments(bar, barFrameGap).map((segment) => ({ participantId: bar.participantId, ...segment }))));
+  bars.length = 0;
+  walkScope(documentScope, []);
+
+  // One rect per visible piece of each bar: a bar that ends inside a frame
+  // stops above the frame and continues inside each operand.
+  const activations: SequenceActivationLayout[] = [];
+  for (const bar of bars) {
+    for (const segment of barSegments(bar, barFrameGap)) {
+      activations.push({
+        participantId: bar.participantId,
+        level: bar.level,
+        rect: { x: bar.rect.x, y: segment.top, width: bar.rect.width, height: segment.bottom - segment.top },
+        startMessageId: bar.startMessageId,
+        endMessageId: bar.endMessageId,
+      });
+    }
+  }
+
+  // A label centered on a long arrow sits on the lifelines and bars the
+  // arrow passes. When a stretch of the arrow between those obstacles holds
+  // the whole label, the label moves to the stretch nearest the arrow's
+  // midpoint, and within it as near the midpoint as the clearance allows,
+  // so it stays near the middle of the arrow instead of sliding to one end.
+  // On a tie the sender's side wins.
+  const labelClearance = unit(SEQUENCE_LAYOUT.LABEL_CLEARANCE);
+  for (const message of messages) {
+    if (message.selfLoop) continue;
+    const left = Math.min(message.x1, message.x2);
+    const right = Math.max(message.x1, message.x2);
+    const top = message.label.y - messageFont.size * ASCENT_EM;
+    const bottom = message.label.y + messageFont.size * DESCENT_EM;
+    const obstacles: { left: number; right: number }[] = [];
+    for (const participant of participants) {
+      if (participant.id === message.from || participant.id === message.to) continue;
+      if (participant.centerX <= left || participant.centerX >= right) continue;
+      const obstacle = { left: participant.centerX - unit(0.5), right: participant.centerX + unit(0.5) };
+      for (const activation of activations) {
+        if (activation.participantId !== participant.id) continue;
+        if (activation.rect.y > bottom || activation.rect.y + activation.rect.height < top) continue;
+        obstacle.left = Math.min(obstacle.left, activation.rect.x);
+        obstacle.right = Math.max(obstacle.right, activation.rect.x + activation.rect.width);
+      }
+      obstacles.push(obstacle);
+    }
+    if (obstacles.length === 0) continue;
+    const textWidth = safeMeasure(message.text, messageFont);
+    const centered = horizontalTextBounds(message.label, textWidth);
+    const clear = obstacles.every((obstacle) =>
+      obstacle.right + labelClearance <= centered.left || obstacle.left - labelClearance >= centered.right);
+    if (clear) continue;
+    obstacles.sort((a, b) => a.left - b.left);
+    const slots: { left: number; right: number }[] = [];
+    let slotLeft = left;
+    for (const obstacle of obstacles) {
+      slots.push({ left: slotLeft, right: obstacle.left });
+      slotLeft = obstacle.right;
+    }
+    slots.push({ left: slotLeft, right });
+    if (message.x1 > message.x2) slots.reverse();
+    const middle = (left + right) / 2;
+    let best: { x: number; distance: number } | undefined;
+    for (const slot of slots) {
+      const lowest = slot.left + labelClearance + textWidth / 2;
+      const highest = slot.right - labelClearance - textWidth / 2;
+      if (highest < lowest) continue;
+      const x = Math.min(Math.max(middle, lowest), highest);
+      const distance = Math.abs(x - middle);
+      if (best === undefined || distance < best.distance) best = { x, distance };
+    }
+    if (best) message.label.x = best.x;
+  }
 
   // Activation docking recalculates message anchors, so enforce the left
   // diagram inset after the activation pass as well as during initial layout.
@@ -992,18 +1681,20 @@ function computeLayout(
     keepTextInsideLeftBound(message.label, message.text, messageFont);
   }
 
-  // An "over" note remains centered on its lifeline, with a half-bar nudge
-  // when an activation is present so its visual anchor is not obscured.
+  // An "over" note stays centered on its lifeline. When an activation bar
+  // of that lifeline runs through the box, the note moves beside the bar,
+  // its left edge NOTE_BAR_GAP right of the bar, so the bar stays whole.
+  const notesOnBars = new Set<string>();
   for (const note of notes) {
     if (note.side !== "over") continue;
-    const overlapsActivation = activations.some((activation) => {
-      if (activation.participantId !== note.anchorId) return false;
-      const activationBottom = activation.rect.y + activation.rect.height;
-      return activation.rect.y < note.box.y + note.box.height
-        && activationBottom > note.box.y;
-    });
-    if (!overlapsActivation) continue;
-    const offset = activationWidth / 2;
+    const bars = activations.filter((activation) =>
+      activation.participantId === note.anchorId
+      && activation.rect.y < note.box.y + note.box.height
+      && activation.rect.y + activation.rect.height > note.box.y);
+    if (bars.length === 0) continue;
+    notesOnBars.add(note.id);
+    const barRight = Math.max(...bars.map(({ rect }) => rect.x + rect.width));
+    const offset = barRight + unit(NOTE_BAR_GAP) - note.box.x;
     note.box.x += offset;
     note.label.x += offset;
     note.foldPath = note.foldPath.map((point) => ({ ...point, x: point.x + offset }));
@@ -1054,9 +1745,84 @@ function computeLayout(
     fragment.outer.width = nextRight - nextLeft;
   }
 
+  // A guard that a lifeline or an activation bar runs through moves right,
+  // past it, while it still fits inside its frame and stays within
+  // GUARD_SHIFT_MAX of where it started, near its tab. Otherwise it only
+  // moves past bars; lifelines stop at its box.
+  const clearX = (start: number, width: number, obstacles: { left: number; right: number }[]): number => {
+    let x = start;
+    for (let step = 0; step <= obstacles.length; step += 1) {
+      const hit = obstacles.filter((obstacle) =>
+        obstacle.left < x + width + guardClearance && obstacle.right + guardClearance > x);
+      if (hit.length === 0) break;
+      x = Math.max(...hit.map((obstacle) => obstacle.right)) + guardClearance;
+    }
+    return x;
+  };
+  for (const fragment of fragments) {
+    const frameRight = fragment.outer.x + fragment.outer.width - fragmentPad;
+    for (const guard of fragment.guardLabels) {
+      if (!guard.label) continue;
+      const width = safeMeasure(guard.label, guardFont);
+      const top = guard.anchor.y - guardFont.size * ASCENT_EM;
+      const bottom = guard.anchor.y + guardFont.size * DESCENT_EM;
+      const bars = activations
+        .filter(({ rect }) => rect.y < bottom && rect.y + rect.height > top)
+        .map(({ rect }) => ({ left: rect.x, right: rect.x + rect.width }));
+      const lifelines = participants
+        .filter(({ centerX }) => centerX > fragment.outer.x && centerX < frameRight)
+        .map(({ centerX }) => ({ left: centerX - unit(0.5), right: centerX + unit(0.5) }));
+      const x = [clearX(guard.anchor.x, width, [...bars, ...lifelines]), clearX(guard.anchor.x, width, bars)]
+        .find((candidate, index) => candidate + width <= frameRight
+          && (index > 0 || candidate - guard.anchor.x <= unit(SEQUENCE_LAYOUT.GUARD_SHIFT_MAX)));
+      if (x !== undefined) guard.anchor.x = x;
+    }
+  }
+
+  // Label boxes, from the final anchors: the renderer paints each one with
+  // the background behind its text, so lifelines, bars and dividers stop at
+  // the box edge instead of cutting through the glyphs.
+  const labelBox = (
+    anchor: SeqTextAnchor,
+    text: string,
+    font: SeqFont,
+    limits: { minTop?: number; bottom?: number } = {},
+  ): SeqRect => {
+    if (singleLineText(text) === "") return { x: anchor.x, y: anchor.y, width: 0, height: 0 };
+    const { left, right } = horizontalTextBounds(anchor, safeMeasure(text, font));
+    const padX = unit(LABEL_BOX_PAD.x);
+    const padY = unit(LABEL_BOX_PAD.y);
+    const glyphTop = anchor.y - font.size * ASCENT_EM;
+    const glyphBottom = anchor.y + font.size * DESCENT_EM;
+    const top = Math.min(glyphTop, Math.max(glyphTop - padY, limits.minTop ?? Number.NEGATIVE_INFINITY));
+    const bottom = Math.max(glyphBottom, limits.bottom ?? glyphBottom + padY);
+    return {
+      x: left - padX,
+      y: top,
+      width: right - left + padX * 2,
+      height: bottom - top,
+    };
+  };
+  // Half the arrow's stroke: a label box stops at the arrow's top edge.
+  const arrowHalfStroke = unit(0.75);
+  for (const message of messages) {
+    message.labelBox = labelBox(message.label, message.text, messageFont, {
+      bottom: message.selfLoop ? undefined : message.y - arrowHalfStroke,
+    });
+  }
+  // A guard box never covers its frame's top edge or the divider above it.
+  const frameStroke = unit(1);
+  for (const fragment of fragments) {
+    for (const guard of fragment.guardLabels) {
+      const edge = guard.operand === 0 ? fragment.outer.y : fragment.dividerYs[guard.operand - 1]!;
+      guard.box = labelBox(guard.anchor, guard.label, guardFont, { minTop: edge + frameStroke });
+    }
+  }
+
+  // The content sets the right edge. The side gutter applies only to a diagram with no participants.
   let rightEdge = participants.reduce(
     (right, participant) => Math.max(right, participant.header.x + participant.header.width),
-    sideGutter,
+    participants.length === 0 ? sideGutter : 0,
   );
   for (const note of notes) rightEdge = Math.max(rightEdge, note.box.x + note.box.width);
   for (const fragment of fragments) rightEdge = Math.max(rightEdge, fragment.outer.x + fragment.outer.width);
@@ -1072,7 +1838,14 @@ function computeLayout(
   for (const activation of activations) {
     rightEdge = Math.max(rightEdge, activation.rect.x + activation.rect.width);
   }
-  const width = rightEdge + sideGutter;
+  // The right margin matches the left one: the space left of the leftmost
+  // lifeline, frame, note or bar. The title is left out, since it sits at the margin.
+  let leftEdge = Number.POSITIVE_INFINITY;
+  for (const participant of participants) leftEdge = Math.min(leftEdge, participant.header.x);
+  for (const note of notes) leftEdge = Math.min(leftEdge, note.box.x);
+  for (const fragment of fragments) leftEdge = Math.min(leftEdge, fragment.outer.x);
+  for (const activation of activations) leftEdge = Math.min(leftEdge, activation.rect.x);
+  const width = rightEdge + Math.max(unit(margin), Number.isFinite(leftEdge) ? leftEdge : sideGutter);
   const footerY = contentEnd + unit(SEQUENCE_LAYOUT.FOOTER_GAP);
   const participantFooters = participants.map((participant): SequenceParticipantLayout => {
     const offset = footerY - participant.header.y;
@@ -1140,5 +1913,5 @@ function computeLayout(
     notes,
     activations,
   };
-  return { layout, activationDepth: deepestLevels, dockingExcess: excessByMessage };
+  return { layout, activationDepth: deepestLevels, dockingExcess: excessByMessage, notesBesideBars: notesOnBars };
 }

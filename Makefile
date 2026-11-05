@@ -6,7 +6,7 @@ studio:
 	bun run dev:studio
 
 test:
-	bun test packages/sequence/src
+	bun test packages/sequence/src packages/climb/src
 
 typecheck:
 	bun run typecheck

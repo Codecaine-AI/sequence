@@ -296,6 +296,19 @@ describe("sequence SVG rendering", () => {
     expect(colors.messageStroke).toContain("--seq-accent");
   });
 
+  test("a return and its arrowhead take the lifeline color, and a document's lifeline stroke recolors them", () => {
+    const strokes = (doc: SequenceDocument) => {
+      const svg = svgElement(renderSequenceSvgString(doc));
+      const line = (kind: string) => svg.querySelector(`.seq-message--${kind} line`)!.getAttribute("stroke");
+      const head = svg.querySelector('[data-seq-marker="return"] path')!.getAttribute("stroke");
+      return { call: line("sync"), reply: line("return"), head };
+    };
+    const { lifelineStroke, messageStroke } = resolveSequenceColors({});
+    expect(strokes(minimal)).toEqual({ call: messageStroke, reply: lifelineStroke, head: lifelineStroke });
+    expect(strokes({ ...minimal, style: { lifeline: { stroke: "#222222" }, message: { stroke: "#ff0000" } } }))
+      .toEqual({ call: "#ff0000", reply: "#222222", head: "#222222" });
+  });
+
   test("shortcuts still color elements that have no per-element override", () => {
     const svg = renderSequenceSvgString({
       ...minimal,

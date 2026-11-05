@@ -128,6 +128,19 @@ describe("sequence text measurement", () => {
       .toBeLessThanOrEqual(note.box.y + note.box.height);
   });
 
+  test("a note's text block sits centered in its box, one line or several", () => {
+    for (const text of ["cold path", "first\nsecond\nthird"]) {
+      const doc = withNote(text);
+      const note = layoutSequence(doc).notes[0]!;
+      const drawn = svgElement(renderSequenceSvgString(doc)).querySelector(".seq-note text")!;
+      const size = drawnFont(drawn).size;
+      // Glyphs reach 0.97 em above the first baseline and 0.25 em below the last.
+      const top = Number(drawn.getAttribute("y")) - size * 0.97;
+      const bottom = Number(drawn.getAttribute("y")) + (note.lines.length - 1) * note.lineHeight + size * 0.25;
+      expect((top + bottom) / 2).toBeCloseTo(note.box.y + note.box.height / 2, 1);
+    }
+  });
+
   test("renders explicit note line breaks as separate tspans", () => {
     const doc = withNote("first\nsecond\n\nfourth");
     const note = layoutSequence(doc).notes[0]!;

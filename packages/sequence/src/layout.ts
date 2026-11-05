@@ -621,6 +621,10 @@ function computeLayout(
   const noteWidth = unit(SEQUENCE_LAYOUT.NOTE_W);
   const noteInset = unit(notePad + 2);
   const noteLineHeight = noteFont.lineHeight ?? noteFont.size;
+  // The text block sits centered in the note box. Each line centers its
+  // glyphs (ascent to descent) in its line height, which puts the first
+  // baseline this far below the block's top.
+  const noteFirstBaseline = noteLineHeight / 2 + noteFont.size * (ASCENT_EM - DESCENT_EM) / 2;
   // Breaks a note into as many lines as a greedy wrap at the full width
   // gives, at the narrowest width that keeps that count, so the last line
   // is never one word left alone.
@@ -912,7 +916,7 @@ function computeLayout(
       lineHeight: noteLineHeight,
       y,
       box,
-      label: { x: x + noteInset, y: box.y + unit(notePad + 12), anchor: "start" },
+      label: { x: x + noteInset, y: box.y + (height - lines.length * noteLineHeight) / 2 + noteFirstBaseline, anchor: "start" },
       foldPath: [
         { x: box.x + box.width - fold, y: box.y },
         { x: box.x + box.width - fold, y: box.y + fold },

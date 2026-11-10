@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
-import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
-import { REPO_ROOT, runPaths, SKILL_DIR } from "./paths.ts";
+import { WRITING_GUIDE } from "../../sequence/src/language/index.ts";
+import { REPO_ROOT, runPaths } from "./paths.ts";
 import { writeRound, type Round, type RoundBrief } from "./round.ts";
 
 /** A brief slug doubles as a docs folder name and a sidecar file name. */
@@ -13,25 +14,6 @@ async function git(args: string[]): Promise<string> {
   const text = await new Response(proc.stdout).text();
   if ((await proc.exited) !== 0) throw new Error(`git ${args.join(" ")} failed: ${await new Response(proc.stderr).text()}`);
   return text.trim();
-}
-
-async function listFiles(dir: string): Promise<string[]> {
-  const entries = await readdir(dir, { withFileTypes: true, recursive: true });
-  return entries
-    .filter((entry) => entry.isFile())
-    .map((entry) => relative(dir, join(entry.parentPath, entry.name)))
-    .sort();
-}
-
-/** sha256 over every file of a folder: its sorted relative paths and their contents. */
-export async function hashFolder(dir: string): Promise<string> {
-  const hash = createHash("sha256");
-  for (const file of await listFiles(dir)) {
-    hash.update(`${file}\0`);
-    hash.update(await readFile(join(dir, file)));
-    hash.update("\0");
-  }
-  return hash.digest("hex");
 }
 
 /** The empty sidecar a drawer starts from. */
@@ -95,7 +77,7 @@ export async function runSetup({ briefsDir, runDir }: { briefsDir: string; runDi
     createdAt: new Date().toISOString(),
     briefsDir: briefsRoot,
     repo: { commit: await git(["rev-parse", "HEAD"]), dirty: (await git(["status", "--porcelain"])).length > 0 },
-    skill: { path: relative(REPO_ROOT, SKILL_DIR), sha256: await hashFolder(SKILL_DIR) },
+    writingGuide: { sha256: createHash("sha256").update(WRITING_GUIDE).digest("hex") },
     briefs: entries,
   };
   await writeRound(paths.root, round);

@@ -1,10 +1,11 @@
 import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { docsMcpCli, docsSystemRoot, OVERLAY_PRELOAD, runPaths, SKILL_DIR } from "./paths.ts";
+import { WRITING_GUIDE } from "../../sequence/src/language/index.ts";
+import { docsMcpCli, docsSystemRoot, OVERLAY_PRELOAD, runPaths } from "./paths.ts";
 import { readRound, type RoundBrief } from "./round.ts";
 
 /** Where the docs daemon writes each sequence's SVG (docs-server component-lints.ts). */
@@ -37,19 +38,12 @@ export const PARENT_SESSION_VARIABLES = [
   "CLAUDE_PROJECT_DIR",
 ];
 
-/** SKILL.md, then each reference file, as one system-prompt section. */
-export async function skillPrompt(): Promise<string> {
-  const parts = [await readFile(join(SKILL_DIR, "SKILL.md"), "utf8")];
-  const references = (await readdir(join(SKILL_DIR, "references"))).filter((file) => file.endsWith(".md")).sort();
-  for (const file of references) {
-    parts.push(`<reference path="references/${file}">\n${await readFile(join(SKILL_DIR, "references", file), "utf8")}\n</reference>`);
-  }
-  return [
-    "You have the `sequence` Agent Skill loaded. Its SKILL.md and every reference file follow. Treat `references/<file>` mentions as the matching <reference> section below.",
-    "",
-    ...parts,
-  ].join("\n");
-}
+/** The drawer's system prompt: the text that docs_guidance serves as topic `sequence-writing`. */
+export const DRAWER_SYSTEM_PROMPT = [
+  "The sequence writing guide follows. The docs-system server serves the same text as docs_guidance topic `sequence-writing`.",
+  "",
+  `<sequence-writing>\n${WRITING_GUIDE}</sequence-writing>`,
+].join("\n");
 
 export function drawerPrompt({ brief, entry }: { brief: string; entry: RoundBrief }): string {
   return [
@@ -72,7 +66,7 @@ export function drawerPrompt({ brief, entry }: { brief: string; entry: RoundBrie
 
 const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
 const DaemonStart = Type.Object({ url: Type.String(), pid: Type.Number() });
-/** The drawer sees the brief, the skill and the docs tools, never a person's CLAUDE.md or hooks. */
+/** The drawer sees the brief, the writing guide and the docs tools, never a person's CLAUDE.md or hooks. */
 const DRAWER_SETTINGS = {
   claudeMdExcludes: [join(homedir(), ".claude/CLAUDE.md"), "**/CLAUDE.md", "**/CLAUDE.local.md"],
   disableAllHooks: true,
@@ -175,7 +169,7 @@ export async function runDraw({ runDir, concurrency, timeoutMs, only }: { runDir
   await mkdir(paths.draw, { recursive: true });
   await mkdir(paths.docsState, { recursive: true, mode: 0o700 });
   await rm(paths.overlayLog, { force: true });
-  await writeFile(paths.systemPrompt, await skillPrompt());
+  await writeFile(paths.systemPrompt, DRAWER_SYSTEM_PROMPT);
   await writeFile(
     paths.mcpConfig,
     json({

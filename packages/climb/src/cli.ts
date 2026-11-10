@@ -94,7 +94,7 @@ async function main(argv: readonly string[]): Promise<number> {
       allow(flags, ["--briefs", "--run"]);
       const round = await runSetup({ briefsDir: one(flags, "--briefs"), runDir: one(flags, "--run") });
       console.log(`round: ${round.briefs.length} briefs (${round.briefs.map((brief) => brief.slug).join(", ")})`);
-      console.log(`commit ${round.repo.commit}${round.repo.dirty ? " (dirty)" : ""}, skill sha256 ${round.skill.sha256}`);
+      console.log(`commit ${round.repo.commit}${round.repo.dirty ? " (dirty)" : ""}, writing guide sha256 ${round.writingGuide.sha256}`);
       return 0;
     }
     case "draw": {

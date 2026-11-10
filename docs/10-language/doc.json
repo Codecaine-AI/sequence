@@ -94,6 +94,13 @@
         "b-language-writing-brief",
         "b-language-writing-returns",
         "b-language-writing-size",
+        "b-language-writing-choose-heading",
+        "b-language-writing-choose-lead",
+        "b-language-writing-choose-s1",
+        "b-language-writing-choose-s2",
+        "b-language-writing-choose-s3",
+        "b-language-writing-choose-s4",
+        "b-language-writing-choose-s5",
         "b-language-writing-tools-heading",
         "b-language-writing-tools-lead",
         "b-language-writing-blocks",
@@ -2787,6 +2794,95 @@
       ],
       "children": []
     },
+    "b-language-writing-choose-heading": {
+      "id": "b-language-writing-choose-heading",
+      "type": "heading",
+      "props": {
+        "level": 3
+      },
+      "text": [
+        {
+          "insert": "Choose a Sequence Block"
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-choose-lead": {
+      "id": "b-language-writing-choose-lead",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "A sequence block shows time, not structure."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-choose-s1": {
+      "id": "b-language-writing-choose-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Use a sequence block when the order of calls and returns between named parts explains the behavior."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-choose-s2": {
+      "id": "b-language-writing-choose-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Good subjects are a request flow, a handshake, a retry, a failure path and an agent tool loop."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-choose-s3": {
+      "id": "b-language-writing-choose-s3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Keep a block to one interaction, from its first call to its last return."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-choose-s4": {
+      "id": "b-language-writing-choose-s4",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Use a canvas for structure, ownership or a state chart."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-choose-s5": {
+      "id": "b-language-writing-choose-s5",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Check each message against source code or a trace before you draw it."
+        }
+      ],
+      "children": []
+    },
     "b-language-writing-tools-heading": {
       "id": "b-language-writing-tools-heading",
       "type": "heading",
@@ -2806,7 +2902,16 @@
       "props": {},
       "text": [
         {
-          "insert": "These rules cover the docs tool calls that save a program and the activation bars that layout draws from it."
+          "insert": "Edit a sequence only through the "
+        },
+        {
+          "insert": "docs_sequence_*",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " tools of the docs server, because the sequence package has no MCP server of its own. These rules cover those tool calls and the activation bars that layout draws from the program."
         }
       ],
       "children": []
@@ -2828,6 +2933,7 @@
       "children": [
         "b-language-writing-blocks-s1",
         "b-language-writing-blocks-s2",
+        "b-language-writing-blocks-create",
         "b-language-writing-blocks-s3",
         "b-language-writing-blocks-s4"
       ]
@@ -2899,6 +3005,55 @@
         },
         {
           "insert": " and a new sequence sidecar until the task reads it."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-blocks-create": {
+      "id": "b-language-writing-blocks-create",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "For a new diagram, create the sidecar with "
+        },
+        {
+          "insert": "docs_component_create",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " and "
+        },
+        {
+          "insert": "component",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " "
+        },
+        {
+          "insert": "sequence",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", then insert the sequence block with the returned "
+        },
+        {
+          "insert": "src",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
         }
       ],
       "children": []
@@ -2989,10 +3144,56 @@
         }
       ],
       "children": [
+        "b-language-writing-saving-whole",
+        "b-language-writing-saving-result",
         "b-language-writing-saving-s1",
         "b-language-writing-saving-s2",
         "b-language-writing-saving-s3"
       ]
+    },
+    "b-language-writing-saving-whole": {
+      "id": "b-language-writing-saving-whole",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Send the whole program to "
+        },
+        {
+          "insert": "docs_sequence_set_program",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " every time, with both hashes. There is no patch or partial program."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-saving-result": {
+      "id": "b-language-writing-saving-result",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Open the "
+        },
+        {
+          "insert": "svg_path",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " of each result as an image, fix each finding, and send the whole program again."
+        }
+      ],
+      "children": []
     },
     "b-language-writing-saving-s1": {
       "id": "b-language-writing-saving-s1",
@@ -3020,7 +3221,7 @@
           }
         },
         {
-          "insert": "."
+          "insert": ", which changes nothing else."
         }
       ],
       "children": []

@@ -274,17 +274,30 @@ These rules keep a program readable and faithful to its brief. The lints of \`do
   - Start every note with a capital letter and every prose label with a lowercase letter.
   - Fix each \`long-label\`, \`long-guard\`, \`joined-calls\` or \`leftward-call\` finding in a \`docs_sequence_set_program\` result.
 
+### Choose a Sequence Block
+
+A sequence block shows time, not structure.
+
+- Use a sequence block when the order of calls and returns between named parts explains the behavior.
+- Good subjects are a request flow, a handshake, a retry, a failure path and an agent tool loop.
+- Keep a block to one interaction, from its first call to its last return.
+- Use a canvas for structure, ownership or a state chart.
+- Check each message against source code or a trace before you draw it.
+
 ### Save Through the Docs Tools
 
-These rules cover the docs tool calls that save a program and the activation bars that layout draws from it.
+Edit a sequence only through the \`docs_sequence_*\` tools of the docs server, because the sequence package has no MCP server of its own. These rules cover those tool calls and the activation bars that layout draws from the program.
 
 - **Blocks and Hashes**
   - Put each sequence diagram in a sequence block inside the docs page it explains. The block points at its sidecar, \`assets/sequences/<name>.sequence.json\`.
   - Read \`docs_guidance\` topic \`sequence-writing\` with your \`task_id\` before you write a program. The docs server refuses \`docs_sequence_set_program\` and a new sequence sidecar until the task reads it.
+  - For a new diagram, create the sidecar with \`docs_component_create\` and \`component\` \`sequence\`, then insert the sequence block with the returned \`src\`.
   - Read the block with \`docs_component_read\`. Pass its \`doc_hash\` as \`expected_hash\` and its \`hash\` as \`expected_component_hash\`.
   - A hash conflict means the page or the sidecar changed. Read both again, merge your change into the new program, and send the whole program once more.
 - **Saving a Program**
-  - A program without a \`title\` line keeps the diagram's existing title. Change or clear the title with \`docs_sequence_set_title\`.
+  - Send the whole program to \`docs_sequence_set_program\` every time, with both hashes. There is no patch or partial program.
+  - Open the \`svg_path\` of each result as an image, fix each finding, and send the whole program again.
+  - A program without a \`title\` line keeps the diagram's existing title. Change or clear the title with \`docs_sequence_set_title\`, which changes nothing else.
   - Set colors and spacing with \`docs_sequence_set_style\`, never in the program.
   - A parse error names its line. Fix every listed line, because a failed parse saves nothing.
 - **Arrows and Activation Bars**
@@ -293,6 +306,8 @@ These rules cover the docs tool calls that save a program and the activation bar
   - A sync call with no return gets a short bar over its own row, unless a later row on that lifeline extends the bar.
 
 # Sequence Design Decisions
+
+Read these decisions before you change how a diagram is built.
 
 These decisions are settled. Do not change them without Ford.
 

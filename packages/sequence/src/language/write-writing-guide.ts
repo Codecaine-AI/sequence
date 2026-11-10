@@ -18,7 +18,7 @@ export const WRITING_GUIDE_FILE = join(REPO_ROOT, "packages/sequence/src/languag
 export async function renderWritingGuide(repoRoot: string = REPO_ROOT): Promise<string> {
   const page = JSON.parse(await readFile(join(repoRoot, "docs/10-language/doc.json"), "utf8")) as DocPage;
   const decisions = markdownSection(await readFile(join(repoRoot, "STATE.md"), "utf8"), "Core architecture decisions");
-  return `${renderDocPage(page)}\n\n# Sequence Design Decisions\n\nThese decisions are settled. Do not change them without Ford.\n\n${decisions}\n`;
+  return `${renderDocPage(page)}\n\n# Sequence Design Decisions\n\nRead these decisions before you change how a diagram is built.\n\nThese decisions are settled. Do not change them without Ford.\n\n${decisions}\n`;
 }
 
 const templateLiteral = (text: string): string => `\`${text.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${")}\``;

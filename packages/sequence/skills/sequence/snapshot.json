@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "generatorVersion": 1,
-  "snapshotId": "sha256:4c5f2a2a737f2642d3051cca7fe8e9d2a9a7858659c6529c50b3686e9f8fa30d",
+  "snapshotId": "sha256:038d2d557e75875ed063db5450f6a96333e8c352a7cb5bd379bccc458bc9c3c5",
   "sources": [
     {
       "path": "docs/10-language/doc.json",
-      "sha256": "c19032d987f52b44c1b44c010e38bedf610f28a4d54d9a0fec1de5008f3f48bb",
+      "sha256": "dc3193cc9cadea604f88b3149112949ce46fdb9dd4aa0d617ffc52982d55469e",
       "kind": "language"
     },
     {

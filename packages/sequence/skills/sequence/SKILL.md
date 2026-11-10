@@ -43,7 +43,7 @@ two providers first.
 
 ## Workflow
 
-1. Call `docs_discover`, then `docs_begin`. Keep its `task_id` for every call below.
+1. Call `docs_capabilities` for the project ids, then call `docs_begin`. Keep its `task_id` for every call below.
 2. Read `docs_guidance` topic `style`, then read the page with `docs_read`.
 3. Read `references/language.md` before you write a program. Read `references/design-decisions.md` before you change how a diagram is built.
 4. For a new diagram, call `docs_component_create` with `component: "sequence"`, then insert the block with the returned `src`.
@@ -51,7 +51,7 @@ two providers first.
 6. Call `docs_sequence_set_program` with the whole program and both hashes.
 7. Read the result: the program text, the findings and the SVG path. Open the SVG, fix each finding, and send the whole program again.
 8. Set colors and spacing with `docs_sequence_set_style`. Style never goes in the program. `docs_sequence_set_title` changes only the title.
-9. Run `docs_check` on the page, fix what it reports, then call `docs_end`.
+9. Run `docs_check` on the page and fix what it reports.
 
 A hash conflict means the page or the sidecar changed. Read it again, merge
 your change into the new program, and send it once more. A parse error

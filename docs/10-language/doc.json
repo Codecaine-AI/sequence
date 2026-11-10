@@ -2583,7 +2583,16 @@
       },
       "text": [
         {
-          "insert": "Let each guard name the condition of its branch."
+          "insert": "In an "
+        },
+        {
+          "insert": "alt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", draw only the replies the brief lists, and let each guard name the condition of its branch."
         }
       ],
       "children": []
@@ -2946,7 +2955,7 @@
       },
       "text": [
         {
-          "insert": "Put each sequence diagram in a sequence block inside the docs page it explains. The block points at its sidecar, "
+          "insert": "Put each sequence diagram in a sequence block inside the docs page it explains. The block only points at its sidecar, "
         },
         {
           "insert": "assets/sequences/<name>.sequence.json",
@@ -3181,7 +3190,16 @@
       },
       "text": [
         {
-          "insert": "Open the "
+          "insert": "Read the saved "
+        },
+        {
+          "insert": "program",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " text, the findings and the "
         },
         {
           "insert": "svg_path",
@@ -3190,7 +3208,16 @@
           }
         },
         {
-          "insert": " of each result as an image, fix each finding, and send the whole program again."
+          "insert": " in each result. Open the "
+        },
+        {
+          "insert": "svg_path",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " as an image, fix each finding, and send the whole program again."
         }
       ],
       "children": []

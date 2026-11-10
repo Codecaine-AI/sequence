@@ -263,7 +263,7 @@ These rules keep a program readable and faithful to its brief. The lints of \`do
 - **Returns and Branches**
   - Draw a return only where the brief lists one or the reader must see the reply. A waited-on call with no listed return stays \`>\`, and never add a return such as \`ok\` only to close a call.
   - When an \`alt\` branches on a reply, put each reply first in the branch it starts. Never merge two outcomes into one reply before the \`alt\`, such as \`200 or 409\`.
-    - Let each guard name the condition of its branch.
+    - In an \`alt\`, draw only the replies the brief lists, and let each guard name the condition of its branch.
   - Write a guard in the brief's words, with no code operator such as \`!=\`.
   - Keep every condition and remark the brief puts in the guard, such as \`(this part is proposed)\`.
   - Keep a reason the brief gives with \`because\`, in a few words, such as \`after a replan\`.
@@ -289,14 +289,14 @@ A sequence block shows time, not structure.
 Edit a sequence only through the \`docs_sequence_*\` tools of the docs server, because the sequence package has no MCP server of its own. These rules cover those tool calls and the activation bars that layout draws from the program.
 
 - **Blocks and Hashes**
-  - Put each sequence diagram in a sequence block inside the docs page it explains. The block points at its sidecar, \`assets/sequences/<name>.sequence.json\`.
+  - Put each sequence diagram in a sequence block inside the docs page it explains. The block only points at its sidecar, \`assets/sequences/<name>.sequence.json\`.
   - Read \`docs_guidance\` topic \`sequence-writing\` with your \`task_id\` before you write a program. The docs server refuses \`docs_sequence_set_program\` and a new sequence sidecar until the task reads it.
   - For a new diagram, create the sidecar with \`docs_component_create\` and \`component\` \`sequence\`, then insert the sequence block with the returned \`src\`.
   - Read the block with \`docs_component_read\`. Pass its \`doc_hash\` as \`expected_hash\` and its \`hash\` as \`expected_component_hash\`.
   - A hash conflict means the page or the sidecar changed. Read both again, merge your change into the new program, and send the whole program once more.
 - **Saving a Program**
   - Send the whole program to \`docs_sequence_set_program\` every time, with both hashes. There is no patch or partial program.
-  - Open the \`svg_path\` of each result as an image, fix each finding, and send the whole program again.
+  - Read the saved \`program\` text, the findings and the \`svg_path\` in each result. Open the \`svg_path\` as an image, fix each finding, and send the whole program again.
   - A program without a \`title\` line keeps the diagram's existing title. Change or clear the title with \`docs_sequence_set_title\`, which changes nothing else.
   - Set colors and spacing with \`docs_sequence_set_style\`, never in the program.
   - A parse error names its line. Fix every listed line, because a failed parse saves nothing.

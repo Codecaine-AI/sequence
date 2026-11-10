@@ -26,13 +26,6 @@
         "b-language-fields-are-in-fixed-orde-18",
         "b-language-field-required-val-19-table",
         "b-language-the-only-explicit-non-de-20",
-        "b-language-order-the-columns-87",
-        "b-language-order-step-88",
-        "b-language-order-step-89",
-        "b-language-order-step-90",
-        "b-language-order-step-91",
-        "b-language-order-step-92",
-        "b-language-order-example-93",
         "b-language-the-sequence-21",
         "b-language-the-sequence-block-is-ma-22",
         "b-language-seq-1-2-text-req-23-code",
@@ -85,7 +78,22 @@
         "b-language-coordinates-and-geomet-77",
         "b-language-document-and-item-ids-79",
         "b-language-activations-activa-81",
-        "b-language-patch-commands-an-83"
+        "b-language-patch-commands-an-83",
+        "b-language-order-heading-94",
+        "b-language-order-the-columns-87",
+        "b-language-order-step-88",
+        "b-language-order-step-89",
+        "b-language-order-step-90",
+        "b-language-order-step-91",
+        "b-language-order-step-92",
+        "b-language-order-example-93",
+        "b-language-writing-heading-95",
+        "b-language-writing-lead-96",
+        "b-language-writing-names",
+        "b-language-writing-labels",
+        "b-language-writing-brief",
+        "b-language-writing-returns",
+        "b-language-writing-size"
       ]
     },
     "b-language-the-language-is-a-derive-2": {
@@ -551,111 +559,6 @@
         },
         {
           "insert": " is the default and is omitted in canonical output. Participant array order is therefore both declaration order and left-to-right column order."
-        }
-      ],
-      "children": []
-    },
-    "b-language-order-the-columns-87": {
-      "id": "b-language-order-the-columns-87",
-      "type": "paragraph",
-      "props": {},
-      "text": [
-        {
-          "insert": "Order the columns before you write the participant lines. Each column that an arrow crosses makes the flow harder to follow. Follow these steps:"
-        }
-      ],
-      "children": []
-    },
-    "b-language-order-step-88": {
-      "id": "b-language-order-step-88",
-      "type": "list-item",
-      "props": {
-        "ordered": true
-      },
-      "text": [
-        {
-          "insert": "Find the first caller: the participant that sends the first message. Put it in column 1, even when an actor appears first in the brief."
-        }
-      ],
-      "children": []
-    },
-    "b-language-order-step-89": {
-      "id": "b-language-order-step-89",
-      "type": "list-item",
-      "props": {
-        "ordered": true
-      },
-      "text": [
-        {
-          "insert": "Add each other participant in the order it first receives a message, a return included. Most calls then run left to right."
-        }
-      ],
-      "children": []
-    },
-    "b-language-order-step-90": {
-      "id": "b-language-order-step-90",
-      "type": "list-item",
-      "props": {
-        "ordered": true
-      },
-      "text": [
-        {
-          "insert": "Count the messages of each pair of participants, in both directions."
-        }
-      ],
-      "children": []
-    },
-    "b-language-order-step-91": {
-      "id": "b-language-order-step-91",
-      "type": "list-item",
-      "props": {
-        "ordered": true
-      },
-      "text": [
-        {
-          "insert": "For each pair with 3 or more messages, check that no other column sits between the two participants."
-        }
-      ],
-      "children": []
-    },
-    "b-language-order-step-92": {
-      "id": "b-language-order-step-92",
-      "type": "list-item",
-      "props": {
-        "ordered": true
-      },
-      "text": [
-        {
-          "insert": "If a column sits between a busy pair, move the right one of the two left, next to the other. Then do step 4 again."
-        }
-      ],
-      "children": []
-    },
-    "b-language-order-example-93": {
-      "id": "b-language-order-example-93",
-      "type": "paragraph",
-      "props": {},
-      "text": [
-        {
-          "insert": "Never move a participant left of the participant that first calls it. For example, a kernel plugin writes "
-        },
-        {
-          "insert": "trace.db",
-          "attributes": {
-            "code": true
-          }
-        },
-        {
-          "insert": " 6 times. Put "
-        },
-        {
-          "insert": "trace.db",
-          "attributes": {
-            "code": true
-          }
-        },
-        {
-          "insert": " in the column right of the plugin, even when the plugin calls two providers first."
         }
       ],
       "children": []
@@ -1507,7 +1410,20 @@
       },
       "text": [
         {
-          "insert": "The `seq` block",
+          "insert": "The ",
+          "attributes": {
+            "bold": true
+          }
+        },
+        {
+          "insert": "seq",
+          "attributes": {
+            "bold": true,
+            "code": true
+          }
+        },
+        {
+          "insert": " block",
           "attributes": {
             "bold": true
           }
@@ -2047,6 +1963,806 @@
       "text": [
         {
           "insert": "There is no patch DSL and no incremental edit syntax."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-heading-94": {
+      "id": "b-language-order-heading-94",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Order the Columns Before You Write Them"
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-the-columns-87": {
+      "id": "b-language-order-the-columns-87",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Each column that an arrow crosses makes the flow harder to follow. Before you write the participant lines, do these steps."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-88": {
+      "id": "b-language-order-step-88",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "Find the first caller, the participant that sends the first message, and put it in column 1. Do this even when an actor appears first in the brief."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-89": {
+      "id": "b-language-order-step-89",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "Add each other participant in the order it first receives a message, a return included. Most calls then run left to right."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-90": {
+      "id": "b-language-order-step-90",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "Count the messages of each pair of participants, in both directions."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-91": {
+      "id": "b-language-order-step-91",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "For each pair with 3 or more messages, check that no other column sits between the two participants."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-step-92": {
+      "id": "b-language-order-step-92",
+      "type": "list-item",
+      "props": {
+        "ordered": true
+      },
+      "text": [
+        {
+          "insert": "If a column sits between a busy pair, move the right one of the two left, next to the other. Then do step 4 again."
+        }
+      ],
+      "children": []
+    },
+    "b-language-order-example-93": {
+      "id": "b-language-order-example-93",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "Never move a participant left of the participant that first calls it. A lead agent that calls a builder first and asks Ford a question later goes in column 1, the builder in column 2, and Ford to the right of both. When a kernel plugin writes "
+        },
+        {
+          "insert": "trace.db",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " 6 times, "
+        },
+        {
+          "insert": "trace.db",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " goes in the column right of the plugin, even when the plugin calls two providers first."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-heading-95": {
+      "id": "b-language-writing-heading-95",
+      "type": "heading",
+      "props": {
+        "level": 2
+      },
+      "text": [
+        {
+          "insert": "Writing for the Reader"
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-lead-96": {
+      "id": "b-language-writing-lead-96",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "These rules keep a program readable and faithful to its brief. The lints of "
+        },
+        {
+          "insert": "docs_sequence_set_program",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " check four of them."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-names": {
+      "id": "b-language-writing-names",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Names",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-writing-names-s1",
+        "b-language-writing-names-s2",
+        "b-language-writing-names-s3"
+      ]
+    },
+    "b-language-writing-names-s1": {
+      "id": "b-language-writing-names-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Name participants in the reader's words, such as "
+        },
+        {
+          "insert": "browser",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", "
+        },
+        {
+          "insert": "docs server",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " and "
+        },
+        {
+          "insert": "database",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-names-s2": {
+      "id": "b-language-writing-names-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Keep a header to 1 to 3 words, in one case style for every participant, such as "
+        },
+        {
+          "insert": "Child agent",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " next to "
+        },
+        {
+          "insert": "Parent agent",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-names-s3": {
+      "id": "b-language-writing-names-s3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Put a code name the brief gives, such as "
+        },
+        {
+          "insert": "buildLead(threads)",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", in "
+        },
+        {
+          "insert": "stereotype=",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". Leave any other participant detail out of the diagram, and never move it into a note."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-labels": {
+      "id": "b-language-writing-labels",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Labels",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-writing-labels-s1",
+        "b-language-writing-labels-s2",
+        "b-language-writing-labels-s3",
+        "b-language-writing-labels-s4"
+      ]
+    },
+    "b-language-writing-labels-s1": {
+      "id": "b-language-writing-labels-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Write a message label as the call or event the reader knows, such as "
+        },
+        {
+          "insert": "fetch(user)",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " or "
+        },
+        {
+          "insert": "200 OK",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-labels-s2": {
+      "id": "b-language-writing-labels-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Keep a plain-words label to 40 characters or fewer and a code call to 56. Keep each argument the brief names and drop the others."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-labels-s3": {
+      "id": "b-language-writing-labels-s3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Use one label style in a diagram, a code call for a tool or API call and plain words for an event. Never add a prefix such as "
+        },
+        {
+          "insert": "publish:",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-labels-s4": {
+      "id": "b-language-writing-labels-s4",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Draw one arrow for each call. Never join two calls in one label with \"then\", because a reply then seems to answer both."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-brief": {
+      "id": "b-language-writing-brief",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Details From the Brief",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-writing-brief-s1",
+        "b-language-writing-brief-s2",
+        "b-language-writing-brief-s3",
+        "b-language-writing-brief-s4"
+      ]
+    },
+    "b-language-writing-brief-s1": {
+      "id": "b-language-writing-brief-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Copy each detail the brief lists, and never rename, merge or drop one. Copy each argument it names into the call label, such as "
+        },
+        {
+          "insert": "getOrder(orderId, userId)",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", and write the required parameters by name."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-brief-s2": {
+      "id": "b-language-writing-brief-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Never abbreviate a name the brief uses, such as "
+        },
+        {
+          "insert": "baseRevision",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " to "
+        },
+        {
+          "insert": "baseRev",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". Shorten plain words first, never write an ellipsis, and never move a dropped argument into a note."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-brief-s3": {
+      "id": "b-language-writing-brief-s3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Never write an argument the brief does not give for that call. A guessed argument, such as "
+        },
+        {
+          "insert": "read(childThreadId)",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " for a tool that takes "
+        },
+        {
+          "insert": "requestId",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", misstates the tool."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-brief-s4": {
+      "id": "b-language-writing-brief-s4",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Draw each return the brief lists as its own arrow, in the brief's order, and keep the place the brief gives for a value, such as "
+        },
+        {
+          "insert": "ids in body.meta",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-returns": {
+      "id": "b-language-writing-returns",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Returns and Branches",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-writing-returns-s1",
+        "b-language-writing-returns-s2",
+        "b-language-writing-returns-s3",
+        "b-language-writing-returns-s4",
+        "b-language-writing-returns-s5",
+        "b-language-writing-returns-s6"
+      ]
+    },
+    "b-language-writing-returns-s1": {
+      "id": "b-language-writing-returns-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Draw a return only where the brief lists one or the reader must see the reply. A waited-on call with no listed return stays "
+        },
+        {
+          "insert": ">",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", and never add a return such as "
+        },
+        {
+          "insert": "ok",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " only to close a call."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-returns-s2": {
+      "id": "b-language-writing-returns-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "When an "
+        },
+        {
+          "insert": "alt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " branches on a reply, put each reply first in the branch it starts. Never merge two outcomes into one reply before the "
+        },
+        {
+          "insert": "alt",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", such as "
+        },
+        {
+          "insert": "200 or 409",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-returns-s3": {
+      "id": "b-language-writing-returns-s3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Write a guard in the brief's words, with no code operator such as "
+        },
+        {
+          "insert": "!=",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-returns-s4": {
+      "id": "b-language-writing-returns-s4",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Keep every condition and remark the brief puts in the guard, such as "
+        },
+        {
+          "insert": "(this part is proposed)",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-returns-s5": {
+      "id": "b-language-writing-returns-s5",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Keep a reason the brief gives with "
+        },
+        {
+          "insert": "because",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", in a few words, such as "
+        },
+        {
+          "insert": "after a replan",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-returns-s6": {
+      "id": "b-language-writing-returns-s6",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Keep a guard to 60 characters or fewer by cutting filler words, never a condition. A note cannot restrict a branch, so a condition never moves to a note."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-size": {
+      "id": "b-language-writing-size",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Size, Notes and Findings",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-writing-size-s1",
+        "b-language-writing-size-s2",
+        "b-language-writing-size-s3",
+        "b-language-writing-size-s4"
+      ]
+    },
+    "b-language-writing-size-s1": {
+      "id": "b-language-writing-size-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Keep a diagram to about 5 participants and 20 messages, and split a larger flow into two blocks."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-size-s2": {
+      "id": "b-language-writing-size-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Use a note only where the brief lists one, for one fact a message cannot carry. Keep each condition the brief gives for that fact."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-size-s3": {
+      "id": "b-language-writing-size-s3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Start every note with a capital letter and every prose label with a lowercase letter."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-size-s4": {
+      "id": "b-language-writing-size-s4",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Fix each "
+        },
+        {
+          "insert": "long-label",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", "
+        },
+        {
+          "insert": "long-guard",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", "
+        },
+        {
+          "insert": "joined-calls",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " or "
+        },
+        {
+          "insert": "leftward-call",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " finding in a "
+        },
+        {
+          "insert": "docs_sequence_set_program",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " result."
         }
       ],
       "children": []

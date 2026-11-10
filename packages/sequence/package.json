@@ -9,8 +9,6 @@
   },
   "type": "module",
   "scripts": {
-    "skill:write": "bun src/skill/generate-skill.ts",
-    "skill:check": "bun src/skill/generate-skill.ts --check",
     "writing-guide:write": "bun src/language/write-writing-guide.ts"
   },
   "main": "src/index.ts",
@@ -50,7 +48,6 @@
     "!src/**/__tests__",
     "!src/**/__fixtures__",
     "!src/**/__snapshots__",
-    "!src/skill",
     "README.md"
   ],
   "publishConfig": {

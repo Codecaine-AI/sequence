@@ -37,7 +37,25 @@
       "props": {},
       "text": [
         {
-          "insert": "A quality climb redraws the same sequence briefs every round, and a council of models scores the diagrams. Between rounds, you change the skill, the layout, the theme or the lints. You keep a change only when the scores rise and the guard still passes. The `packages/climb` CLI runs each round."
+          "insert": "A quality climb redraws the same sequence briefs every round, and a council of models scores the diagrams. Between rounds, you change the language doc that "
+        },
+        {
+          "insert": "WRITING_GUIDE",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " renders, the layout, the theme or the lints. You keep a change only when the scores rise and the guard still passes. The "
+        },
+        {
+          "insert": "packages/climb",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " CLI runs each round."
         }
       ],
       "children": []
@@ -61,7 +79,25 @@
       "props": {},
       "text": [
         {
-          "insert": "The `climb round` command runs these steps for each draw. Each step is also its own command, and `packages/climb/README.md` lists every flag."
+          "insert": "The "
+        },
+        {
+          "insert": "climb round",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " command runs these steps for each draw. Each step is also its own command, and "
+        },
+        {
+          "insert": "packages/climb/README.md",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " lists every flag."
         }
       ],
       "children": []
@@ -145,7 +181,16 @@
       },
       "text": [
         {
-          "insert": "Keep the briefs outside the repo, and pass their folder with `--briefs`."
+          "insert": "Keep the briefs outside the repo, and pass their folder with "
+        },
+        {
+          "insert": "--briefs",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
         }
       ],
       "children": []
@@ -174,7 +219,49 @@
       },
       "text": [
         {
-          "insert": "`sol` runs GPT-6.1 Sol through `codex exec`. `opus` and `fable` run Opus 5.5 and Fable 5.1 through `claude -p`."
+          "insert": "sol",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " runs GPT-6.1 Sol through "
+        },
+        {
+          "insert": "codex exec",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". "
+        },
+        {
+          "insert": "opus",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " and "
+        },
+        {
+          "insert": "fable",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " run Opus 5.5 and Fable 5.1 through "
+        },
+        {
+          "insert": "claude -p",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
         }
       ],
       "children": []
@@ -187,7 +274,16 @@
       },
       "text": [
         {
-          "insert": "Each judge reads `packages/climb/judge-brief.md`, the brief, the program and the PNG."
+          "insert": "Each judge reads "
+        },
+        {
+          "insert": "packages/climb/judge-brief.md",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", the brief, the program and the PNG."
         }
       ],
       "children": []
@@ -350,7 +446,16 @@
       },
       "text": [
         {
-          "insert": "No brief scores below 9 in any category. The flag `--exempt-floor <brief>:<category>` removes one cell from the floor and keeps it in the mean."
+          "insert": "No brief scores below 9 in any category. The flag "
+        },
+        {
+          "insert": "--exempt-floor <brief>:<category>",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " removes one cell from the floor and keeps it in the mean."
         }
       ],
       "children": []
@@ -401,7 +506,40 @@
       },
       "text": [
         {
-          "insert": "`bun test`, the type check and `bun run --cwd packages/sequence skill:check` pass."
+          "insert": "bun test",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " and the type check pass. "
+        },
+        {
+          "insert": "writing-guide.test.ts",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " fails when "
+        },
+        {
+          "insert": "WRITING_GUIDE",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " differs from a fresh render of the language doc and "
+        },
+        {
+          "insert": "STATE.md",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
         }
       ],
       "children": []

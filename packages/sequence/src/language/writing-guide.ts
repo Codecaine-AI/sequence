@@ -263,6 +263,7 @@ These rules keep a program readable and faithful to its brief. The lints of \`do
 - **Returns and Branches**
   - Draw a return only where the brief lists one or the reader must see the reply. A waited-on call with no listed return stays \`>\`, and never add a return such as \`ok\` only to close a call.
   - When an \`alt\` branches on a reply, put each reply first in the branch it starts. Never merge two outcomes into one reply before the \`alt\`, such as \`200 or 409\`.
+    - Let each guard name the condition of its branch.
   - Write a guard in the brief's words, with no code operator such as \`!=\`.
   - Keep every condition and remark the brief puts in the guard, such as \`(this part is proposed)\`.
   - Keep a reason the brief gives with \`because\`, in a few words, such as \`after a replan\`.
@@ -272,6 +273,24 @@ These rules keep a program readable and faithful to its brief. The lints of \`do
   - Use a note only where the brief lists one, for one fact a message cannot carry. Keep each condition the brief gives for that fact.
   - Start every note with a capital letter and every prose label with a lowercase letter.
   - Fix each \`long-label\`, \`long-guard\`, \`joined-calls\` or \`leftward-call\` finding in a \`docs_sequence_set_program\` result.
+
+### Save Through the Docs Tools
+
+These rules cover the docs tool calls that save a program and the activation bars that layout draws from it.
+
+- **Blocks and Hashes**
+  - Put each sequence diagram in a sequence block inside the docs page it explains. The block points at its sidecar, \`assets/sequences/<name>.sequence.json\`.
+  - Read \`docs_guidance\` topic \`sequence-writing\` with your \`task_id\` before you write a program. The docs server refuses \`docs_sequence_set_program\` and a new sequence sidecar until the task reads it.
+  - Read the block with \`docs_component_read\`. Pass its \`doc_hash\` as \`expected_hash\` and its \`hash\` as \`expected_component_hash\`.
+  - A hash conflict means the page or the sidecar changed. Read both again, merge your change into the new program, and send the whole program once more.
+- **Saving a Program**
+  - A program without a \`title\` line keeps the diagram's existing title. Change or clear the title with \`docs_sequence_set_title\`.
+  - Set colors and spacing with \`docs_sequence_set_style\`, never in the program.
+  - A parse error names its line. Fix every listed line, because a failed parse saves nothing.
+- **Arrows and Activation Bars**
+  - Use \`>\` for every call the caller waits on, a write that must finish first included.
+  - A caller's turn runs from the message that starts it to its last send or the last reply it gets in that turn.
+  - A sync call with no return gets a short bar over its own row, unless a later row on that lifeline extends the bar.
 
 # Sequence Design Decisions
 

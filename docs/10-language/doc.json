@@ -93,7 +93,12 @@
         "b-language-writing-labels",
         "b-language-writing-brief",
         "b-language-writing-returns",
-        "b-language-writing-size"
+        "b-language-writing-size",
+        "b-language-writing-tools-heading",
+        "b-language-writing-tools-lead",
+        "b-language-writing-blocks",
+        "b-language-writing-saving",
+        "b-language-writing-arrows"
       ]
     },
     "b-language-the-language-is-a-derive-2": {
@@ -2559,6 +2564,21 @@
           "insert": "."
         }
       ],
+      "children": [
+        "b-language-writing-returns-s2-guard"
+      ]
+    },
+    "b-language-writing-returns-s2-guard": {
+      "id": "b-language-writing-returns-s2-guard",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Let each guard name the condition of its branch."
+        }
+      ],
       "children": []
     },
     "b-language-writing-returns-s3": {
@@ -2763,6 +2783,347 @@
         },
         {
           "insert": " result."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-tools-heading": {
+      "id": "b-language-writing-tools-heading",
+      "type": "heading",
+      "props": {
+        "level": 3
+      },
+      "text": [
+        {
+          "insert": "Save Through the Docs Tools"
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-tools-lead": {
+      "id": "b-language-writing-tools-lead",
+      "type": "paragraph",
+      "props": {},
+      "text": [
+        {
+          "insert": "These rules cover the docs tool calls that save a program and the activation bars that layout draws from it."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-blocks": {
+      "id": "b-language-writing-blocks",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Blocks and Hashes",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-writing-blocks-s1",
+        "b-language-writing-blocks-s2",
+        "b-language-writing-blocks-s3",
+        "b-language-writing-blocks-s4"
+      ]
+    },
+    "b-language-writing-blocks-s1": {
+      "id": "b-language-writing-blocks-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Put each sequence diagram in a sequence block inside the docs page it explains. The block points at its sidecar, "
+        },
+        {
+          "insert": "assets/sequences/<name>.sequence.json",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-blocks-s2": {
+      "id": "b-language-writing-blocks-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Read "
+        },
+        {
+          "insert": "docs_guidance",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " topic "
+        },
+        {
+          "insert": "sequence-writing",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " with your "
+        },
+        {
+          "insert": "task_id",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " before you write a program. The docs server refuses "
+        },
+        {
+          "insert": "docs_sequence_set_program",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " and a new sequence sidecar until the task reads it."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-blocks-s3": {
+      "id": "b-language-writing-blocks-s3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Read the block with "
+        },
+        {
+          "insert": "docs_component_read",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ". Pass its "
+        },
+        {
+          "insert": "doc_hash",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " as "
+        },
+        {
+          "insert": "expected_hash",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " and its "
+        },
+        {
+          "insert": "hash",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " as "
+        },
+        {
+          "insert": "expected_component_hash",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-blocks-s4": {
+      "id": "b-language-writing-blocks-s4",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "A hash conflict means the page or the sidecar changed. Read both again, merge your change into the new program, and send the whole program once more."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-saving": {
+      "id": "b-language-writing-saving",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Saving a Program",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-writing-saving-s1",
+        "b-language-writing-saving-s2",
+        "b-language-writing-saving-s3"
+      ]
+    },
+    "b-language-writing-saving-s1": {
+      "id": "b-language-writing-saving-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "A program without a "
+        },
+        {
+          "insert": "title",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " line keeps the diagram's existing title. Change or clear the title with "
+        },
+        {
+          "insert": "docs_sequence_set_title",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-saving-s2": {
+      "id": "b-language-writing-saving-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Set colors and spacing with "
+        },
+        {
+          "insert": "docs_sequence_set_style",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": ", never in the program."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-saving-s3": {
+      "id": "b-language-writing-saving-s3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "A parse error names its line. Fix every listed line, because a failed parse saves nothing."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-arrows": {
+      "id": "b-language-writing-arrows",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Arrows and Activation Bars",
+          "attributes": {
+            "bold": true
+          }
+        }
+      ],
+      "children": [
+        "b-language-writing-arrows-s1",
+        "b-language-writing-arrows-s2",
+        "b-language-writing-arrows-s3"
+      ]
+    },
+    "b-language-writing-arrows-s1": {
+      "id": "b-language-writing-arrows-s1",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "Use "
+        },
+        {
+          "insert": ">",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " for every call the caller waits on, a write that must finish first included."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-arrows-s2": {
+      "id": "b-language-writing-arrows-s2",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "A caller's turn runs from the message that starts it to its last send or the last reply it gets in that turn."
+        }
+      ],
+      "children": []
+    },
+    "b-language-writing-arrows-s3": {
+      "id": "b-language-writing-arrows-s3",
+      "type": "list-item",
+      "props": {
+        "ordered": false
+      },
+      "text": [
+        {
+          "insert": "A sync call with no return gets a short bar over its own row, unless a later row on that lifeline extends the bar."
         }
       ],
       "children": []

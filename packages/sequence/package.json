@@ -10,7 +10,8 @@
   "type": "module",
   "scripts": {
     "skill:write": "bun src/skill/generate-skill.ts",
-    "skill:check": "bun src/skill/generate-skill.ts --check"
+    "skill:check": "bun src/skill/generate-skill.ts --check",
+    "writing-guide:write": "bun src/language/write-writing-guide.ts"
   },
   "main": "src/index.ts",
   "types": "src/index.ts",

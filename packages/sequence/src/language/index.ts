@@ -11,6 +11,8 @@ import type {
   SequenceParticipant,
 } from "../schema";
 
+export { WRITING_GUIDE } from "./writing-guide";
+
 const INDENT = "  ";
 const SAFE_VALUE = /^[A-Za-z0-9_()-]*$/;
 const PARTICIPANT_KINDS = new Set(["actor", "participant"] as const);

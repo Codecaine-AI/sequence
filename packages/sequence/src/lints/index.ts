@@ -97,10 +97,10 @@ export function lintSequence(document: SequenceDocument): SequenceLintResult[] {
 }
 
 /**
- * The column order the skill's procedure starts from: the sender of the
- * first message, then each participant in the order it first receives a
- * message, a return included. A participant that never receives one ranks
- * by its first send.
+ * The column order that "Order the Columns Before You Write Them" in the
+ * language doc starts from: the sender of the first message, then each
+ * participant in the order it first receives a message, a return included.
+ * A participant that never receives one ranks by its first send.
  */
 function flowRanks(messages: readonly SequenceMessage[]): Map<string, number> {
   const ranks = new Map<string, number>();

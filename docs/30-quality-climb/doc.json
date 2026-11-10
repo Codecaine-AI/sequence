@@ -512,16 +512,34 @@
           }
         },
         {
-          "insert": ", the type check and "
+          "insert": " and the type check pass. "
         },
         {
-          "insert": "bun run --cwd packages/sequence skill:check",
+          "insert": "writing-guide.test.ts",
           "attributes": {
             "code": true
           }
         },
         {
-          "insert": " pass."
+          "insert": " fails when "
+        },
+        {
+          "insert": "WRITING_GUIDE",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": " differs from a fresh render of the language doc and "
+        },
+        {
+          "insert": "STATE.md",
+          "attributes": {
+            "code": true
+          }
+        },
+        {
+          "insert": "."
         }
       ],
       "children": []

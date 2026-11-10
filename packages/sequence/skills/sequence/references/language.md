@@ -265,7 +265,7 @@ These rules keep a program readable and faithful to its brief. The lints of `doc
     - In an `alt`, draw only the replies the brief lists, and let each guard name the condition of its branch.
   - Write a guard in the brief's words, with no code operator such as `!=`.
   - Keep every condition and remark the brief puts in the guard, such as `(this part is proposed)`.
-  - Keep a reason the brief gives with `because`, in a few words, such as `after a replan`.
+  - Keep a reason the brief gives with `because` in the guard, in a few words, such as `after a replan`.
   - Keep a guard to 60 characters or fewer by cutting filler words, never a condition. A note cannot restrict a branch, so a condition never moves to a note.
 - **Size, Notes and Findings**
   - Keep a diagram to about 5 participants and 20 messages, and split a larger flow into two blocks.

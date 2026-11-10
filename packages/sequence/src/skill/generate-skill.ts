@@ -13,6 +13,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { markdownSection, renderDocPage, type DocPage } from "../language";
+
 /** Bump when the output format changes without a source change. */
 export const SKILL_GENERATOR_VERSION = 1;
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -26,105 +28,6 @@ export const SKILL_SOURCES: readonly SkillSource[] = [
 ];
 
 const sha256 = (content: string): string => createHash("sha256").update(content).digest("hex");
-
-// ---------------------------------------------------------------------------
-// docs-system page → Markdown. Unknown block types and attributes throw, so a
-// grammar page the renderer cannot carry fails the write instead of losing text.
-
-type Run = { insert: string; attributes?: Record<string, unknown> };
-type Cell = string | Run[];
-type Block = { id: string; type: string; props: Record<string, unknown>; text?: Run[]; children: string[] };
-type DocPage = { title: string; root: string; blocks: Record<string, Block> };
-
-const codeSpan = (text: string): string => {
-  const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map(run => run.length));
-  const ticks = "`".repeat(longest + 1);
-  return longest > 0 || text.startsWith(" ") ? `${ticks} ${text} ${ticks}` : `${ticks}${text}${ticks}`;
-};
-
-function inline(runs: readonly Run[]): string {
-  return runs.map(run => {
-    const attributes = run.attributes ?? {};
-    for (const key of Object.keys(attributes)) {
-      if (key !== "bold" && key !== "code") throw new Error(`Unsupported text attribute: ${key}`);
-    }
-    let text = attributes.code ? codeSpan(run.insert) : run.insert;
-    if (attributes.bold) {
-      const [, lead, body, trail] = /^(\s*)([\s\S]*?)(\s*)$/.exec(text)!;
-      text = body ? `${lead}**${body}**${trail}` : text;
-    }
-    return text;
-  }).join("");
-}
-
-const cell = (value: Cell): string =>
-  (typeof value === "string" ? value : inline(value)).replace(/\|/g, "\\|").replace(/\n/g, " ");
-
-function fence(code: string, language: string): string {
-  const longest = Math.max(2, ...(code.match(/`+/g) ?? []).map(run => run.length));
-  const ticks = "`".repeat(longest + 1);
-  return `${ticks}${language}\n${code}\n${ticks}`;
-}
-
-function renderList(page: DocPage, ids: readonly string[], indent: string): string {
-  let number = 0;
-  let ordered: boolean | undefined;
-  return ids.map(id => {
-    const block = page.blocks[id]!;
-    if (block.type !== "list-item") throw new Error(`List ${id} holds a ${block.type} block`);
-    const isOrdered = block.props.ordered === true;
-    number = isOrdered === ordered ? number + 1 : 1;
-    ordered = isOrdered;
-    const marker = isOrdered ? `${number}. ` : "- ";
-    const line = `${indent}${marker}${inline(block.text ?? [])}`;
-    return block.children.length ? `${line}\n${renderList(page, block.children, indent + " ".repeat(marker.length))}` : line;
-  }).join("\n");
-}
-
-function renderBlock(page: DocPage, block: Block): string {
-  if (block.type !== "list-item" && block.children.length) throw new Error(`Block ${block.id} has unsupported children`);
-  switch (block.type) {
-    case "heading": return `${"#".repeat(Number(block.props.level))} ${inline(block.text ?? [])}`;
-    case "paragraph": return inline(block.text ?? []);
-    case "code": return fence(inline((block.text ?? []).map(run => ({ insert: run.insert }))), String(block.props.language ?? ""));
-    case "structured-table": {
-      const columns = block.props.columns as Cell[];
-      const rows = block.props.rows as Cell[][];
-      return [columns, columns.map(() => "---"), ...rows]
-        .map((row, index) => `| ${row.map(value => (index === 1 ? String(value) : cell(value))).join(" | ")} |`)
-        .join("\n");
-    }
-    default: throw new Error(`Unsupported block type ${block.type} (${block.id})`);
-  }
-}
-
-/** Render a docs-system page's text, headings, lists, tables and code blocks to Markdown. */
-export function renderDocPage(page: DocPage): string {
-  const parts: string[] = [`# ${page.title}`];
-  const top = page.blocks[page.root]!.children;
-  for (let index = 0; index < top.length;) {
-    const block = page.blocks[top[index]!]!;
-    if (block.type === "list-item") {
-      let end = index;
-      while (end < top.length && page.blocks[top[end]!]!.type === "list-item") end++;
-      parts.push(renderList(page, top.slice(index, end), ""));
-      index = end;
-    } else {
-      parts.push(renderBlock(page, block));
-      index++;
-    }
-  }
-  return parts.join("\n\n");
-}
-
-/** The body of one `## ` section of a Markdown file, without its heading. */
-export function markdownSection(markdown: string, headingPrefix: string): string {
-  const lines = markdown.split("\n");
-  const start = lines.findIndex(line => line.startsWith(`## ${headingPrefix}`));
-  if (start < 0) throw new Error(`No "## ${headingPrefix}" section`);
-  const next = lines.findIndex((line, index) => index > start && line.startsWith("## "));
-  return lines.slice(start + 1, next < 0 ? undefined : next).join("\n").trim();
-}
 
 // ---------------------------------------------------------------------------
 // The skill folder.

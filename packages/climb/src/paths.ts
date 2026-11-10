@@ -6,7 +6,6 @@ export const REPO_ROOT = resolve(import.meta.dir, "../../..");
 export const CLIMB_ROOT = join(REPO_ROOT, "packages/climb");
 /** The sequence package of THIS checkout. Climb imports it by relative path, never by package name. */
 export const SEQUENCE_PACKAGE = join(REPO_ROOT, "packages/sequence");
-export const SKILL_DIR = join(SEQUENCE_PACKAGE, "skills/sequence");
 /** Bun preload that makes the docs server load SEQUENCE_PACKAGE (see README.md). */
 export const OVERLAY_PRELOAD = join(CLIMB_ROOT, "src/overlay-preload.ts");
 

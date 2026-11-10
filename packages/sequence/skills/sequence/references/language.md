@@ -46,16 +46,6 @@ Fields are in fixed order:
 
 The only explicit non-default kind is `kind=actor`. `kind=participant` is the default and is omitted in canonical output. Participant array order is therefore both declaration order and left-to-right column order.
 
-Order the columns before you write the participant lines. Each column that an arrow crosses makes the flow harder to follow. Follow these steps:
-
-1. Find the first caller: the participant that sends the first message. Put it in column 1, even when an actor appears first in the brief.
-2. Add each other participant in the order it first receives a message, a return included. Most calls then run left to right.
-3. Count the messages of each pair of participants, in both directions.
-4. For each pair with 3 or more messages, check that no other column sits between the two participants.
-5. If a column sits between a busy pair, move the right one of the two left, next to the other. Then do step 4 again.
-
-Never move a participant left of the participant that first calls it. For example, a kernel plugin writes `trace.db` 6 times. Put `trace.db` in the column right of the plugin, even when the plugin calls two providers first.
-
 ## The sequence
 
 The sequence block is mandatory and appears exactly once:
@@ -171,7 +161,7 @@ Field names and field order are fixed for every construct. There are no position
   - an optional first-line title exactly when `document.title` is set
   - participants numbered densely in array order
   - participant fields in the fixed order `text=`, `kind=actor`, `label=`, `stereotype=`, omitting absent optional fields and the default participant kind
-- **The `seq` block**
+- **The** **`seq`** **block**
   - exactly one blank line before `seq`
   - `seq` at the left margin
   - 2-space indentation at every nesting level
@@ -238,3 +228,78 @@ The parser collects multiple errors where feasible. Tabs, indentation not in 2-s
 - **Patch commands**
   - An agent rewrites the whole program.
   - There is no patch DSL and no incremental edit syntax.
+
+## Order the Columns Before You Write Them
+
+Each column that an arrow crosses makes the flow harder to follow. Before you write the participant lines, do these steps.
+
+1. Find the first caller, the participant that sends the first message, and put it in column 1. Do this even when an actor appears first in the brief.
+2. Add each other participant in the order it first receives a message, a return included. Most calls then run left to right.
+3. Count the messages of each pair of participants, in both directions.
+4. For each pair with 3 or more messages, check that no other column sits between the two participants.
+5. If a column sits between a busy pair, move the right one of the two left, next to the other. Then do step 4 again.
+
+Never move a participant left of the participant that first calls it. A lead agent that calls a builder first and asks Ford a question later goes in column 1, the builder in column 2, and Ford to the right of both. When a kernel plugin writes `trace.db` 6 times, `trace.db` goes in the column right of the plugin, even when the plugin calls two providers first.
+
+## Writing for the Reader
+
+These rules keep a program readable and faithful to its brief. The lints of `docs_sequence_set_program` check four of them.
+
+- **Names**
+  - Name participants in the reader's words, such as `browser`, `docs server` and `database`.
+  - Keep a header to 1 to 3 words, in one case style for every participant, such as `Child agent` next to `Parent agent`.
+  - Put a code name the brief gives, such as `buildLead(threads)`, in `stereotype=`. Leave any other participant detail out of the diagram, and never move it into a note.
+- **Labels**
+  - Write a message label as the call or event the reader knows, such as `fetch(user)` or `200 OK`.
+  - Keep a plain-words label to 40 characters or fewer and a code call to 56. Keep each argument the brief names and drop the others.
+  - Use one label style in a diagram, a code call for a tool or API call and plain words for an event. Never add a prefix such as `publish:`.
+  - Draw one arrow for each call. Never join two calls in one label with "then", because a reply then seems to answer both.
+- **Details From the Brief**
+  - Copy each detail the brief lists, and never rename, merge or drop one. Copy each argument it names into the call label, such as `getOrder(orderId, userId)`, and write the required parameters by name.
+  - Never abbreviate a name the brief uses, such as `baseRevision` to `baseRev`. Shorten plain words first, never write an ellipsis, and never move a dropped argument into a note.
+  - Never write an argument the brief does not give for that call. A guessed argument, such as `read(childThreadId)` for a tool that takes `requestId`, misstates the tool.
+  - Draw each return the brief lists as its own arrow, in the brief's order, and keep the place the brief gives for a value, such as `ids in body.meta`.
+- **Returns and Branches**
+  - Draw a return only where the brief lists one or the reader must see the reply. A waited-on call with no listed return stays `>`, and never add a return such as `ok` only to close a call.
+  - When an `alt` branches on a reply, put each reply first in the branch it starts. Never merge two outcomes into one reply before the `alt`, such as `200 or 409`.
+    - Let each guard name the condition of its branch.
+  - Write a guard in the brief's words, with no code operator such as `!=`.
+  - Keep every condition and remark the brief puts in the guard, such as `(this part is proposed)`.
+  - Keep a reason the brief gives with `because`, in a few words, such as `after a replan`.
+  - Keep a guard to 60 characters or fewer by cutting filler words, never a condition. A note cannot restrict a branch, so a condition never moves to a note.
+- **Size, Notes and Findings**
+  - Keep a diagram to about 5 participants and 20 messages, and split a larger flow into two blocks.
+  - Use a note only where the brief lists one, for one fact a message cannot carry. Keep each condition the brief gives for that fact.
+  - Start every note with a capital letter and every prose label with a lowercase letter.
+  - Fix each `long-label`, `long-guard`, `joined-calls` or `leftward-call` finding in a `docs_sequence_set_program` result.
+
+### Choose a Sequence Block
+
+A sequence block shows time, not structure.
+
+- Use a sequence block when the order of calls and returns between named parts explains the behavior.
+- Good subjects are a request flow, a handshake, a retry, a failure path and an agent tool loop.
+- Keep a block to one interaction, from its first call to its last return.
+- Use a canvas for structure, ownership or a state chart.
+- Check each message against source code or a trace before you draw it.
+
+### Save Through the Docs Tools
+
+Edit a sequence only through the `docs_sequence_*` tools of the docs server, because the sequence package has no MCP server of its own. These rules cover those tool calls and the activation bars that layout draws from the program.
+
+- **Blocks and Hashes**
+  - Put each sequence diagram in a sequence block inside the docs page it explains. The block points at its sidecar, `assets/sequences/<name>.sequence.json`.
+  - Read `docs_guidance` topic `sequence-writing` with your `task_id` before you write a program. The docs server refuses `docs_sequence_set_program` and a new sequence sidecar until the task reads it.
+  - For a new diagram, create the sidecar with `docs_component_create` and `component` `sequence`, then insert the sequence block with the returned `src`.
+  - Read the block with `docs_component_read`. Pass its `doc_hash` as `expected_hash` and its `hash` as `expected_component_hash`.
+  - A hash conflict means the page or the sidecar changed. Read both again, merge your change into the new program, and send the whole program once more.
+- **Saving a Program**
+  - Send the whole program to `docs_sequence_set_program` every time, with both hashes. There is no patch or partial program.
+  - Open the `svg_path` of each result as an image, fix each finding, and send the whole program again.
+  - A program without a `title` line keeps the diagram's existing title. Change or clear the title with `docs_sequence_set_title`, which changes nothing else.
+  - Set colors and spacing with `docs_sequence_set_style`, never in the program.
+  - A parse error names its line. Fix every listed line, because a failed parse saves nothing.
+- **Arrows and Activation Bars**
+  - Use `>` for every call the caller waits on, a write that must finish first included.
+  - A caller's turn runs from the message that starts it to its last send or the last reply it gets in that turn.
+  - A sync call with no return gets a short bar over its own row, unless a later row on that lifeline extends the bar.

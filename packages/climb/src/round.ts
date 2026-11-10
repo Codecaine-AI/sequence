@@ -20,7 +20,8 @@ export interface Round {
   createdAt: string;
   briefsDir: string;
   repo: { commit: string; dirty: boolean };
-  skill: { path: string; sha256: string };
+  /** sha256 of WRITING_GUIDE, the drawer's system prompt text. */
+  writingGuide: { sha256: string };
   briefs: RoundBrief[];
 }
 

@@ -69,15 +69,15 @@ first:
 
 ```
 <runDir>/
-  round.json                     git commit (and dirty flag), sha256 of packages/sequence/skills/sequence, briefs
+  round.json                     git commit (and dirty flag), sha256 of WRITING_GUIDE, briefs
   project/codecaine.docs.json    scratch docs project
   project/docs/<slug>/doc.json   one page, one empty sequence block b-<slug>-sequence
   project/docs/<slug>/assets/sequences/<slug>.sequence.json   empty sidecar
   <slug>/brief.md                copy of the brief
 ```
 
-The skill hash covers every file's relative path and content, so two rounds
-with the same hash gave the drawer the same skill text.
+`WRITING_GUIDE` comes from `packages/sequence/src/language/writing-guide.ts`.
+Two rounds with the same hash gave the drawer the same guide text.
 
 ### draw
 
@@ -86,8 +86,8 @@ Each brief gets one `claude -p` run:
 - `--model claude-opus-5-5 --effort medium --output-format stream-json --verbose`
 - `--mcp-config <runDir>/draw/mcp-config.json --strict-mcp-config`: only the
   docs-system MCP, started with `--workspace <runDir>/project`.
-- `--append-system-prompt-file <runDir>/draw/system-prompt.md`: SKILL.md and
-  every file in `references/`.
+- `--append-system-prompt-file <runDir>/draw/system-prompt.md`: `WRITING_GUIDE`,
+  the text that `docs_guidance` serves as topic `sequence-writing`.
 - `--tools Read` and `--allowedTools mcp__docs-system "Read(/<renders>/**)"`:
   the only built-in tool is `Read`, and it reaches only the SVGs that the docs
   daemon renders.

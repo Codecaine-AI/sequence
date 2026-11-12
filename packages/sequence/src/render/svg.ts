@@ -312,7 +312,7 @@ export function renderSequenceSvgContents(
     ).join("")}</g>`,
     `<g class="seq-fragments">${layout.fragments.map((fragment) => renderFragment(fragment, layout.scale, colors, style)).join("")}</g>`,
     `<g class="seq-activations">${layout.activations.map((activation) =>
-      `<rect data-participant-id="${escapeXml(activation.participantId)}" data-level="${activation.level}" x="${number(activation.rect.x)}" y="${number(activation.rect.y)}" width="${number(activation.rect.width)}" height="${number(activation.rect.height)}" fill="${activationFill(activation.level, colors)}" stroke="${activation.level > 0 ? colors.lifelineStroke : colors.activationStroke}" stroke-width="${number(activation.level > 0 ? 0.5 * layout.scale : layout.scale)}"${activationOpacity} />`
+      `<rect data-participant-id="${escapeXml(activation.participantId)}" data-level="${activation.level}" x="${number(activation.rect.x)}" y="${number(activation.rect.y)}" width="${number(activation.rect.width)}" height="${number(activation.rect.height)}" fill="${activationFill(activation.level, colors)}" stroke="${activation.level > 0 ? style.activation?.stroke ?? colors.lifelineStroke : colors.activationStroke}" stroke-width="${number(activation.level > 0 ? 0.5 * layout.scale : layout.scale)}"${activationOpacity} />`
     ).join("")}</g>`,
     `<g class="seq-fragment-labels">${layout.fragments.map((fragment) => renderFragmentLabels(fragment, layout.scale, colors)).join("")}</g>`,
     `<g class="seq-messages">${layout.messages.map((message) => renderMessage(message, layout.scale, colors, style)).join("")}</g>`,

@@ -304,8 +304,9 @@ describe("sequence SVG rendering", () => {
   });
 
   test("each nested activation bar paints a different fill and outline from the bar it stacks on", () => {
-    const svg = svgElement(renderSequenceSvgString({
+    const nested = (style: SequenceDocument["style"]) => svgElement(renderSequenceSvgString({
       ...minimal,
+      style,
       items: [
         { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "call" },
         { kind: "message", id: "check", from: "p2", to: "p2", line: "sync", text: "check" },
@@ -315,11 +316,15 @@ describe("sequence SVG rendering", () => {
         { kind: "message", id: "back", from: "p2", to: "p1", line: "return", text: "done" },
       ],
     }));
+    const svg = nested({});
     const bar = (level: number) =>
       svg.querySelector(`.seq-activations [data-participant-id="p2"][data-level="${level}"]`)!;
     const fills = [0, 1, 2].map((level) => bar(level).getAttribute("fill"));
     expect(new Set(fills).size).toBe(3);
     expect(bar(1).getAttribute("stroke")).not.toBe(bar(0).getAttribute("stroke"));
+    // A document's own activation stroke outlines nested bars too.
+    const styled = nested({ activation: { stroke: "#123456" } });
+    expect(styled.querySelector('.seq-activations [data-level="1"]')!.getAttribute("stroke")).toBe("#123456");
   });
 
   test("participant boxes default to teal while messages keep the accent", () => {

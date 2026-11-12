@@ -116,14 +116,13 @@ function renderDefs(scale: number, colors: SequenceResolvedColors): string {
 const PARTICIPANT_CORNER_RADIUS = 0;
 
 /** How much of the text color each nesting level mixes into an activation bar. */
-const ACTIVATION_LEVEL_SHADE = 25;
-const ACTIVATION_MAX_SHADE = 75;
+const ACTIVATION_LEVEL_SHADE = 33;
+const ACTIVATION_MAX_SHADE = 66;
 
 /**
  * An activation bar's fill: level 0 takes the plain fill, and each nested
  * level mixes in more of the text color. Text contrasts with the page in
  * both themes, so a stacked bar always stands apart from the bar below it.
- * A nested bar also takes a text-color outline (see the activations group).
  */
 function activationFill(level: number, colors: SequenceResolvedColors): string {
   const shade = Math.min(level * ACTIVATION_LEVEL_SHADE, ACTIVATION_MAX_SHADE);
@@ -179,7 +178,7 @@ function renderParticipant(
     : PARTICIPANT_CORNER_RADIUS;
   return [
     `<g class="seq-participant seq-participant--box" data-participant-id="${escapeXml(participant.id)}"${groupOpacity}>`,
-    `<rect x="${number(participant.header.x)}" y="${number(participant.header.y)}" width="${number(participant.header.width)}" height="${number(participant.header.height)}" rx="${number(cornerRadius * scale)}" fill="${colors.participantFill}" stroke="${colors.participantBorder}" stroke-width="${number(1.5 * scale)}" />`,
+    `<rect x="${number(participant.header.x)}" y="${number(participant.header.y)}" width="${number(participant.header.width)}" height="${number(participant.header.height)}" rx="${number(cornerRadius * scale)}" fill="${colors.participantFill}" stroke="${colors.participantStroke}" stroke-width="${number(scale)}" />`,
     stereotype && participant.stereotypeAnchor
       ? `<text ${textAnchor(participant.stereotypeAnchor)} class="seq-stereotype" fill="${colors.participantText}" ${fontAttrs("stereotype", scale)}>${labelText(stereotype)}</text>`
       : "",
@@ -290,13 +289,15 @@ export function renderSequenceSvgContents(
 ): string {
   const style = document.style;
   const colors = resolveSequenceColors(style);
-  const lifelineDash = typeof style.lifeline?.dash === "number"
+  // A set dash draws equal dashes and gaps; the default packs 6px dashes
+  // with 3px gaps, so a lifeline reads as one line running out of its box.
+  const lifelineDash: [number, number] = typeof style.lifeline?.dash === "number"
     && Number.isFinite(style.lifeline.dash)
     && style.lifeline.dash >= 0
-    ? style.lifeline.dash
-    : 5;
-  const lifelineDashAttr = lifelineDash > 0
-    ? ` stroke-dasharray="${number(lifelineDash * layout.scale)} ${number(lifelineDash * layout.scale)}"`
+    ? [style.lifeline.dash, style.lifeline.dash]
+    : [6, 3];
+  const lifelineDashAttr = lifelineDash[0] > 0
+    ? ` stroke-dasharray="${number(lifelineDash[0] * layout.scale)} ${number(lifelineDash[1] * layout.scale)}"`
     : "";
   const lifelineOpacity = opacityAttr(style.lifeline?.opacity);
   const activationOpacity = opacityAttr(style.activation?.opacity);
@@ -311,7 +312,7 @@ export function renderSequenceSvgContents(
     ).join("")}</g>`,
     `<g class="seq-fragments">${layout.fragments.map((fragment) => renderFragment(fragment, layout.scale, colors, style)).join("")}</g>`,
     `<g class="seq-activations">${layout.activations.map((activation) =>
-      `<rect data-participant-id="${escapeXml(activation.participantId)}" data-level="${activation.level}" x="${number(activation.rect.x)}" y="${number(activation.rect.y)}" width="${number(activation.rect.width)}" height="${number(activation.rect.height)}" fill="${activationFill(activation.level, colors)}" stroke="${activation.level > 0 ? colors.text : colors.activationStroke}" stroke-width="${number(layout.scale)}"${activationOpacity} />`
+      `<rect data-participant-id="${escapeXml(activation.participantId)}" data-level="${activation.level}" x="${number(activation.rect.x)}" y="${number(activation.rect.y)}" width="${number(activation.rect.width)}" height="${number(activation.rect.height)}" fill="${activationFill(activation.level, colors)}" stroke="${activation.level > 0 ? colors.lifelineStroke : colors.activationStroke}" stroke-width="${number(activation.level > 0 ? 0.5 * layout.scale : layout.scale)}"${activationOpacity} />`
     ).join("")}</g>`,
     `<g class="seq-fragment-labels">${layout.fragments.map((fragment) => renderFragmentLabels(fragment, layout.scale, colors)).join("")}</g>`,
     `<g class="seq-messages">${layout.messages.map((message) => renderMessage(message, layout.scale, colors, style)).join("")}</g>`,

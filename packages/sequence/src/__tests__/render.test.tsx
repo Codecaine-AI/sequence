@@ -283,13 +283,14 @@ describe("sequence SVG rendering", () => {
     expect(sequenceThemeCssVars("dark")).toEqual({
       "--seq-accent": flat.dark["color.orange.solid"],
       "--seq-fragment-accent": flat.dark["color.blue.solid"],
-      "--seq-participant-fill": flat.dark["color.surface.panel"],
+      // color-mix token, worked out to the hex a standalone SVG can paint.
+      "--seq-participant-fill": "#1a3029",
       "--seq-text": flat.dark["color.text.body"],
       "--seq-activation-fill": flat.dark["color.code.gutter-fg"],
-      "--seq-activation-stroke": flat.dark["color.border.default"],
+      "--seq-activation-stroke": flat.dark["color.code.gutter-fg"],
       "--seq-note-stroke": flat.dark["color.gray.solid"],
       "--seq-lifeline": flat.dark["color.text.muted"],
-      "--seq-participant-stroke": flat.dark["color.violet.solid"],
+      "--seq-participant-stroke": flat.dark["color.green.solid"],
       // color-mix token, worked out to the hex a standalone SVG can paint.
       "--seq-note-fill": "#2e2b23",
       "--seq-bg": flat.dark["color.surface.page"],
@@ -303,13 +304,22 @@ describe("sequence SVG rendering", () => {
     expect(colors.noteStroke).toBe(`var(--seq-note-stroke, var(--ds-color-gray-solid, ${SEQUENCE_THEME_DEFAULTS.noteStroke}))`);
   });
 
-  test("participant boxes default to violet while messages keep the accent", () => {
-    const colors = resolveSequenceColors({});
-    expect(colors.participantStroke).toBe(`var(--seq-participant-stroke, var(--ds-color-violet-solid, ${SEQUENCE_THEME_DEFAULTS.participantStroke}))`);
-    expect(colors.messageStroke).toContain("--seq-accent");
+  test("a participant box draws no border until a participant stroke is set", () => {
+    const strokes = (doc: SequenceDocument) => {
+      const svg = svgElement(renderSequenceSvgString(doc));
+      const box = svg.querySelector(".seq-participant--box rect")!;
+      const actor = svg.querySelector(".seq-participant--actor circle")!.getAttribute("stroke");
+      return { border: box.getAttribute("stroke"), fill: box.getAttribute("fill"), actor };
+    };
+    const unset = strokes(minimal);
+    // A host can still draw a border through --seq-participant-border.
+    expect(unset.border).toBe(`var(--seq-participant-border, ${unset.fill})`);
+    expect(unset.actor).not.toBe(unset.fill);
+    expect(strokes({ ...minimal, style: { participant: { stroke: "#123456" } } }))
+      .toMatchObject({ border: "#123456", actor: "#123456" });
   });
 
-  test("each nested activation bar paints a different fill from the bar it stacks on", () => {
+  test("each nested activation bar paints a different fill and outline from the bar it stacks on", () => {
     const svg = svgElement(renderSequenceSvgString({
       ...minimal,
       items: [
@@ -321,10 +331,11 @@ describe("sequence SVG rendering", () => {
         { kind: "message", id: "back", from: "p2", to: "p1", line: "return", text: "done" },
       ],
     }));
-    const fill = (level: number) =>
-      svg.querySelector(`.seq-activations [data-participant-id="p2"][data-level="${level}"]`)!.getAttribute("fill");
-    const fills = [fill(0), fill(1), fill(2)];
+    const bar = (level: number) =>
+      svg.querySelector(`.seq-activations [data-participant-id="p2"][data-level="${level}"]`)!;
+    const fills = [0, 1, 2].map((level) => bar(level).getAttribute("fill"));
     expect(new Set(fills).size).toBe(3);
+    expect(bar(1).getAttribute("stroke")).not.toBe(bar(0).getAttribute("stroke"));
   });
 
   test("a return and its arrowhead take the lifeline color, and a document's lifeline stroke recolors them", () => {

@@ -11,6 +11,7 @@ export const SEQUENCE_CSS_VARIABLES = {
   muted: "--seq-muted",
   background: "--seq-bg",
   participantStroke: "--seq-participant-stroke",
+  participantBorder: "--seq-participant-border",
   participantText: "--seq-participant-text",
   lifeline: "--seq-lifeline",
   message: "--seq-message",
@@ -27,15 +28,16 @@ export const SEQUENCE_CSS_VARIABLES = {
 /**
  * The `@codecaine-ai/design-system` token behind each default color. Each
  * color marks one kind of thing: orange the calls, blue the fragments,
- * violet the participant boxes, which name the actors,
+ * green the participants, which name the actors (a `.soft` box fill with no
+ * border, and a `.solid` actor figure),
  * gray the scaffolding (lifelines and activation bars)
  * and the returns, which share the lifeline color,
  * yellow the notes, which comment on the flow. Lifelines take
  * `color.text.muted` (5.73:1 on the page). Activation bars
  * take `color.code.gutter-fg`, the nearest gray that reaches 3:1 on the page
- * (3.53:1) and stays lighter than the lifeline. `.soft` paints the note
- * fill and `.text` the fragment labels. Activation outlines take a border
- * role; everything else takes a neutral role.
+ * (3.53:1) and stays lighter than the lifeline, for fill and outline alike.
+ * `.soft` paints the note fill and `.text` the fragment labels; everything
+ * else takes a neutral role.
  *
  * `muted` is kept for compatibility. `--seq-muted` has no default of its own
  * (a host that sets it colors both activation fill and stroke), and its value
@@ -45,13 +47,13 @@ export const SEQUENCE_THEME_TOKENS = {
   accent: "color.orange.solid",
   fragmentAccent: "color.blue.solid",
   fragmentLabelText: "color.blue.text",
-  participantFill: "color.surface.panel",
+  participantFill: "color.green.soft",
   text: "color.text.body",
   muted: "color.code.gutter-fg",
   activationFill: "color.code.gutter-fg",
-  activationStroke: "color.border.default",
+  activationStroke: "color.code.gutter-fg",
   lifeline: "color.text.muted",
-  participantStroke: "color.violet.solid",
+  participantStroke: "color.green.solid",
   noteFill: "color.yellow.soft",
   noteStroke: "color.gray.solid",
   background: "color.surface.page",
@@ -149,7 +151,10 @@ export interface SequenceResolvedColors {
   background: string;
   text: string;
   participantFill: string;
+  /** Actor figure. */
   participantStroke: string;
+  /** Participant box border. It defaults to the box fill, so a box shows no border. */
+  participantBorder: string;
   participantText: string;
   lifelineStroke: string;
   messageStroke: string;
@@ -210,16 +215,19 @@ export function resolveSequenceColors(style: SequenceStyle): SequenceResolvedCol
     defaults.fragmentLabelText,
   );
 
+  const participantFill = pick(
+    style.participant?.fill,
+    style.participantFill,
+    vars.participantFill,
+    defaults.participantFill,
+  );
+
   return {
     background: pick(style.surface?.background, undefined, vars.background, defaults.background),
     text: textChain,
-    participantFill: pick(
-      style.participant?.fill,
-      style.participantFill,
-      vars.participantFill,
-      defaults.participantFill,
-    ),
+    participantFill,
     participantStroke: pick(style.participant?.stroke, style.accent, vars.participantStroke, defaults.participantStroke),
+    participantBorder: pick(style.participant?.stroke, style.accent, vars.participantBorder, participantFill),
     participantText: pick(style.participant?.text, undefined, vars.participantText, textChain),
     lifelineStroke: pick(style.lifeline?.stroke, style.accent, vars.lifeline, defaults.lifeline),
     messageStroke: pick(style.message?.stroke, style.accent, vars.message, accentChain),
@@ -267,6 +275,7 @@ export function sequenceStyleToCssVars(style: SequenceStyle): Record<string, str
   set(vars.background, style.surface?.background);
   set(vars.participantFill, style.participant?.fill);
   set(vars.participantStroke, style.participant?.stroke);
+  set(vars.participantBorder, style.participant?.stroke);
   set(vars.participantText, style.participant?.text);
   set(vars.lifeline, style.lifeline?.stroke);
   set(vars.message, style.message?.stroke);

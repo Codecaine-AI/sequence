@@ -112,8 +112,8 @@ function renderDefs(scale: number, colors: SequenceResolvedColors): string {
   ].join("");
 }
 
-/** The design system's `radius.base`: the one corner radius app-wide. */
-const PARTICIPANT_CORNER_RADIUS = 2;
+/** Square, like the fragment frames. */
+const PARTICIPANT_CORNER_RADIUS = 0;
 
 /** How much of the text color each nesting level mixes into an activation bar. */
 const ACTIVATION_LEVEL_SHADE = 25;
@@ -123,6 +123,7 @@ const ACTIVATION_MAX_SHADE = 75;
  * An activation bar's fill: level 0 takes the plain fill, and each nested
  * level mixes in more of the text color. Text contrasts with the page in
  * both themes, so a stacked bar always stands apart from the bar below it.
+ * A nested bar also takes a text-color outline (see the activations group).
  */
 function activationFill(level: number, colors: SequenceResolvedColors): string {
   const shade = Math.min(level * ACTIVATION_LEVEL_SHADE, ACTIVATION_MAX_SHADE);
@@ -178,7 +179,7 @@ function renderParticipant(
     : PARTICIPANT_CORNER_RADIUS;
   return [
     `<g class="seq-participant seq-participant--box" data-participant-id="${escapeXml(participant.id)}"${groupOpacity}>`,
-    `<rect x="${number(participant.header.x)}" y="${number(participant.header.y)}" width="${number(participant.header.width)}" height="${number(participant.header.height)}" rx="${number(cornerRadius * scale)}" fill="${colors.participantFill}" stroke="${colors.participantStroke}" stroke-width="${number(1.5 * scale)}" />`,
+    `<rect x="${number(participant.header.x)}" y="${number(participant.header.y)}" width="${number(participant.header.width)}" height="${number(participant.header.height)}" rx="${number(cornerRadius * scale)}" fill="${colors.participantFill}" stroke="${colors.participantBorder}" stroke-width="${number(1.5 * scale)}" />`,
     stereotype && participant.stereotypeAnchor
       ? `<text ${textAnchor(participant.stereotypeAnchor)} class="seq-stereotype" fill="${colors.participantText}" ${fontAttrs("stereotype", scale)}>${labelText(stereotype)}</text>`
       : "",
@@ -310,7 +311,7 @@ export function renderSequenceSvgContents(
     ).join("")}</g>`,
     `<g class="seq-fragments">${layout.fragments.map((fragment) => renderFragment(fragment, layout.scale, colors, style)).join("")}</g>`,
     `<g class="seq-activations">${layout.activations.map((activation) =>
-      `<rect data-participant-id="${escapeXml(activation.participantId)}" data-level="${activation.level}" x="${number(activation.rect.x)}" y="${number(activation.rect.y)}" width="${number(activation.rect.width)}" height="${number(activation.rect.height)}" fill="${activationFill(activation.level, colors)}" stroke="${colors.activationStroke}" stroke-width="${number(layout.scale)}"${activationOpacity} />`
+      `<rect data-participant-id="${escapeXml(activation.participantId)}" data-level="${activation.level}" x="${number(activation.rect.x)}" y="${number(activation.rect.y)}" width="${number(activation.rect.width)}" height="${number(activation.rect.height)}" fill="${activationFill(activation.level, colors)}" stroke="${activation.level > 0 ? colors.text : colors.activationStroke}" stroke-width="${number(layout.scale)}"${activationOpacity} />`
     ).join("")}</g>`,
     `<g class="seq-fragment-labels">${layout.fragments.map((fragment) => renderFragmentLabels(fragment, layout.scale, colors)).join("")}</g>`,
     `<g class="seq-messages">${layout.messages.map((message) => renderMessage(message, layout.scale, colors, style)).join("")}</g>`,

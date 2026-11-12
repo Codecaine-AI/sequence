@@ -289,7 +289,7 @@ describe("sequence SVG rendering", () => {
       "--seq-activation-stroke": flat.dark["color.border.default"],
       "--seq-note-stroke": flat.dark["color.gray.solid"],
       "--seq-lifeline": flat.dark["color.text.muted"],
-      "--seq-participant-stroke": flat.dark["color.text.muted"],
+      "--seq-participant-stroke": flat.dark["color.violet.solid"],
       // color-mix token, worked out to the hex a standalone SVG can paint.
       "--seq-note-fill": "#2e2b23",
       "--seq-bg": flat.dark["color.surface.page"],
@@ -303,10 +303,28 @@ describe("sequence SVG rendering", () => {
     expect(colors.noteStroke).toBe(`var(--seq-note-stroke, var(--ds-color-gray-solid, ${SEQUENCE_THEME_DEFAULTS.noteStroke}))`);
   });
 
-  test("participant boxes default to gray while messages keep the accent", () => {
+  test("participant boxes default to violet while messages keep the accent", () => {
     const colors = resolveSequenceColors({});
-    expect(colors.participantStroke).toBe(`var(--seq-participant-stroke, var(--ds-color-text-muted, ${SEQUENCE_THEME_DEFAULTS.participantStroke}))`);
+    expect(colors.participantStroke).toBe(`var(--seq-participant-stroke, var(--ds-color-violet-solid, ${SEQUENCE_THEME_DEFAULTS.participantStroke}))`);
     expect(colors.messageStroke).toContain("--seq-accent");
+  });
+
+  test("each nested activation bar paints a different fill from the bar it stacks on", () => {
+    const svg = svgElement(renderSequenceSvgString({
+      ...minimal,
+      items: [
+        { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "call" },
+        { kind: "message", id: "check", from: "p2", to: "p2", line: "sync", text: "check" },
+        { kind: "message", id: "deeper", from: "p2", to: "p2", line: "sync", text: "deeper" },
+        { kind: "message", id: "deeper-back", from: "p2", to: "p2", line: "return", text: "" },
+        { kind: "message", id: "check-back", from: "p2", to: "p2", line: "return", text: "" },
+        { kind: "message", id: "back", from: "p2", to: "p1", line: "return", text: "done" },
+      ],
+    }));
+    const fill = (level: number) =>
+      svg.querySelector(`.seq-activations [data-participant-id="p2"][data-level="${level}"]`)!.getAttribute("fill");
+    const fills = [fill(0), fill(1), fill(2)];
+    expect(new Set(fills).size).toBe(3);
   });
 
   test("a return and its arrowhead take the lifeline color, and a document's lifeline stroke recolors them", () => {

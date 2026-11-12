@@ -283,13 +283,13 @@ describe("sequence SVG rendering", () => {
     expect(sequenceThemeCssVars("dark")).toEqual({
       "--seq-accent": flat.dark["color.orange.solid"],
       "--seq-fragment-accent": flat.dark["color.blue.solid"],
-      "--seq-participant-fill": flat.dark["color.surface.panel"],
+      "--seq-participant-fill": flat.dark["color.surface.page"],
       "--seq-text": flat.dark["color.text.body"],
       "--seq-activation-fill": flat.dark["color.code.gutter-fg"],
-      "--seq-activation-stroke": flat.dark["color.border.default"],
+      "--seq-activation-stroke": flat.dark["color.code.gutter-fg"],
       "--seq-note-stroke": flat.dark["color.gray.solid"],
       "--seq-lifeline": flat.dark["color.text.muted"],
-      "--seq-participant-stroke": flat.dark["color.text.muted"],
+      "--seq-participant-stroke": flat.dark["color.teal.solid"],
       // color-mix token, worked out to the hex a standalone SVG can paint.
       "--seq-note-fill": "#2e2b23",
       "--seq-bg": flat.dark["color.surface.page"],
@@ -303,9 +303,33 @@ describe("sequence SVG rendering", () => {
     expect(colors.noteStroke).toBe(`var(--seq-note-stroke, var(--ds-color-gray-solid, ${SEQUENCE_THEME_DEFAULTS.noteStroke}))`);
   });
 
-  test("participant boxes default to gray while messages keep the accent", () => {
+  test("each nested activation bar paints a different fill and outline from the bar it stacks on", () => {
+    const nested = (style: SequenceDocument["style"]) => svgElement(renderSequenceSvgString({
+      ...minimal,
+      style,
+      items: [
+        { kind: "message", id: "call", from: "p1", to: "p2", line: "sync", text: "call" },
+        { kind: "message", id: "check", from: "p2", to: "p2", line: "sync", text: "check" },
+        { kind: "message", id: "deeper", from: "p2", to: "p2", line: "sync", text: "deeper" },
+        { kind: "message", id: "deeper-back", from: "p2", to: "p2", line: "return", text: "" },
+        { kind: "message", id: "check-back", from: "p2", to: "p2", line: "return", text: "" },
+        { kind: "message", id: "back", from: "p2", to: "p1", line: "return", text: "done" },
+      ],
+    }));
+    const svg = nested({});
+    const bar = (level: number) =>
+      svg.querySelector(`.seq-activations [data-participant-id="p2"][data-level="${level}"]`)!;
+    const fills = [0, 1, 2].map((level) => bar(level).getAttribute("fill"));
+    expect(new Set(fills).size).toBe(3);
+    expect(bar(1).getAttribute("stroke")).not.toBe(bar(0).getAttribute("stroke"));
+    // A document's own activation stroke outlines nested bars too.
+    const styled = nested({ activation: { stroke: "#123456" } });
+    expect(styled.querySelector('.seq-activations [data-level="1"]')!.getAttribute("stroke")).toBe("#123456");
+  });
+
+  test("participant boxes default to teal while messages keep the accent", () => {
     const colors = resolveSequenceColors({});
-    expect(colors.participantStroke).toBe(`var(--seq-participant-stroke, var(--ds-color-text-muted, ${SEQUENCE_THEME_DEFAULTS.participantStroke}))`);
+    expect(colors.participantStroke).toBe(`var(--seq-participant-stroke, var(--ds-color-teal-solid, ${SEQUENCE_THEME_DEFAULTS.participantStroke}))`);
     expect(colors.messageStroke).toContain("--seq-accent");
   });
 

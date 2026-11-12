@@ -27,14 +27,16 @@ export const SEQUENCE_CSS_VARIABLES = {
 /**
  * The `@codecaine-ai/design-system` token behind each default color. Each
  * color marks one kind of thing: orange the calls, blue the fragments,
- * gray the scaffolding (participant boxes, lifelines and activation bars)
+ * teal the participants (box border and actor figure, on a page-white box
+ * fill so the label stays crisp),
+ * gray the scaffolding (lifelines and activation bars)
  * and the returns, which share the lifeline color,
- * yellow the notes, which comment on the flow. Participant boxes and
- * lifelines take `color.text.muted` (5.73:1 on the page). Activation bars
+ * yellow the notes, which comment on the flow. Lifelines take
+ * `color.text.muted` (5.73:1 on the page). Activation bars
  * take `color.code.gutter-fg`, the nearest gray that reaches 3:1 on the page
- * (3.53:1) and stays lighter than the lifeline. `.soft` paints the note
- * fill and `.text` the fragment labels. Activation outlines take a border
- * role; everything else takes a neutral role.
+ * (3.53:1) and stays lighter than the lifeline, for fill and outline alike.
+ * `.soft` paints the note fill and `.text` the fragment labels; everything
+ * else takes a neutral role.
  *
  * `muted` is kept for compatibility. `--seq-muted` has no default of its own
  * (a host that sets it colors both activation fill and stroke), and its value
@@ -44,13 +46,13 @@ export const SEQUENCE_THEME_TOKENS = {
   accent: "color.orange.solid",
   fragmentAccent: "color.blue.solid",
   fragmentLabelText: "color.blue.text",
-  participantFill: "color.surface.panel",
+  participantFill: "color.surface.page",
   text: "color.text.body",
   muted: "color.code.gutter-fg",
   activationFill: "color.code.gutter-fg",
-  activationStroke: "color.border.default",
+  activationStroke: "color.code.gutter-fg",
   lifeline: "color.text.muted",
-  participantStroke: "color.text.muted",
+  participantStroke: "color.teal.solid",
   noteFill: "color.yellow.soft",
   noteStroke: "color.gray.solid",
   background: "color.surface.page",

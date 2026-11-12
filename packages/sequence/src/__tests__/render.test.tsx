@@ -283,14 +283,13 @@ describe("sequence SVG rendering", () => {
     expect(sequenceThemeCssVars("dark")).toEqual({
       "--seq-accent": flat.dark["color.orange.solid"],
       "--seq-fragment-accent": flat.dark["color.blue.solid"],
-      // color-mix tokens, worked out to the hex a standalone SVG can paint.
-      "--seq-participant-fill": "#20262e",
+      "--seq-participant-fill": flat.dark["color.surface.page"],
       "--seq-text": flat.dark["color.text.body"],
       "--seq-activation-fill": flat.dark["color.code.gutter-fg"],
       "--seq-activation-stroke": flat.dark["color.code.gutter-fg"],
       "--seq-note-stroke": flat.dark["color.gray.solid"],
       "--seq-lifeline": flat.dark["color.text.muted"],
-      "--seq-participant-stroke": flat.dark["color.text.muted"],
+      "--seq-participant-stroke": flat.dark["color.teal.solid"],
       // color-mix token, worked out to the hex a standalone SVG can paint.
       "--seq-note-fill": "#2e2b23",
       "--seq-bg": flat.dark["color.surface.page"],
@@ -323,9 +322,9 @@ describe("sequence SVG rendering", () => {
     expect(bar(1).getAttribute("stroke")).not.toBe(bar(0).getAttribute("stroke"));
   });
 
-  test("participant boxes default to gray while messages keep the accent", () => {
+  test("participant boxes default to teal while messages keep the accent", () => {
     const colors = resolveSequenceColors({});
-    expect(colors.participantStroke).toBe(`var(--seq-participant-stroke, var(--ds-color-text-muted, ${SEQUENCE_THEME_DEFAULTS.participantStroke}))`);
+    expect(colors.participantStroke).toBe(`var(--seq-participant-stroke, var(--ds-color-teal-solid, ${SEQUENCE_THEME_DEFAULTS.participantStroke}))`);
     expect(colors.messageStroke).toContain("--seq-accent");
   });
 

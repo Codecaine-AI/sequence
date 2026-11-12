@@ -178,7 +178,7 @@ function renderParticipant(
     : PARTICIPANT_CORNER_RADIUS;
   return [
     `<g class="seq-participant seq-participant--box" data-participant-id="${escapeXml(participant.id)}"${groupOpacity}>`,
-    `<rect x="${number(participant.header.x)}" y="${number(participant.header.y)}" width="${number(participant.header.width)}" height="${number(participant.header.height)}" rx="${number(cornerRadius * scale)}" fill="${colors.participantFill}" stroke="${colors.participantStroke}" stroke-width="${number(scale)}" />`,
+    `<rect x="${number(participant.header.x)}" y="${number(participant.header.y)}" width="${number(participant.header.width)}" height="${number(participant.header.height)}" rx="${number(cornerRadius * scale)}" fill="${colors.participantFill}" stroke="${colors.participantStroke}" stroke-width="${number(1.25 * scale)}" />`,
     stereotype && participant.stereotypeAnchor
       ? `<text ${textAnchor(participant.stereotypeAnchor)} class="seq-stereotype" fill="${colors.participantText}" ${fontAttrs("stereotype", scale)}>${labelText(stereotype)}</text>`
       : "",

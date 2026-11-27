@@ -229,6 +229,19 @@ describe("sequence SVG rendering", () => {
     });
     expect(svg).toContain("--seq-accent: #112233");
     expect(svg).toContain("--seq-fragment-accent: #445566");
+
+    // Per-element group colors are installed as variables too.
+    const grouped = renderSequenceSvgString({
+      ...minimal,
+      style: {
+        surface: { background: "#FAFAF0" },
+        lifeline: { stroke: "#0000EE" },
+        note: { fill: "#0FF0FF" },
+      },
+    });
+    expect(grouped).toContain("--seq-bg: #FAFAF0");
+    expect(grouped).toContain("--seq-lifeline: #0000EE");
+    expect(grouped).toContain("--seq-note-fill: #0FF0FF");
   });
 
   test("the global scale multiplies typography, strokes, and markers", () => {
@@ -265,6 +278,14 @@ describe("sequence SVG rendering", () => {
     // (activation bars keep following the muted default chain, not accent).
     expect(svg).toContain("var(--seq-activation-fill, var(--seq-muted, ");
     expect(svg).toContain("var(--seq-activation-stroke, var(--seq-muted, ");
+
+    // With no per-element override, the shortcuts color lifelines and participant boxes.
+    const shortcutsOnly = renderSequenceSvgString({
+      ...minimal,
+      style: { accent: "#123123", participantFill: "#456456" },
+    });
+    expect(shortcutsOnly).toMatch(/<g class="seq-lifelines">[^]*stroke="#123123"/);
+    expect(shortcutsOnly).toMatch(/class="seq-participant seq-participant--box"[^]*fill="#456456"/);
   });
 
   test("defaults come from design-system tokens, below the --seq-* variables", () => {

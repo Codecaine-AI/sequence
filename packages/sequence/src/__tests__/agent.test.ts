@@ -88,6 +88,15 @@ describe("sequence agent operations", () => {
       { type: "setStyle", style: { note: { opacity: null } } },
     ]);
     expect(dropped.ok && dropped.document.style).toEqual({});
+
+    const grouped = applySequenceOperations(minimal, [
+      { type: "setStyle", style: { scale: 1.4, fragment: { stroke: "#123456", padding: 20 } } },
+    ]);
+    if (!grouped.ok) throw new Error("setup failed");
+    const groupCleared = applySequenceOperations(grouped.document, [
+      { type: "setStyle", style: { fragment: null } },
+    ]);
+    expect(groupCleared.ok && groupCleared.document.style).toEqual({ scale: 1.4 });
   });
 
   test("agent params accept representative payloads", () => {

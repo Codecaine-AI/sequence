@@ -15,8 +15,15 @@ function expectErrorAt(program: string, line: number, text?: string): void {
 }
 
 describe("sequence language errors", () => {
-  test("rejects tab indentation", () => {
-    expectErrorAt(`${prefix}\n\t1 > 2 text=call`, 5, "tabs");
+  test.each([
+    ["tab indentation", `${prefix}\n\t1 > 2 text=call`, 5, "tabs"],
+    ["indentation not divisible into 2-space levels", `${prefix}\n   1 > 2 text=call`, 5, "2 spaces"],
+    ["unknown participant numbers", `${prefix}\n  1 > 3 text=call`, 5, "unknown participant number 3"],
+    ["non-dense participant numbering", "participant 2 text=a\n\nseq", 1, "dense"],
+    ["else outside alt", `${prefix}\n  else`, 5, "only legal"],
+    ["a garbage item line", `${prefix}\n  abracadabra`, 5, "unknown sequence item"],
+  ] as [string, string, number, string][])("rejects %s", (_name, program, line, text) => {
+    expectErrorAt(program, line, text);
   });
 
   test("collects independent line errors without throwing", () => {

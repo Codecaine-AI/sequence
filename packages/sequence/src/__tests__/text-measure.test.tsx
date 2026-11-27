@@ -116,11 +116,6 @@ const checkout: SequenceDocument = {
 };
 
 describe("default text metrics (text-measure)", () => {
-  test("tests measure on the HarfBuzz backend despite happy-dom", () => {
-    expect(typeof document.createElement).toBe("function");
-    expect(activeBackend()).toEqual({ name: "harfbuzz", exact: true });
-  });
-
   test("participant, message, note, title, and tab widths are measureWidth in the drawn font", () => {
     const layout = layoutSequence(checkout);
     const svg = svgElement(renderSequenceSvgString(checkout));

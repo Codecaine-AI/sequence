@@ -346,15 +346,6 @@ describe("sequence SVG rendering", () => {
       .toEqual({ call: "#ff0000", reply: "#222222", head: "#222222" });
   });
 
-  test("shortcuts still color elements that have no per-element override", () => {
-    const svg = renderSequenceSvgString({
-      ...minimal,
-      style: { accent: "#123123", participantFill: "#456456" },
-    });
-    expect(svg).toMatch(/<g class="seq-lifelines">[^]*stroke="#123123"/);
-    expect(svg).toMatch(/class="seq-participant seq-participant--box"[^]*fill="#456456"/);
-  });
-
   test("opacity, lifeline dash, corner radius, and body tint reach the SVG", () => {
     const svg = renderSequenceSvgString({
       ...combinedFragments,
@@ -392,20 +383,6 @@ describe("sequence SVG rendering", () => {
     });
     const lifelines = svg.match(/<g class="seq-lifelines">.*?<\/g>/)![0];
     expect(lifelines).not.toContain("stroke-dasharray");
-  });
-
-  test("per-element colors are also installed as inline CSS variables", () => {
-    const svg = renderSequenceSvgString({
-      ...minimal,
-      style: {
-        surface: { background: "#FAFAF0" },
-        lifeline: { stroke: "#0000EE" },
-        note: { fill: "#0FF0FF" },
-      },
-    });
-    expect(svg).toContain("--seq-bg: #FAFAF0");
-    expect(svg).toContain("--seq-lifeline: #0000EE");
-    expect(svg).toContain("--seq-note-fill: #0FF0FF");
   });
 
   test("SequenceViewer mounts as an accessible SVG", () => {

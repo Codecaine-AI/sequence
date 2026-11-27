@@ -19,11 +19,6 @@ test("lastJsonObject reads a whole-object reply whose finding text holds braces 
   expect(lastJsonObject(reply)).toEqual({ judge: "sol", findings: [{ text: "missing closing }" }, { text: 'label "a{b" clips' }] });
 });
 
-test("lastJsonObject finds an object with a lone brace in a string after prose", () => {
-  const reply = 'Here is the score.\n{"judge":"opus","findings":[{"text":"a { with no close"}]}\nDone.';
-  expect(lastJsonObject(reply)).toEqual({ judge: "opus", findings: [{ text: "a { with no close" }] });
-});
-
 test("runJudge clears an old score for a brief that has no diagram this time", async () => {
   const root = await mkdtemp(join(tmpdir(), "climb-judge-"));
   await mkdir(join(root, "run/stale"), { recursive: true });

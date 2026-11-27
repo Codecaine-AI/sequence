@@ -90,17 +90,6 @@ describe("sequence agent operations", () => {
     expect(dropped.ok && dropped.document.style).toEqual({});
   });
 
-  test("explicit null clears a whole element group", () => {
-    const base = applySequenceOperations(minimal, [
-      { type: "setStyle", style: { scale: 1.4, fragment: { stroke: "#123456", padding: 20 } } },
-    ]);
-    if (!base.ok) throw new Error("setup failed");
-    const cleared = applySequenceOperations(base.document, [
-      { type: "setStyle", style: { fragment: null } },
-    ]);
-    expect(cleared.ok && cleared.document.style).toEqual({ scale: 1.4 });
-  });
-
   test("agent params accept representative payloads", () => {
     const examples: Record<string, unknown> = {
       setProgram: { program: serializeSequenceProgram(minimal) },

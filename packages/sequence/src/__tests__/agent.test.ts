@@ -24,12 +24,13 @@ describe("sequence agent operations", () => {
   });
 
   test("a titleless program does not erase an existing title", () => {
+    const titled = { ...loginFlow, title: "Kept title" };
     const titleless = { ...minimal, title: undefined };
-    const result = applySequenceOperations(loginFlow, [{
+    const result = applySequenceOperations(titled, [{
       type: "setProgram",
       program: serializeSequenceProgram(titleless),
     }]);
-    expect(result.ok && result.document.title).toBe(loginFlow.title);
+    expect(result.ok && result.document.title).toBe("Kept title");
   });
 
   test("invalid programs surface line-numbered errors", () => {

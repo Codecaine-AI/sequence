@@ -24,12 +24,13 @@ describe("sequence agent operations", () => {
   });
 
   test("a titleless program does not erase an existing title", () => {
+    const titled = { ...loginFlow, title: "Kept title" };
     const titleless = { ...minimal, title: undefined };
-    const result = applySequenceOperations(loginFlow, [{
+    const result = applySequenceOperations(titled, [{
       type: "setProgram",
       program: serializeSequenceProgram(titleless),
     }]);
-    expect(result.ok && result.document.title).toBe(loginFlow.title);
+    expect(result.ok && result.document.title).toBe("Kept title");
   });
 
   test("invalid programs surface line-numbered errors", () => {
@@ -87,17 +88,15 @@ describe("sequence agent operations", () => {
       { type: "setStyle", style: { note: { opacity: null } } },
     ]);
     expect(dropped.ok && dropped.document.style).toEqual({});
-  });
 
-  test("explicit null clears a whole element group", () => {
-    const base = applySequenceOperations(minimal, [
+    const grouped = applySequenceOperations(minimal, [
       { type: "setStyle", style: { scale: 1.4, fragment: { stroke: "#123456", padding: 20 } } },
     ]);
-    if (!base.ok) throw new Error("setup failed");
-    const cleared = applySequenceOperations(base.document, [
+    if (!grouped.ok) throw new Error("setup failed");
+    const groupCleared = applySequenceOperations(grouped.document, [
       { type: "setStyle", style: { fragment: null } },
     ]);
-    expect(cleared.ok && cleared.document.style).toEqual({ scale: 1.4 });
+    expect(groupCleared.ok && groupCleared.document.style).toEqual({ scale: 1.4 });
   });
 
   test("agent params accept representative payloads", () => {

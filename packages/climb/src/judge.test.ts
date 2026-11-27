@@ -5,9 +5,11 @@ import { join } from "node:path";
 
 import { lastJsonObject, runJudge } from "./judge.ts";
 
-test("lastJsonObject takes the final object after prose and fenced JSON", () => {
+test("lastJsonObject takes the final object after prose and fenced JSON, even with a lone brace in a string", () => {
   const reply = 'Thinking {not json}.\n```json\n{"judge":"sol","scores":{"craft":9},"findings":[]}\n```\n';
   expect(lastJsonObject(reply)).toEqual({ judge: "sol", scores: { craft: 9 }, findings: [] });
+  const loneBrace = 'Here is the score.\n{"judge":"opus","findings":[{"text":"a { with no close"}]}\nDone.';
+  expect(lastJsonObject(loneBrace)).toEqual({ judge: "opus", findings: [{ text: "a { with no close" }] });
 });
 
 test("lastJsonObject returns undefined when no object parses", () => {
@@ -17,11 +19,6 @@ test("lastJsonObject returns undefined when no object parses", () => {
 test("lastJsonObject reads a whole-object reply whose finding text holds braces and escaped quotes", () => {
   const reply = '{"judge":"sol","findings":[{"text":"missing closing }"},{"text":"label \\"a{b\\" clips"}]}';
   expect(lastJsonObject(reply)).toEqual({ judge: "sol", findings: [{ text: "missing closing }" }, { text: 'label "a{b" clips' }] });
-});
-
-test("lastJsonObject finds an object with a lone brace in a string after prose", () => {
-  const reply = 'Here is the score.\n{"judge":"opus","findings":[{"text":"a { with no close"}]}\nDone.';
-  expect(lastJsonObject(reply)).toEqual({ judge: "opus", findings: [{ text: "a { with no close" }] });
 });
 
 test("runJudge clears an old score for a brief that has no diagram this time", async () => {

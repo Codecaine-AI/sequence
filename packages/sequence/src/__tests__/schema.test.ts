@@ -6,14 +6,11 @@ import {
 import { combinedFragments, loginFlow, minimal } from "../fixtures";
 
 describe("SequenceDocument schema", () => {
-  test("accepts all fixtures", () => {
+  test("accepts all fixtures and per-element style groups", () => {
     for (const fixture of [loginFlow, combinedFragments, minimal]) {
       expect(validateSequenceDocument(fixture)).toEqual({ ok: true, errors: [] });
       expect(() => assertSequenceDocument(fixture)).not.toThrow();
     }
-  });
-
-  test("accepts per-element style groups", () => {
     const styled = {
       ...minimal,
       style: {

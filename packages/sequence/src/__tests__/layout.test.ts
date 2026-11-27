@@ -698,22 +698,6 @@ describe("layoutSequence", () => {
     expect(layout.activations.filter(({ participantId }) => participantId === "p3")).toEqual([]);
   });
 
-  test("a two-participant diagram has the same margin on its right as on its left", () => {
-    const layout = layoutSequence({
-      version: 1,
-      id: "narrow",
-      participants: [
-        { id: "a", name: "A", kind: "participant" },
-        { id: "b", name: "B", kind: "participant" },
-      ],
-      items: [{ kind: "message", id: "go", from: "a", to: "b", line: "sync", text: "go" }],
-      style: {},
-    });
-    const left = Math.min(...layout.participants.map(({ header }) => header.x));
-    const right = Math.max(...layout.participants.map(({ header }) => header.x + header.width));
-    expect(layout.width - right).toBeCloseTo(left, 6);
-  });
-
   test("both ends of an async message can start a turn on its row, and each gets its bar", () => {
     const layout = layoutSequence(documentWith([
       { kind: "message", id: "kick", from: "p1", to: "p2", line: "async", text: "kick" },
@@ -934,13 +918,36 @@ describe("layoutSequence", () => {
         operands: [{ guard: "ready", items: [call] }],
       }] }],
     };
-    for (const items of [
-      [call],
-      [{ kind: "note", id: "n", anchor: "p1", side: "left", text: "a note left of the first lifeline" } as SequenceItem, call],
-      [{ kind: "note", id: "n", anchor: "p1", side: "over", text: "an over note on the first lifeline" } as SequenceItem, call],
-      [framed],
-    ]) {
-      const layout = layoutSequence(documentWith(items));
+    const twoParticipants: SequenceDocument = {
+      version: 1,
+      id: "narrow",
+      participants: [
+        { id: "a", name: "A", kind: "participant" },
+        { id: "b", name: "B", kind: "participant" },
+      ],
+      items: [{ kind: "message", id: "go", from: "a", to: "b", line: "sync", text: "go" }],
+      style: {},
+    };
+    const documents: SequenceDocument[] = [
+      documentWith([call]),
+      documentWith([{ kind: "note", id: "n", anchor: "p1", side: "left", text: "a note left of the first lifeline" }, call]),
+      documentWith([{ kind: "note", id: "n", anchor: "p1", side: "over", text: "an over note on the first lifeline" }, call]),
+      documentWith([framed]),
+      twoParticipants,
+      documentWith([{ kind: "message", id: "m1", from: "p1", to: "p3", line: "sync", text: "store(x)" }]),
+      // A right note on the last lifeline sets the right edge.
+      documentWith([{
+        kind: "fragment",
+        id: "f1",
+        op: "loop",
+        operands: [{ guard: "each item", items: [
+          { kind: "message", id: "m1", from: "p1", to: "p2", line: "sync", text: "next()" },
+          { kind: "note", id: "n1", anchor: "p3", side: "right", text: "keeps a log" },
+        ] }],
+      }]),
+    ];
+    for (const diagram of documents) {
+      const layout = layoutSequence(diagram);
       expect(leftmost(layout)).toBeCloseTo(SEQUENCE_LAYOUT.MARGIN, 6);
       // The right margin matches it.
       const rightmost = Math.max(
@@ -1407,34 +1414,6 @@ describe("layoutSequence", () => {
 
     expect(frame.x + frame.width).toBe(service.centerX + SEQUENCE_LAYOUT.FRAG_PAD);
     expect(frame.x + frame.width).toBeLessThan(service.header.x + service.header.width);
-  });
-
-  test.each([
-    ["messages only", [
-      { kind: "message", id: "m1", from: "p1", to: "p3", line: "sync", text: "store(x)" },
-    ]],
-    ["a frame with a right note", [
-      {
-        kind: "fragment",
-        id: "f1",
-        op: "loop",
-        operands: [{ guard: "each item", items: [
-          { kind: "message", id: "m1", from: "p1", to: "p2", line: "sync", text: "next()" },
-          { kind: "note", id: "n1", anchor: "p3", side: "right", text: "keeps a log" },
-        ] }],
-      },
-    ]],
-  ] as [string, SequenceItem[]][])("the right margin is as wide as the left one: %s", (_name, items) => {
-    const layout = layoutSequence(documentWith(items));
-    const boxes: SeqRect[] = [
-      ...layout.participants.map(({ header }) => header),
-      ...layout.fragments.map(({ outer }) => outer),
-      ...layout.notes.map(({ box }) => box),
-    ];
-    const left = Math.min(...boxes.map(({ x }) => x));
-    const right = Math.max(...boxes.map(({ x, width }) => x + width));
-
-    expect(layout.width - right).toBe(left);
   });
 
   test("operand dividers keep clearance from surrounding operand contents", () => {
